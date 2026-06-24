@@ -18,7 +18,6 @@ import { customersRouter, projectsRouter } from "./routes/projects.routes";
 import { changeOrdersRouter } from "./routes/changeOrders.routes";
 import { supplierIntegrationRouter } from "./routes/supplierIntegration.routes";
 import { organizationProvisioningRouter } from "./routes/organizationProvisioning.routes";
-import { startSupplierPriceSyncScheduler } from "../modules/supplier-integration/scheduler";
 
 export function createServer() {
   const app = express();
@@ -58,33 +57,4 @@ export function createServer() {
   app.use(errorHandler);
 
   return app;
-}
-
-if (require.main === module) {
-  const app = createServer();
-  const port = process.env.PORT ? Number(process.env.PORT) : 4000;
-  app.listen(port, () => {
-    // eslint-disable-next-line no-console
-    console.log(`TradeOS Cost Book API listening on port ${port}`);
-  });
-
-  // No-ops unless SUPPLIER_PRICE_SYNC_CRON_SCHEDULE and SUPPLIER_PRICE_SYNC_JOBS
-  // are both set. Operators who prefer external cron/k8s CronJob over an
-  // in-process timer can ignore this and run scripts/run-supplier-price-sync.ts
-  // on their own schedule instead.
-  const supplierPriceSyncTask = startSupplierPriceSyncScheduler({
-    onTick: (outcomes) => {
-      const failed = outcomes.filter((outcome) => outcome.error);
-      // eslint-disable-next-line no-console
-      console.log(`[supplier-price-sync] ran ${outcomes.length} job(s), ${failed.length} failed`);
-      for (const outcome of failed) {
-        // eslint-disable-next-line no-console
-        console.error(`[supplier-price-sync] ${outcome.spec.label ?? outcome.spec.supplierId} failed: ${outcome.error}`);
-      }
-    },
-  });
-  if (supplierPriceSyncTask) {
-    // eslint-disable-next-line no-console
-    console.log(`[supplier-price-sync] scheduler started (${process.env.SUPPLIER_PRICE_SYNC_CRON_SCHEDULE})`);
-  }
 }

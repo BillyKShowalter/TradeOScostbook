@@ -17,6 +17,6 @@
     "sourceMap": true,
     "baseUrl": "."
   },
-  "include": ["api", "db", "modules", "tests", "prisma", "scripts"],
+  "include": ["api", "db", "modules", "tests", "prisma", "scripts", "index.ts"],
   "exclude": ["node_modules", "dist"]
 }

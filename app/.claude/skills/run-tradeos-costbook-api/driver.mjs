@@ -124,7 +124,7 @@ async function cmdServe() {
   console.log("[serve] npm run build");
   sh("npm run build");
   console.log("[serve] starting API in the background");
-  const child = spawn("node", ["dist/api/server.js"], {
+  const child = spawn("node", ["dist/api/start.js"], {
     cwd: APP_DIR,
     detached: true,
     stdio: ["ignore", "ignore", "ignore"],

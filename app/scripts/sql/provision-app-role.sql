@@ -10,7 +10,17 @@
 -- (DO $$ ... $$) blocks, so the create-or-alter branch is built and run via
 -- \gexec instead of PL/pgSQL — substitution works normally here since
 -- nothing below is dollar-quoted.
-select format('alter role %I with login password %L nosuperuser nocreatedb nocreaterole noinherit', :'role_name', :'role_password')
+--
+-- The ALTER branch deliberately omits nosuperuser/nocreatedb/nocreaterole
+-- (only re-asserted on CREATE, where they're required to be specified at
+-- all): PostgreSQL requires the *executing* role to itself be a true
+-- superuser to touch the SUPERUSER/NOSUPERUSER clause in an ALTER ROLE
+-- statement, regardless of direction or the target's current value — even
+-- though CREATEROLE alone is sufficient to specify it on CREATE ROLE. On
+-- Supabase, the admin `postgres` role has CREATEROLE but is not a true
+-- superuser, so re-running this script against an already-provisioned
+-- role failed with "permission denied to alter role" until this was split.
+select format('alter role %I with login password %L', :'role_name', :'role_password')
 where exists (select 1 from pg_roles where rolname = :'role_name')
 union all
 select format('create role %I login password %L nosuperuser nocreatedb nocreaterole noinherit', :'role_name', :'role_password')
