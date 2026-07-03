@@ -1,4 +1,4 @@
-export interface CreateOrganizationInput {
+interface CreateOrganizationInput {
   name: string;
   regionCode?: string;
 }

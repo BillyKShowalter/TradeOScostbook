@@ -26,7 +26,7 @@ interface MappedPrismaError {
 // (transaction conflicts, etc.) still fall through to the generic 500,
 // since guessing at the right status for codes this app hasn't actually
 // hit yet is worse than just logging them.
-export function mapPrismaKnownRequestError(err: Prisma.PrismaClientKnownRequestError): MappedPrismaError | undefined {
+function mapPrismaKnownRequestError(err: Prisma.PrismaClientKnownRequestError): MappedPrismaError | undefined {
   switch (err.code) {
     case "P2002":
       return {

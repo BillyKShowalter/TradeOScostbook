@@ -95,7 +95,7 @@ TradeOS Cost Book
 
 ## Detailed Session Summary
 1. Added a new session-tracking file at the repo root:
-   - [claude.md](/Users/showb/TradeOScostbook/claude.md)
+   - [CLAUDE.md](/Users/showb/TradeOScostbook/CLAUDE.md) (originally created as `claude.md`; renamed for consistency with Claude Code's convention)
    - Purpose: persistent, detailed handoff log for session-by-session continuity
    - Behavior requested by user: update after every implementation block and end each session with a detailed summary
 

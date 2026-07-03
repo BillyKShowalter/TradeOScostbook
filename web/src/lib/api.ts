@@ -41,21 +41,6 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   return body as T;
 }
 
-export interface AuthSession {
-  token: string;
-  user: { id: string; email: string; fullName: string | null };
-  organization: { id: string; name: string };
-  role: string;
-}
-
-export function signup(input: { organizationName: string; regionCode?: string; email: string; password: string; fullName?: string }) {
-  return apiFetch<AuthSession>("/api/v1/auth/signup", { method: "POST", body: JSON.stringify(input) });
-}
-
-export function login(input: { email: string; password: string }) {
-  return apiFetch<AuthSession>("/api/v1/auth/login", { method: "POST", body: JSON.stringify(input) });
-}
-
 export interface Customer {
   id: string;
   name: string;
@@ -90,7 +75,7 @@ export const PROJECT_STATUSES = [
   "active",
   "complete",
 ] as const;
-export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
+type ProjectStatus = (typeof PROJECT_STATUSES)[number];
 
 export interface Project {
   id: string;
@@ -199,10 +184,6 @@ export interface ProposalDraftPreview {
   paymentSchedule: ProposalPaymentScheduleEntry[];
 }
 
-export function listProposalsByProject(token: string, projectId: string) {
-  return apiFetch<Proposal[]>(`/api/v1/proposals/by-project/${projectId}`, { token });
-}
-
 export function getProposal(token: string, id: string) {
   return apiFetch<Proposal>(`/api/v1/proposals/${id}`, { token });
 }
@@ -236,10 +217,6 @@ export interface Invoice {
   createdAt: string;
 }
 
-export function listInvoicesByProject(token: string, projectId: string) {
-  return apiFetch<Invoice[]>(`/api/v1/invoices/by-project/${projectId}`, { token });
-}
-
 export function getInvoice(token: string, id: string) {
   return apiFetch<Invoice & { lineItems: InvoiceLineItem[] }>(`/api/v1/invoices/${id}`, { token });
 }
@@ -256,10 +233,6 @@ export interface Contract {
   signatureIp: string | null;
   signedAt: string | null;
   createdAt: string;
-}
-
-export function listContractsByProject(token: string, projectId: string) {
-  return apiFetch<Contract[]>(`/api/v1/contracts/by-project/${projectId}`, { token });
 }
 
 export function getContract(token: string, id: string) {

@@ -2,7 +2,7 @@ import { prisma } from "../../db/client";
 import { ApiError } from "../../backend/middleware/errorHandler";
 import { CostDatabaseService } from "../cost-database/service";
 import { AssembliesDatabaseService } from "../assemblies-database/service";
-import { applyOverhead, sellPrice } from "./formulas";
+import { applyOverhead, sellPrice, round2 } from "./formulas";
 import {
   AddLineItemInput,
   CreateEstimateInput,
@@ -154,10 +154,6 @@ export class EstimateEngineService {
       throw new ApiError(409, `Estimate ${estimateId} is not in draft status and can no longer be modified`);
     }
   }
-}
-
-function round2(value: number): number {
-  return Math.round(value * 100) / 100;
 }
 
 export function toEstimateDTO(row: {
