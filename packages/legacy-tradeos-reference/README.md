@@ -1,9 +1,13 @@
-# Knowledge Engine Transfer Package
+# Knowledge Engine Transfer Package (transfer docs only)
+
+> **Current status:** the actual payload described below (`knowledge/`, `schemas/`, `scripts/`, `runtime/`, `review/`, `exports/`, `prompts/`, `pipelines/`, `docs/`, `agent-skills/`, `legacy-archive/`) was copied to **`packages/knowledge-engine/`**, a sibling directory, not here. This folder (`packages/legacy-tradeos-reference/`) now holds only the five transfer-planning docs listed below, kept for historical/planning reference. See `docs/KNOWLEDGE_ENGINE_STATUS.md` and `docs/LEGACY_ASSET_MIGRATION_STATUS.md` at the repo root for the current, accurate picture of what's integrated vs. still pending.
 
 This package contains the fully extracted and structured legacy Costbook / Knowledge Engine. It has been prepared for a clean integration into the main TradeOS repository.
 
 ## Overview
 This folder (`knowledge-engine`) contains all valid data, schemas, normalization scripts, generation rules, and agent logic needed to rebuild the Costbook/Assemblies in TradeOS.
+
+*(The paragraph above describes the original transfer package as prepared outside this repo — see the status note at the top of this file for where that content actually landed.)*
 
 Obsolete UI (SwiftUI, Desktop) and experiments have been safely moved to `legacy-archive` to preserve their history without polluting the new codebase.
 

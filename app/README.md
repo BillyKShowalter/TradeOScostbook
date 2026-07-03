@@ -7,11 +7,13 @@ Database access uses Prisma against PostgreSQL/Supabase. `prisma/migrations/` is
 ## Project Structure
 
 ```
-api/
+backend/                 (renamed from api/)
   server.ts            Express app entrypoint, route mounting, middleware
-  routes/               One router per module
-  controllers/          Request validation (zod) + calls into module services
-  middleware/            error handling, auth, and request-scoped RLS sessions
+  routes/               One router per module (18 route files)
+  controllers/          Request validation (zod) + calls into module services (18 controllers)
+  middleware/            error handling, auth, rate limiting, request-scoped RLS sessions
+  auth/                  JWT verification, password hashing, session bootstrap
+  views/                 Server-rendered admin shell views
 db/
   client.ts              Prisma client with request transaction routing
   requestSession.ts      Async-local transaction and PostgreSQL session values
@@ -25,16 +27,26 @@ modules/
   estimate-engine/        Pricing formulas (formulas.ts) + estimate/line-item orchestration
   proposal-generator/     PDF proposal generation (pdfkit)
   admin-dashboard/        Org settings, pricing-update review queue
+  auth/                  Email/password signup and login
+  change-orders/         Draft-safe change-order lifecycle
+  contracts/             Signature capture, PDF rendering
+  invoices/              Full and progress-billed invoices, PDF rendering
+  organization-provisioning/  Platform-key-gated first-owner org creation
+  project-intake/        AI-assisted site-visit classification/confidence scoring
+  proposals/             Persisted proposal entity with delivery-status lifecycle
+  supplier-database/     Supplier contact CRUD
+  supplier-integration/  Supplier price-update queue, review, scheduler, worker
 prisma/
-  schema.prisma           ORM schema
-  migrations/              Tracked migration history (source of truth for schema + RLS)
+  schema.prisma           ORM schema (30 models)
+  migrations/              Tracked migration history (9 migrations; source of truth for schema + RLS)
 scripts/
   deploy-migrations.sh     Production rollout: prisma migrate deploy + app-role provisioning
   provision-app-role.sh    Idempotent restricted-role create/update + grants
-tests/                    Jest test suite (Estimate Engine formulas)
+  run-supplier-price-sync.ts  One-shot external-cron entry point for supplier price sync
+tests/                    Jest test suite (34 files: nearly every module, RLS, auth, admin UI)
 ```
 
-Each module under `modules/` exposes a `types.ts` (interfaces) and `service.ts` (the class implementing its logic), independent of Express — the API layer in `api/` is a thin adapter on top.
+Each module under `modules/` exposes a `types.ts` (interfaces) and `service.ts` (the class implementing its logic), independent of Express — the API layer in `backend/` is a thin adapter on top. `backend/` was renamed from `api/`; if you see `api/...` paths in older docs or session logs, read them as `backend/...`.
 
 The server also exposes an internal admin page at `/admin/member-history` for browsing membership audit history with a bearer token, org id, and membership id — it shares the same visual shell (layout, palette, table/chip/pagination styling) as `/admin` and `/admin/pricing-history`, not a separately-styled page.
 
@@ -96,7 +108,7 @@ npm run build && npm start
 
 The API listens on `http://localhost:4000` by default (see `PORT` in `.env`). Health check: `GET /health`.
 
-All `/api/v1/*` routes run through bearer-token auth (`api/middleware/auth.ts`): the middleware verifies an HS256 JWT, resolves the signed-in user, and checks that the user belongs to the requested organization. The remaining request runs in a Prisma transaction with transaction-local `app.user_id`, `app.org_id`, and `app.role` PostgreSQL settings so forced RLS can enforce the same boundary in the database. A development-only `x-org-id` fallback can be enabled with `AUTH_ALLOW_HEADER_ORG_ID=true`, but it is off by default.
+All `/api/v1/*` routes run through bearer-token auth (`backend/middleware/auth.ts`): the middleware verifies an HS256 JWT, resolves the signed-in user, and checks that the user belongs to the requested organization. The remaining request runs in a Prisma transaction with transaction-local `app.user_id`, `app.org_id`, and `app.role` PostgreSQL settings so forced RLS can enforce the same boundary in the database. A development-only `x-org-id` fallback can be enabled with `AUTH_ALLOW_HEADER_ORG_ID=true`, but it is off by default.
 
 `RLS_TRANSACTION_TIMEOUT_MS` controls request transaction lifetime and defaults to 60 seconds. Long-running or queued work should run outside HTTP request handlers with its own scoped database session.
 
@@ -133,12 +145,13 @@ curl -X POST localhost:4000/api/v1/estimates/<estimateId>/proposals/generate -o 
 
 ```bash
 npm test
+npm run lint             # tsc --noEmit type-check; no separate linter configured
 npm run test:integration
 ```
 
-`npm run test:integration` recreates a disposable PostgreSQL 16 Docker container, applies migrations `0001` then `0002`, creates a restricted non-superuser application role, and proves RLS behavior against the live database. Coverage includes same-org access, cross-org read/write denial, viewer write denial, admin audit access, provisioning, background-job scope, and material price history visibility.
+`npm run test:integration` recreates a disposable PostgreSQL 16 Docker container, applies every tracked migration in `prisma/migrations/` via `scripts/deploy-migrations.sh` (not a hardcoded pair of files), creates a restricted non-superuser application role, and proves RLS behavior against the live database. Coverage includes same-org access, cross-org read/write denial, viewer write denial, admin audit access, provisioning, background-job scope, and material price history visibility.
 
-The internal admin shell is available at `/admin`, `/admin/pricing-history`, and `/admin/member-history`. The first two provide stale-price summaries, filtered immutable material price history, and recent membership activity; the third is the focused membership audit utility (filter by action type/date range, paginated, with per-membership before/after snapshots) — all three now share one visual system (`api/views/adminShell.view.ts`'s CSS and layout), not separately-styled pages.
+The internal admin shell is available at `/admin`, `/admin/pricing-history`, and `/admin/member-history`. The first two provide stale-price summaries, filtered immutable material price history, and recent membership activity; the third is the focused membership audit utility (filter by action type/date range, paginated, with per-membership before/after snapshots) — all three now share one visual system (`backend/views/adminShell.view.ts`'s CSS and layout), not separately-styled pages.
 
 `GET/POST /api/v1/suppliers` and `GET/PATCH/DELETE /api/v1/suppliers/:id` manage supplier contact records. `apiIntegrationKey` is write-only — responses only ever report `hasApiIntegrationKey: true/false`, never the stored value. Deleting a supplier that has any `supplier_price_updates` history (pending, approved, or rejected) fails: that foreign key is `ON DELETE RESTRICT`, the same protection `material_price_audits` gives materials.
 
@@ -150,11 +163,13 @@ Supplier-fed price changes are staged for review rather than applied automatical
 
 Either path isolates failures per target: one job spec with a bad `userId` or revoked membership logs an error and is skipped, it doesn't stop the rest of the configured targets from running.
 
-The centralized error handler (`api/middleware/errorHandler.ts`) maps the common Prisma constraint-violation codes to clean 4xx responses instead of a generic 500: `P2002` (unique constraint, e.g. a duplicate division code) → 409, `P2003` (foreign key constraint, e.g. deleting a supplier or material with price-update/audit history) → 409, `P2025` (record not found) → 404. Every controller benefits from this automatically; no module needed its own try/catch. Prisma error codes this app hasn't actually encountered yet still fall through to the generic 500 rather than guessing at a status — see `mapPrismaKnownRequestError` if you need to add one.
+The centralized error handler (`backend/middleware/errorHandler.ts`) maps the common Prisma constraint-violation codes to clean 4xx responses instead of a generic 500: `P2002` (unique constraint, e.g. a duplicate division code) → 409, `P2003` (foreign key constraint, e.g. deleting a supplier or material with price-update/audit history) → 409, `P2025` (record not found) → 404. Every controller benefits from this automatically; no module needed its own try/catch. Prisma error codes this app hasn't actually encountered yet still fall through to the generic 500 rather than guessing at a status — see `mapPrismaKnownRequestError` if you need to add one.
 
 ## Not Yet Implemented (by design, MVP scope)
 
 - Production migration rollout automation and managed secret configuration (provisioning now has app-level rate limiting and an optional IP allowlist, but infrastructure-level network controls — security groups, ALB rules — still need to be configured per deployment)
 - Live supplier price feed ingestion — `SupplierIntegrationService`'s feed fetcher is still a stub returning no quotes; the queue/review/audit/worker/scheduler persistence it would feed into is implemented and RLS-enforced
 - Auto-discovery of which organizations/suppliers to sync — targets are listed explicitly via `SUPPLIER_PRICE_SYNC_JOBS` rather than discovered, since discovery would need a database connection that bypasses RLS
-- Full customer-facing frontend (the server-rendered internal admin shell is implemented)
+- A production deployment target for this API (schema/role provisioning exists against a live Supabase project; the compiled server itself isn't deployed anywhere yet — see `docs/PROJECT_STATUS.md`)
+
+Note: a customer-facing frontend now exists — see [`../web/`](../web/) — this section only tracked backend-side gaps as of the original MVP scope.

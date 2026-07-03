@@ -6,9 +6,10 @@ Next.js (App Router) front-end for the TradeOS Cost Book API in `../app`. See `.
 
 ```bash
 npm install
-cp .env.example .env.local   # point BACKEND_API_URL at the running API
 npm run dev
 ```
+
+There is no `.env.example` in this directory yet — create `.env.local` by hand with the variables listed below (`BACKEND_API_URL` plus the `NEXT_PUBLIC_SUPABASE_*`/`SUPABASE_*` variables).
 
 Requires the backend API (`../app`) running and reachable at `BACKEND_API_URL` (defaults to `http://localhost:4000`).
 For auth and Storage-backed photo uploads, also set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and optionally `NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET`.
@@ -17,16 +18,19 @@ If the bucket is private, set `SUPABASE_STORAGE_BUCKET_PUBLIC=false` so server-r
 ## Pages
 
 - `/`, `/login`, `/signup` — public.
-- `/dashboard`, `/customers`, `/customers/new`, `/customers/[id]`, `/projects`, `/projects/new`, `/projects/[id]`, `/projects/[id]/estimates/[estimateId]` — protected by `proxy.ts`, grouped under `(app)/layout.tsx` (shared nav + sign-out).
+- `/dashboard`, `/customers`, `/customers/new`, `/customers/[id]`, `/projects`, `/projects/new`, `/projects/[id]`, `/projects/[id]/estimates/[estimateId]` — protected, grouped under `(app)/layout.tsx` (shared nav + sign-out; this layout is what enforces auth — see below).
+- `/projects/[id]/intake` — AI-assisted site-visit intake (chat panel, progress indicator, measurements, missing-info panel).
 - `/projects/[id]/proposals/new`, `/projects/[id]/proposals/[proposalId]` — create a proposal from an estimate; send/accept/reject; download PDF; create a contract once accepted.
 - `/projects/[id]/invoices/new`, `/projects/[id]/invoices/[invoiceId]` — create a full or progress invoice from an estimate; send/mark-paid/void; download PDF.
 - `/projects/[id]/contracts/[contractId]` — view terms, sign (name/email), void; download PDF.
 
 ## Auth model
 
-- `POST /api/v1/auth/signup` and `POST /api/v1/auth/login` (backend) are called from Server Actions in `src/app/actions/auth.ts`.
-- The returned JWT is stored in an httpOnly cookie (`src/lib/session.ts`) — it never reaches client-side JS.
-- `proxy.ts` (Next 16's renamed `middleware.ts`) redirects unauthenticated requests to `/dashboard`, `/customers`, or `/projects` to `/login`.
+Auth is **Supabase Auth** (`@supabase/ssr`), not a hand-rolled JWT-in-cookie scheme:
+
+- `src/app/actions/auth.ts`'s `loginAction` calls `supabase.auth.signInWithPassword` directly. `signupAction` calls `supabase.auth.signUp`, then calls the backend's `POST /api/v1/auth/bootstrap` to attach the org/user record. Neither goes through the backend's `/api/v1/auth/signup`/`/api/v1/auth/login` — the `signup()`/`login()` helpers still exported from `src/lib/api.ts` that call those routes are unused by the current auth flow (dead code left over from before the Supabase migration; worth removing or wiring up deliberately).
+- `src/lib/session.ts` doesn't set any cookie itself — it reads the Supabase session/user (`supabase.auth.getSession()` / `.getUser()`) via `@supabase/ssr`, which owns cookie persistence (`src/lib/supabase/{server,client}.ts`).
+- `proxy.ts` (Next 16's renamed `middleware.ts`) only refreshes the Supabase session cookie (`updateSession()` in `src/lib/supabase/proxy.ts`) — it does **not** redirect unauthenticated users. The actual auth gate is `src/app/(app)/layout.tsx`, which calls `getSession()` and `redirect("/login")` if there's none.
 
 ## Two ways to talk to the backend, by design
 
