@@ -16,6 +16,7 @@
     "db:provision-role": "bash scripts/provision-app-role.sh",
     "db:seed": "ts-node db/seed/seed.ts",
     "jobs:supplier-price-sync": "ts-node scripts/run-supplier-price-sync.ts",
+    "demo:trainingless-estimate": "ts-node modules/trainingless-estimate-demo/demo.ts",
     "test": "jest --runInBand",
     "test:integration": "bash scripts/test-integration-db.sh",
     "lint": "tsc --noEmit"

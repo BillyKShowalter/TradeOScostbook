@@ -12,6 +12,7 @@ import { supplierDatabaseRouter } from "./routes/supplierDatabase.routes";
 import { equipmentDatabaseRouter } from "./routes/equipmentDatabase.routes";
 import { assembliesDatabaseRouter } from "./routes/assembliesDatabase.routes";
 import { estimateEngineRouter } from "./routes/estimateEngine.routes";
+import { aiEstimateAssistRouter } from "./routes/aiEstimateAssist.routes";
 import { proposalGeneratorRouter } from "./routes/proposalGenerator.routes";
 import { proposalsRouter } from "./routes/proposals.routes";
 import { invoicesRouter } from "./routes/invoices.routes";
@@ -23,6 +24,7 @@ import { supplierIntegrationRouter } from "./routes/supplierIntegration.routes";
 import { organizationProvisioningRouter } from "./routes/organizationProvisioning.routes";
 import { authRouter } from "./routes/auth.routes";
 import { projectIntakeRouter } from "./routes/projectIntake.routes";
+import { knowledgeRuntimeRouter } from "./routes/knowledgeRuntime.routes";
 
 export function createServer() {
   const app = express();
@@ -56,6 +58,7 @@ export function createServer() {
   app.use("/api/v1/equipment", equipmentDatabaseRouter);
   app.use("/api/v1/assemblies", assembliesDatabaseRouter);
   app.use("/api/v1/estimates", estimateEngineRouter);
+  app.use("/api/v1/estimates", aiEstimateAssistRouter);
   app.use("/api/v1/proposals", proposalGeneratorRouter);
   app.use("/api/v1/proposals", proposalsRouter);
   app.use("/api/v1/invoices", invoicesRouter);
@@ -66,6 +69,7 @@ export function createServer() {
   app.use("/api/v1/change-orders", changeOrdersRouter);
   app.use("/api/v1/supplier-integrations", supplierIntegrationRouter);
   app.use("/api/v1/project-intake", projectIntakeRouter);
+  app.use("/api/v1/knowledge", knowledgeRuntimeRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

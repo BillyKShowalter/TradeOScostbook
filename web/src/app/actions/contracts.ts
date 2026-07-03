@@ -32,6 +32,8 @@ export async function signContractAction(_prev: FormActionState, formData: FormD
   const projectId = String(formData.get("projectId") ?? "");
   const signerName = String(formData.get("signerName") ?? "").trim();
   const signerEmail = String(formData.get("signerEmail") ?? "").trim();
+  const signatureDataUrl = String(formData.get("signatureDataUrl") ?? "").trim();
+  const portal = String(formData.get("portal") ?? "") === "true";
 
   if (!signerName) return { error: "Signer name is required." };
 
@@ -39,13 +41,16 @@ export async function signContractAction(_prev: FormActionState, formData: FormD
     await apiFetch(`/api/v1/contracts/${id}/sign`, {
       method: "POST",
       token: token ?? undefined,
-      body: JSON.stringify({ signerName, signerEmail: signerEmail || undefined }),
+      body: JSON.stringify({ signerName, signerEmail: signerEmail || undefined, signatureDataUrl: signatureDataUrl || undefined }),
     });
   } catch (err) {
     return { error: err instanceof ApiClientError ? err.message : "Something went wrong." };
   }
 
   revalidatePath(`/projects/${projectId}/contracts/${id}`);
+  if (portal) {
+    redirect(`/portal/contracts/${id}`);
+  }
   redirect(`/projects/${projectId}/contracts/${id}`);
 }
 

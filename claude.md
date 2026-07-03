@@ -57,7 +57,9 @@ TradeOS Cost Book
 - Real self-serve email/password auth now exists: `POST /api/v1/auth/signup` and `POST /api/v1/auth/login`, both public (rate-limited), issuing the same internal JWT the rest of the API already verifies
 - A Next.js (App Router, Next 16) front-end now exists in `web/`, alongside `app/`: signup/login/logout (httpOnly-cookie session, no token in client JS), a protected dashboard, and a typed API client — Phase 1 of `docs/frontend-platform-completion-plan.md`
 - The front-end now also covers customer/project CRUD and a working Estimate Builder (line-item search/add/remove, pricing-mode toggle, finalize) — live-verified end to end with a real browser against the real backend
+- The Estimate Builder now has a more workbench-like UX pass: keyboard-first line-item entry, grouped assembly search, running totals, profit/markup panel, and a tighter mobile layout — business logic unchanged
 - The front-end now also covers Proposal/Invoice/Contract UI end to end (create from an estimate, status transitions, sign, PDF download) — live-verified, and surfaced two real pre-existing backend bugs (missing invoice line items on `getById`, un-normalized Decimal fields on a project's nested estimates) that are now fixed
+- The front-end now also has a UI-only AI Estimate Assist screen under the estimate flow — scope textarea, mock suggestion generation, confidence badges, quantity editing, and accept/reject controls, with no backend AI wiring
 - Rolling notes exist in:
   - `docs/rolling-todo.md`
   - `docs/end-of-session-note.md`
@@ -92,6 +94,8 @@ TradeOS Cost Book
 - Scaffolded the Next.js front-end (`web/`): auth shell, typed API client, TanStack Query — live-verified end to end with a real Playwright browser against the real backend.
 - Built customer/project CRUD and a working Estimate Builder UI; found and fixed two real bugs in the live-test script (selector ambiguity, an RSC-prefetch-payload false positive) — neither was an app bug.
 - Built Proposal/Invoice/Contract UI; found and fixed two real backend bugs along the way (missing invoice line items on `getById`; un-normalized Decimal `totalPrice` on a project's nested estimates, which had been silently broken since estimates were first added).
+- Refined the Estimate Builder UX without changing estimate business logic: faster keyboard-driven line-item entry, grouped assembly search, running totals, a clearer profit/markup panel, and a more compact mobile layout.
+- Added a polished UI-only AI Estimate Assist screen with mock suggestions, confidence badges, accept/reject controls, a quantity editor, and an entry point from the estimate builder.
 
 ## Detailed Session Summary
 1. Added a new session-tracking file at the repo root:
@@ -444,9 +448,23 @@ TradeOS Cost Book
    - **Live-verified the full lifecycle with one real Playwright run**: signup → seed an assembly directly via the backend (fresh org has no cost book) → customer → project → estimate with one line item (left as draft, not finalized, since proposals/invoices just need *an* estimate to exist) → create proposal → send → accept → create contract from the accepted proposal → sign it → create an invoice from the same estimate → send → mark paid → downloaded all three PDFs through the binary proxy and verified each response actually starts with the `%PDF` magic bytes, not just a 200 status. Re-ran the previous session's customer/project/estimate-builder smoke test afterward to confirm no regression.
    - `npm test` (122/122, 30 suites), `npm run lint`, `npm run build` (backend) and `web`'s `npm run build`/`npm run lint` all pass. Updated `web/README.md` with the new pages and the binary-proxy note.
 
+41. Refined the Estimate Builder UX without changing business logic:
+   - Reworked the page into a clearer workbench layout with a top overview strip, a wider line-item workspace, and a sticky right rail for pricing, running totals, and shortcut help
+   - Made line-item entry faster with a compact quick-add bar, auto-focused search input, grouped assembly-first search results, and keyboard controls for `⌘/Ctrl+K`, arrow navigation, `Enter`, and `Esc`
+   - Added live running totals and a clearer profit/markup panel so the current job cost, gross profit, markup, margin, and total price are visible while editing
+   - Tightened mobile stacking and card hierarchy so the same builder stays readable on small screens without changing any backend calls or estimate logic
+   - `web`'s `npm run lint` and `npm run build` pass after the change
+
+42. Added a polished UI-only AI Estimate Assist screen under the estimate flow:
+   - Created a dedicated `/projects/[id]/estimates/[estimateId]/assist` page with a production-style header and a return path to the estimate builder
+   - Added a client-side assistant panel with a scope-of-work textarea, mock suggestion generation, confidence badges, quantity editing, accept/reject actions, and a summary rail
+   - Wired an "AI assist" entry point into the estimate builder so the new screen is reachable from the normal estimate workflow
+   - Kept it frontend-only: all suggestions are local mock data, and nothing calls or requires backend AI services
+   - `web`'s `npm run lint` and `npm run build` pass after the change
+
 ## Next Suggested Slice
 - Consider an Estimate Builder "duplicate from previous version" or multi-version comparison view now that projects can carry multiple estimate versions.
-- Add AI-assisted estimating (Phase 3 of `docs/frontend-platform-completion-plan.md`) — the one major piece of the original plan with no backend work started yet.
+- Add backend AI-assisted estimating (Phase 3 of `docs/frontend-platform-completion-plan.md`) when it is time to connect the new UI to a real model and persistence path.
 - Resolve why required-reviewer protection rules won't enable on the `production` Environment despite GitHub Pro — try the web UI, or check whether this needs an Organization-owned repo rather than a personal account.
 - Investigate and commit (or otherwise resolve) the uncommitted `api/` → `backend/` rename and untracked `vercel.json` that were already present in the working tree at the start of this session — undocumented in this log, so the reasoning/status should be confirmed before it's folded into a commit.
 - Deploy the actual API application somewhere (Vercel/Fly/Railway/a VM) pointed at the now-live Supabase database via the `tradeos_app` role.

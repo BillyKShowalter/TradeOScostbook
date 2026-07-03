@@ -16,23 +16,23 @@ export function NewProjectForm({ customers }: { customers: Customer[] }) {
   return (
     <Card className="max-w-3xl border-border/70 bg-gradient-to-br from-card via-card to-muted/30">
       <CardHeader>
-        <CardTitle>New Project</CardTitle>
+        <CardTitle>Project details</CardTitle>
       </CardHeader>
       <CardContent>
         <form action={formAction} className="flex flex-col gap-5">
           <div className="grid gap-5 md:grid-cols-2">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="name">Project title</Label>
+              <Label htmlFor="name">Job name</Label>
               <Input id="name" name="name" required placeholder="Smith Residence Roof Replacement" />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="jobType">Job type</Label>
+              <Label htmlFor="jobType">Type of work</Label>
               <Input id="jobType" name="jobType" placeholder="Roofing, siding, deck, bath remodel…" />
             </div>
           </div>
           <div className="grid gap-5 md:grid-cols-2">
-            <SelectField label="Customer" name="customerId" defaultValue="">
-              <option value="">No customer yet</option>
+            <SelectField label="Linked customer" name="customerId" defaultValue="">
+              <option value="">No customer linked yet</option>
               {customers.map((customer) => (
                 <option key={customer.id} value={customer.id}>
                   {customer.name}
@@ -45,7 +45,7 @@ export function NewProjectForm({ customers }: { customers: Customer[] }) {
             </div>
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="simpleScope">Simple scope of work</Label>
+            <Label htmlFor="simpleScope">Short scope of work</Label>
             <Textarea
               id="simpleScope"
               name="simpleScope"

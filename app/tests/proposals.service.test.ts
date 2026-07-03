@@ -125,6 +125,90 @@ describe("ProposalsService", () => {
     await expect(service.accept("proposal-1", "org-1")).rejects.toThrow("cannot be accepted");
   });
 
+  it("resends a viewed proposal and stamps a fresh sentAt timestamp", async () => {
+    mockPrisma.proposal.findFirst.mockResolvedValue({
+      id: "proposal-1",
+      projectId: "project-1",
+      status: "viewed",
+    });
+    mockPrisma.proposal.update.mockResolvedValue({
+      id: "proposal-1",
+      projectId: "project-1",
+      estimateId: "estimate-1",
+      status: "sent",
+      companyName: null,
+      showLineItemDetail: false,
+      termsAndConditions: null,
+      sentAt: new Date(),
+      viewedAt: new Date(),
+      respondedAt: null,
+      createdAt: new Date(),
+    });
+
+    const service = new ProposalsService();
+    const proposal = await service.resend("proposal-1", "org-1");
+
+    expect(proposal.status).toBe("sent");
+    expect(mockPrisma.project.update).toHaveBeenCalledWith({ where: { id: "project-1" }, data: { status: "proposal_sent" } });
+  });
+
+  it("duplicates an existing proposal back into draft status", async () => {
+    mockPrisma.proposal.findFirst.mockResolvedValue({
+      id: "proposal-1",
+      projectId: "project-1",
+      estimateId: "estimate-1",
+      status: "sent",
+      companyName: "Acme Co",
+      showLineItemDetail: true,
+      scopeOfWork: "Scope",
+      assumptions: "Assumptions",
+      exclusions: "Exclusions",
+      timeline: "2 weeks",
+      priceLow: 1000,
+      priceHigh: 1200,
+      finalPrice: 1150,
+      paymentScheduleJson: [{ label: "Deposit", amountPercent: 50 }, { label: "Completion", amountPercent: 50 }],
+      termsAndConditions: "Terms",
+    });
+    mockPrisma.proposal.create.mockResolvedValue({
+      id: "proposal-2",
+      projectId: "project-1",
+      estimateId: "estimate-1",
+      status: "draft",
+      companyName: "Acme Co",
+      showLineItemDetail: true,
+      scopeOfWork: "Scope",
+      assumptions: "Assumptions",
+      exclusions: "Exclusions",
+      timeline: "2 weeks",
+      priceLow: 1000,
+      priceHigh: 1200,
+      finalPrice: 1150,
+      paymentScheduleJson: [{ label: "Deposit", amountPercent: 50 }, { label: "Completion", amountPercent: 50 }],
+      pdfUrl: null,
+      termsAndConditions: "Terms",
+      sentAt: null,
+      viewedAt: null,
+      respondedAt: null,
+      createdAt: new Date(),
+    });
+
+    const service = new ProposalsService();
+    const proposal = await service.duplicate("proposal-1", "org-1");
+
+    expect(proposal.status).toBe("draft");
+    expect(mockPrisma.proposal.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          projectId: "project-1",
+          estimateId: "estimate-1",
+          companyName: "Acme Co",
+          scopeOfWork: "Scope",
+        }),
+      })
+    );
+  });
+
   it("generates a PDF using the proposal's stored options", async () => {
     mockPrisma.proposal.findFirst.mockResolvedValue({
       id: "proposal-1",

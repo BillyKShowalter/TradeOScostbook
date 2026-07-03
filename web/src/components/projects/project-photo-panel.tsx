@@ -27,7 +27,7 @@ export async function ProjectPhotoPanel({
       <CardHeader>
         <CardTitle>{title}</CardTitle>
       </CardHeader>
-        <CardContent>
+      <CardContent>
         {photoAssets.length === 0 ? (
           <EmptyState title={title} description={emptyMessage} />
         ) : (
@@ -59,7 +59,7 @@ export async function ProjectPhotoPanel({
                           type="submit"
                           className="inline-flex rounded-md border border-destructive/30 px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10"
                         >
-                          Delete
+                              Delete photo
                         </button>
                       </form>
                     )}

@@ -9,10 +9,12 @@ const createSchema = z.object({
   projectId: z.string().uuid(),
   estimateId: z.string().uuid().optional(),
   description: z.string().min(1),
+  scheduleImpactDays: z.coerce.number().int().min(0).optional(),
 });
 
 const updateSchema = z.object({
   description: z.string().min(1).optional(),
+  scheduleImpactDays: z.coerce.number().int().min(0).nullable().optional(),
 });
 
 const addLineItemSchema = z

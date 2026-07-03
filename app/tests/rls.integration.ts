@@ -35,6 +35,7 @@ const supplierA = "10000000-0000-0000-0000-000000000071";
 const materialForSupplierQueue = "10000000-0000-0000-0000-000000000072";
 const projectA = "10000000-0000-0000-0000-000000000081";
 const projectB = "20000000-0000-0000-0000-000000000082";
+const projectTaskA = "10000000-0000-0000-0000-000000000083";
 const estimateA = "10000000-0000-0000-0000-000000000091";
 const assemblyForEstimateA = "10000000-0000-0000-0000-000000000092";
 
@@ -109,6 +110,15 @@ describe("live organization row-level security", () => {
         { id: projectB, orgId: orgB, name: "Org B Project" },
       ],
     });
+    await adminClient.projectTask.create({
+      data: {
+        id: projectTaskA,
+        projectId: projectA,
+        title: "Initial mobilization",
+        status: "todo",
+        priority: "medium",
+      },
+    });
     await adminClient.assembly.create({
       data: { id: assemblyForEstimateA, orgId: orgA, code: "RLS-TEST-ASM", name: "RLS Test Assembly", unitOfMeasure: "CY" },
     });
@@ -144,6 +154,31 @@ describe("live organization row-level security", () => {
     });
 
     expect(row).toBeNull();
+  });
+
+  it("enforces project task visibility and write permissions", async () => {
+    const visibleTasks = await inSession(adminUser, orgA, "admin", async () =>
+      currentTransaction().projectTask.findMany({ orderBy: { createdAt: "asc" } })
+    );
+    expect(visibleTasks.map((row) => row.id)).toEqual([projectTaskA]);
+
+    const hiddenTask = await inSession(otherUser, orgB, "owner", async () =>
+      currentTransaction().projectTask.findUnique({ where: { id: projectTaskA } })
+    );
+    expect(hiddenTask).toBeNull();
+
+    await expect(
+      inSession(viewerUser, orgA, "viewer", async () =>
+        currentTransaction().projectTask.create({
+          data: {
+            projectId: projectA,
+            title: "Viewer blocked task",
+            status: "todo",
+            priority: "low",
+          },
+        })
+      )
+    ).rejects.toThrow();
   });
 
   it("rejects cross-organization writes", async () => {

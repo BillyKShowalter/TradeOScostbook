@@ -46,6 +46,7 @@ export class ChangeOrdersService {
         estimateId: input.estimateId,
         coNumber: nextNumber + 1,
         description: input.description,
+        scheduleImpactDays: input.scheduleImpactDays,
       },
     });
     return toDTO(row);
@@ -55,7 +56,10 @@ export class ChangeOrdersService {
     const changeOrder = await this.assertDraft(changeOrderId, input.orgId);
     const row = await prisma.changeOrder.update({
       where: { id: changeOrder.id },
-      data: { description: input.description ?? changeOrder.description },
+      data: {
+        description: input.description ?? changeOrder.description,
+        scheduleImpactDays: input.scheduleImpactDays !== undefined ? input.scheduleImpactDays : undefined,
+      },
     });
     return toDTO(row);
   }
@@ -124,13 +128,19 @@ export class ChangeOrdersService {
   async approve(changeOrderId: string, orgId?: string): Promise<ChangeOrderDTO> {
     await this.assertExists(changeOrderId, orgId);
     await this.recalculate(changeOrderId, orgId);
-    const row = await prisma.changeOrder.update({ where: { id: changeOrderId }, data: { status: "approved" } });
+    const row = await prisma.changeOrder.update({
+      where: { id: changeOrderId },
+      data: { status: "approved", approvedAt: new Date(), rejectedAt: null },
+    });
     return toDTO(row);
   }
 
   async reject(changeOrderId: string, orgId?: string): Promise<ChangeOrderDTO> {
     await this.assertExists(changeOrderId, orgId);
-    const row = await prisma.changeOrder.update({ where: { id: changeOrderId }, data: { status: "rejected" } });
+    const row = await prisma.changeOrder.update({
+      where: { id: changeOrderId },
+      data: { status: "rejected", rejectedAt: new Date(), approvedAt: null },
+    });
     return toDTO(row);
   }
 
@@ -167,6 +177,11 @@ function toDTO(row: {
   description: string;
   status: string;
   amount: unknown;
+  scheduleImpactDays?: number | null;
+  approvedAt?: Date | null;
+  rejectedAt?: Date | null;
+  createdAt?: Date;
+  updatedAt?: Date;
 }): ChangeOrderDTO {
   return {
     id: row.id,
@@ -176,6 +191,11 @@ function toDTO(row: {
     description: row.description,
     status: row.status,
     amount: Number(row.amount),
+    scheduleImpactDays: row.scheduleImpactDays ?? null,
+    approvedAt: row.approvedAt?.toISOString() ?? null,
+    rejectedAt: row.rejectedAt?.toISOString() ?? null,
+    createdAt: row.createdAt?.toISOString() ?? new Date(0).toISOString(),
+    updatedAt: row.updatedAt?.toISOString() ?? new Date(0).toISOString(),
   };
 }
 

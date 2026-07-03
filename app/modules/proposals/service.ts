@@ -137,6 +137,46 @@ export class ProposalsService {
     return toDTO(updated);
   }
 
+  async resend(id: string, orgId?: string): Promise<ProposalDTO> {
+    const row = await this.findOrThrow(id, orgId);
+    if (!["sent", "viewed"].includes(row.status)) {
+      throw new ApiError(409, `Proposal ${id} cannot be resent from status ${row.status}`);
+    }
+
+    const updated = await prisma.proposal.update({
+      where: { id },
+      data: {
+        status: "sent",
+        sentAt: new Date(),
+      },
+    });
+    await prisma.project.update({ where: { id: row.projectId }, data: { status: "proposal_sent" } });
+    return toDTO(updated);
+  }
+
+  async duplicate(id: string, orgId?: string): Promise<ProposalDTO> {
+    const row = await this.findOrThrow(id, orgId);
+    const duplicated = await prisma.proposal.create({
+      data: {
+        projectId: row.projectId,
+        estimateId: row.estimateId,
+        companyName: row.companyName,
+        showLineItemDetail: row.showLineItemDetail,
+        scopeOfWork: row.scopeOfWork,
+        assumptions: row.assumptions,
+        exclusions: row.exclusions,
+        timeline: row.timeline,
+        priceLow: toNullableNumber(row.priceLow),
+        priceHigh: toNullableNumber(row.priceHigh),
+        finalPrice: toNullableNumber(row.finalPrice),
+        paymentScheduleJson: row.paymentScheduleJson as object | undefined,
+        termsAndConditions: row.termsAndConditions,
+      },
+    });
+    await prisma.project.update({ where: { id: row.projectId }, data: { status: "proposal_draft" } });
+    return toDTO(duplicated);
+  }
+
   private async findOrThrow(id: string, orgId?: string) {
     const row = await prisma.proposal.findFirst({ where: { id, project: orgId ? { orgId } : undefined } });
     if (!row) throw new ApiError(404, `Proposal ${id} not found`);

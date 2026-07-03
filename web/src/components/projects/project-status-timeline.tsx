@@ -6,9 +6,11 @@ interface ProjectStatusTimelineProps {
   project: Project;
   hasIntake: boolean;
   hasProposal: boolean;
+  hasContract?: boolean;
+  hasInvoice?: boolean;
 }
 
-export function ProjectStatusTimeline({ project, hasIntake, hasProposal }: ProjectStatusTimelineProps) {
+export function ProjectStatusTimeline({ project, hasIntake, hasProposal, hasContract = false, hasInvoice = false }: ProjectStatusTimelineProps) {
   return (
     <Card className="border-border/70">
       <CardHeader>
@@ -17,14 +19,15 @@ export function ProjectStatusTimeline({ project, hasIntake, hasProposal }: Proje
       <CardContent>
         <Timeline
           items={[
-            { label: "Customer", value: project.customerId ? "Linked customer" : "Needs customer", active: Boolean(project.customerId) },
-            { label: "Scope", value: project.simpleScope ? "Scope captured" : "Needs scope", active: Boolean(project.simpleScope) },
-            { label: "Intake", value: hasIntake ? "Site visit saved" : "Capture intake", active: hasIntake },
-            { label: "Proposal", value: hasProposal ? "Proposal draft exists" : "Generate proposal", active: hasProposal },
+            { label: "Customer", value: project.customerId ? "Customer linked" : "Add a customer", active: Boolean(project.customerId) },
+            { label: "Scope", value: project.simpleScope ? "Short scope saved" : "Add a short scope", active: Boolean(project.simpleScope) },
+            { label: "Site visit", value: hasIntake ? "Notes saved" : "Record site visit notes", active: hasIntake },
+            { label: "Proposal draft", value: hasProposal ? "Draft created" : "Create a proposal draft", active: hasProposal },
+            { label: "Contract", value: hasContract ? "Agreement in flight" : "Generate after acceptance", active: hasContract },
+            { label: "Invoice", value: hasInvoice ? "Billing created" : "Invoice after signing", active: hasInvoice },
           ]}
         />
       </CardContent>
     </Card>
   );
 }
-

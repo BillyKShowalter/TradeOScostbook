@@ -3,11 +3,13 @@ export interface CreateChangeOrderInput {
   projectId: string;
   estimateId?: string;
   description: string;
+  scheduleImpactDays?: number;
 }
 
 export interface UpdateChangeOrderInput {
   orgId?: string;
   description?: string;
+  scheduleImpactDays?: number | null;
 }
 
 export interface AddChangeOrderLineItemInput {
@@ -27,6 +29,11 @@ export interface ChangeOrderDTO {
   description: string;
   status: string;
   amount: number;
+  scheduleImpactDays: number | null;
+  approvedAt: string | null;
+  rejectedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ChangeOrderLineItemDTO {
@@ -39,4 +46,3 @@ export interface ChangeOrderLineItemDTO {
   lineCost: number;
   sortOrder: number;
 }
-

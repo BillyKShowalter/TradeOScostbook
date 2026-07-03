@@ -49,9 +49,21 @@ const projectUpdateSchema = z.object({
   customerId: z.string().uuid().optional(),
 });
 
+const siteVisitDetailsSchema = z.object({
+  arrivalAt: z.string().datetime().optional(),
+  departureAt: z.string().datetime().optional(),
+  gps: z.string().trim().optional(),
+  customerNotes: z.string().trim().optional(),
+  materialsNeeded: z.array(z.string().trim().min(1)).optional(),
+  safetyNotes: z.array(z.string().trim().min(1)).optional(),
+  punchList: z.array(z.string().trim().min(1)).optional(),
+  voiceNoteStatus: z.enum(["not_recorded", "captured_later"]).optional(),
+});
+
 const siteVisitSchema = z.object({
   transcript: z.string().optional(),
   notes: z.string().optional(),
+  detailsJson: siteVisitDetailsSchema.optional(),
   measurementsJson: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -128,6 +140,10 @@ export const projectsController = {
         siteVisits: { orderBy: { createdAt: "desc" } },
         projectFiles: { orderBy: { createdAt: "desc" } },
         proposals: { orderBy: { createdAt: "desc" } },
+        invoices: { orderBy: { createdAt: "desc" }, include: { lineItems: { orderBy: { sortOrder: "asc" } } } },
+        contracts: { orderBy: { createdAt: "desc" } },
+        changeOrders: { orderBy: { createdAt: "desc" } },
+        tasks: { orderBy: [{ status: "asc" }, { dueDate: "asc" }, { createdAt: "desc" }] },
       },
     });
     if (!row) throw new ApiError(404, `Project ${req.params.id} not found`);
@@ -140,6 +156,21 @@ export const projectsController = {
       projectAddress: row.siteAddress,
       estimates: row.estimates.map(toEstimateDTO),
       siteVisits: (row.siteVisits ?? []).map((visit) => ({ ...visit, confidenceScore: toNullableNumber(visit.confidenceScore) })),
+      changeOrders: (row.changeOrders ?? []).map((changeOrder) => ({
+        ...changeOrder,
+        amount: toNullableNumber(changeOrder.amount) ?? 0,
+      })),
+      invoices: (row.invoices ?? []).map((invoice) => ({
+        ...invoice,
+        amount: toNullableNumber(invoice.amount) ?? 0,
+        percentComplete: toNullableNumber(invoice.percentComplete),
+        lineItems: (invoice.lineItems ?? []).map((lineItem) => ({
+          ...lineItem,
+          quantity: toNullableNumber(lineItem.quantity) ?? 0,
+          unitCost: toNullableNumber(lineItem.unitCost) ?? 0,
+          lineCost: toNullableNumber(lineItem.lineCost) ?? 0,
+        })),
+      })),
     });
   },
   async update(req: Request, res: Response) {
@@ -152,6 +183,16 @@ export const projectsController = {
     const schema = z.object({
       status: z.enum([
         "lead",
+        "opportunity",
+        "estimate",
+        "proposal",
+        "contract",
+        "active_job",
+        "field_execution",
+        "change_orders",
+        "closeout",
+        "warranty",
+        "archived",
         "site_visit",
         "proposal_draft",
         "proposal_sent",
@@ -197,6 +238,7 @@ export const siteVisitsController = {
         projectId: project.id,
         transcript: input.transcript,
         notes: input.notes,
+        detailsJson: toInputJson(input.detailsJson),
         measurementsJson: toInputJson(input.measurementsJson),
         aiQuestionsJson: toInputJson(intakeResult.followUpQuestions),
         missingInfoJson: toInputJson(toMissingInfoStrings(intakeResult.missingInformation)),
@@ -232,6 +274,7 @@ export const siteVisitsController = {
       data: {
         transcript: mergedTranscript,
         notes: mergedNotes,
+        detailsJson: toInputJson(input.detailsJson ?? asRecord(existing.detailsJson) ?? undefined),
         measurementsJson: toInputJson(mergedMeasurements),
         aiQuestionsJson: toInputJson(intakeResult.followUpQuestions),
         missingInfoJson: toInputJson(toMissingInfoStrings(intakeResult.missingInformation)),
