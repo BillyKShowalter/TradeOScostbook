@@ -43,21 +43,23 @@ Generally 3NF and appropriate for an OLTP system — this is not a case of prema
 ### What's already right
 Every FK column used in a hot lookup has a matching index (`materials.org_id`, `materials.supplier_id`, `cost_items.subcategory_id`, `estimates.project_id`, etc.), and the audit-trail tables have well-chosen composite indexes that match their actual query shape (`(org_id, membership_id, created_at desc)` on `organization_membership_audits`, `(org_id, created_at desc)` and `(material_id, created_at desc)` on `material_price_audits`, `(org_id, status, created_at desc)` on `supplier_price_updates`). These match the `WHERE ... ORDER BY` shape of the actual service-layer queries in `modules/admin-dashboard/service.ts` and `modules/supplier-integration/service.ts` — this wasn't guessed, it was built to the access pattern.
 
-### Missing indexes (concrete, found in code)
+### Missing indexes (concrete, found in code) — APPLIED 2026-07-03
 
-1. **`cost_items.name` and `assemblies.name` have no index at all**, and both are searched with case-insensitive substring matching:
+1. **`cost_items.name` and `assemblies.name` had no index at all**, and both are searched with case-insensitive substring matching:
    - `modules/cost-database/service.ts:67-70` — `OR: [{ name: { contains: query, mode: "insensitive" } }, { code: { contains: query, mode: "insensitive" } }]`
    - `modules/assemblies-database/service.ts:29` — same shape.
 
-   `code` at least benefits partially from the existing `@@unique([orgId, code])` btree index for prefix matches, but **`contains` (substring, not prefix) never uses a plain btree index in Postgres** — both queries are sequential scans today. At current seed-data volumes this is invisible; it will not stay invisible once an org's cost book grows past a few thousand rows, and cost-item/assembly search is on the hot path of the Estimate Builder (search-as-you-type, per `CLAUDE.md` item 39). **Recommendation:** enable `pg_trgm` and add `gin` trigram indexes:
-   ```sql
-   create extension if not exists pg_trgm;
-   create index idx_cost_items_name_trgm on cost_items using gin (name gin_trgm_ops);
-   create index idx_assemblies_name_trgm on assemblies using gin (name gin_trgm_ops);
-   ```
-   This turns `ILIKE '%query%'` into an index scan. Do the same for `materials.name` and `suppliers.name` proactively — no `contains` search exists on those yet, but the same UI pattern (search-as-you-type) is the obvious next feature there, and it's cheap to add the index now versus as an emergency fix later.
+   `code` at least benefits partially from the existing `@@unique([orgId, code])` btree index for prefix matches, but **`contains` (substring, not prefix) never uses a plain btree index in Postgres** — both queries were sequential scans. At seed-data volumes this was invisible; it would not have stayed invisible once an org's cost book grows past a few thousand rows, and cost-item/assembly search is on the hot path of the Estimate Builder (search-as-you-type, per `CLAUDE.md` item 39).
 
-2. **`admin-dashboard/service.ts:78`** filters `materials` by `materialQuery` (also a `contains`) with no supporting index — same fix as above, covered by the `materials.name` trigram index once added.
+   **Applied** in `prisma/migrations/20260703090000_add_search_trgm_indexes/migration.sql`: enabled `pg_trgm` and added `gin` trigram indexes on `cost_items.name`, `assemblies.name`, `materials.name`, and `suppliers.name` (the latter two proactively, per the original recommendation below). This turns `ILIKE '%query%'` into an index scan.
+
+   **Live-verified**, not just written: Docker wasn't available in the environment this was applied from, so the project's own `npm run test:integration` harness couldn't be run directly — instead, a throwaway local PostgreSQL 18 cluster (Homebrew `postgresql@18`, `initdb`/`pg_ctl`, no Docker) was used to apply all 10 migrations in order from scratch, confirming the new migration applies cleanly on top of the full existing history with no errors. `pg_trgm` and all four indexes were confirmed present via `\dx`/`\di+`. To prove the index is actually usable for the exact query shape the app issues (Prisma's `contains` + `mode: "insensitive"`, which compiles to `ILIKE '%query%'`) — not just present — `cost_items` was seeded with 400,000 synthetic rows (15 matching a `%trench%` substring), and `EXPLAIN` confirmed the planner naturally chose `Bitmap Index Scan on idx_cost_items_name_trgm` over a sequential scan at that volume (at a smaller 20k-row volume the planner correctly still preferred a seq scan — expected and correct, since a full scan of a small table is cheaper than an index lookup; the index pays off precisely at the scale this was written to address). The throwaway cluster was torn down afterward. **Still outstanding:** run the project's own `npm run test:integration` (live-RLS harness) before merging/deploying, per the repo's established verification convention — this session's verification proved the migration is syntactically correct and functionally effective, but didn't exercise it through the app's own Prisma client, RLS session-variable bootstrap, or existing test suite.
+
+   No Prisma `@@index` entry was added to `schema.prisma` for these — matching this schema's existing precedent (`idx_customers_org_deleted` from `20260624090000_add_customer_deleted_at` is also SQL-only, not modeled in `schema.prisma`), since Prisma's operator-class index syntax (`ops: raw("gin_trgm_ops")`) sits behind the still-preview `postgresqlExtensions` feature flag, which this project has not opted into.
+
+   Do the same for `materials.name` and `suppliers.name` proactively — no `contains` search exists on those yet, but the same UI pattern (search-as-you-type) is the obvious next feature there, and it's cheap to add the index now versus as an emergency fix later. *(Now applied — see above.)*
+
+2. **`admin-dashboard/service.ts:78`** filters `materials` by `materialQuery` (also a `contains`) — now covered by the `materials.name` trigram index applied above.
 
 3. **`Organization.email`**, used at login lookup time (`modules/auth/service.ts`, via `appUser.email` actually — worth double-checking `AppUser.email` is indexed): `AppUser.email` **is** `@unique`, which is backed by an index automatically — no action needed, confirmed correct.
 
@@ -113,7 +115,7 @@ These are the findings most specific to this codebase's actual architecture, not
 
 | # | Risk | Likelihood today | Impact | When to act |
 |---|---|---|---|---|
-| 1 | `contains` search on `cost_items`/`assemblies` name/code has no supporting index | Low now, certain later | Query latency degrades as cost book grows | Before any org's cost book exceeds ~1-2k rows |
+| 1 | ~~`contains` search on `cost_items`/`assemblies` name/code has no supporting index~~ — **RESOLVED 2026-07-03**, trigram indexes applied in `20260703090000_add_search_trgm_indexes` | — | — | Verify via `npm run test:integration` before next deploy |
 | 2 | Whole-request DB transactions + default pool sizing | Low now | Connection exhaustion under real concurrent load | Before production traffic / load testing |
 | 3 | Sequential numbering race (`coNumber`/`invoiceNumber`) | Low (single-editor pattern) | Spurious 409, not data corruption | Before multi-estimator concurrent editing ships |
 | 4 | Assembly cost roll-up N+1 | Low now | Estimate Builder latency at realistic assembly complexity | Before assemblies commonly exceed ~10-15 components |
@@ -125,7 +127,7 @@ These are the findings most specific to this codebase's actual architecture, not
 
 None of the above requires urgent action; the recommended sequencing, next time schema work happens on this codebase, is:
 
-1. **`enable pg_trgm` + trigram indexes** on `cost_items.name`, `assemblies.name`, `materials.name`, `suppliers.name` — cheapest, highest-leverage change, directly benefits the already-live Estimate Builder search UI. No application code change required.
+1. ~~**`enable pg_trgm` + trigram indexes** on `cost_items.name`, `assemblies.name`, `materials.name`, `suppliers.name`~~ — **Applied 2026-07-03** in `prisma/migrations/20260703090000_add_search_trgm_indexes/migration.sql`. No application code change was required or made. Verified via a throwaway local Postgres cluster (full 10-migration apply, index presence, and an `EXPLAIN`-confirmed planner index pickup at 400k rows — see §4 for detail). Still needs the project's own `npm run test:integration` run against the app's real Prisma client/RLS harness (and, before production, `npm run db:deploy` against the real Supabase project) before this is considered fully shipped.
 2. **`Contract.proposalId` → `ON DELETE RESTRICT`** — one-line migration, closes the latent legal-document-loss gap before any delete-proposal feature is built, not after.
 3. **Add `check` constraints on `projects.status`, `estimates.status`, `change_orders.status`** matching the enum values the application already enforces in TypeScript — pure hardening, zero behavior change if the app is already only ever writing valid values (confirm via a one-off `select distinct status from ...` against the live Supabase project before applying, as a sanity check that no historical row already violates the constraint).
 4. **pgvector integration** — see §11, its own larger effort, sequence independently of 1-3.
