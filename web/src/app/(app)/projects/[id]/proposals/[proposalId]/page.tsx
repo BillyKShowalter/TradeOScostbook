@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ActivityTimeline } from "@/components/shared/activity-timeline";
 import { ProposalContextPanel } from "@/components/proposals/proposal-context-panel";
 import { ProposalLifecyclePanel } from "@/components/proposals/proposal-lifecycle-panel";
 import { ProposalReviewForm } from "@/components/proposals/proposal-review-form";
@@ -8,6 +9,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getProject, getProposal } from "@/lib/api";
+import { buildProposalTimeline, formatCurrency, getProposalDisplayStatus } from "@/lib/document-workflow";
 import { getSessionToken } from "@/lib/session";
 
 export default async function ProposalDetailPage({ params }: { params: Promise<{ id: string; proposalId: string }> }) {
@@ -15,6 +17,8 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
   const token = await getSessionToken();
   const [project, proposal] = await Promise.all([getProject(token ?? "", projectId), getProposal(token ?? "", proposalId)]);
   const paymentSchedule = Array.isArray(proposal.paymentScheduleJson) ? proposal.paymentScheduleJson : [];
+  const timeline = buildProposalTimeline(proposal);
+  const displayStatus = getProposalDisplayStatus(proposal);
 
   return (
     <div className="flex flex-col gap-6">
@@ -25,10 +29,10 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
           </Link>
           <h1 className="text-3xl font-semibold tracking-tight">Proposal Review</h1>
           <p className="max-w-2xl text-sm text-muted-foreground">
-            Tighten the draft before it goes to the customer. This proposal should feel professional, but still clearly marked as a working draft until final pricing is locked.
+            Tighten the draft before it goes to the customer. This page now carries the full proposal lifecycle from internal review through customer response.
           </p>
         </div>
-        <StatusBadge status={proposal.status} />
+        <StatusBadge status={displayStatus} />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
@@ -57,7 +61,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
               </div>
               <div>
                 <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Next milestone</div>
-                <div className="mt-1 font-medium">{getNextMilestone(proposal.status)}</div>
+                <div className="mt-1 font-medium">{getNextMilestone(displayStatus)}</div>
               </div>
               <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-1">
                 <MetricCard label="Low" value={formatCurrency(proposal.priceLow)} />
@@ -81,6 +85,8 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
           </Card>
 
           <ProposalLifecyclePanel projectId={projectId} proposal={proposal} />
+
+          <ActivityTimeline title="Proposal activity" items={timeline} />
 
           <Card className="border-border/70">
             <CardHeader>
@@ -113,12 +119,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
   );
 }
 
-function formatCurrency(value: number | null) {
-  if (value === null) return "Not set";
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
-}
-
-function getNextMilestone(status: "draft" | "sent" | "viewed" | "accepted" | "rejected") {
+function getNextMilestone(status: string) {
   switch (status) {
     case "draft":
       return "Issue the proposal to the customer";
@@ -128,8 +129,10 @@ function getNextMilestone(status: "draft" | "sent" | "viewed" | "accepted" | "re
       return "Follow up and close the decision";
     case "accepted":
       return "Generate the contract";
-    case "rejected":
+    case "declined":
       return "Revise and resend a stronger draft";
+    case "expired":
+      return "Reissue or duplicate a fresh proposal";
     default:
       return "Review the current state";
   }

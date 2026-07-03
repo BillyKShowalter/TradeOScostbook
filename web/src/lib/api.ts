@@ -77,6 +77,16 @@ export function getCustomer(token: string, id: string) {
 
 export const PROJECT_STATUSES = [
   "lead",
+  "opportunity",
+  "estimate",
+  "proposal",
+  "contract",
+  "active_job",
+  "field_execution",
+  "change_orders",
+  "closeout",
+  "warranty",
+  "archived",
   "site_visit",
   "proposal_draft",
   "proposal_sent",
@@ -111,6 +121,16 @@ export interface SiteVisit {
   id: string;
   transcript: string | null;
   notes: string | null;
+  detailsJson: {
+    arrivalAt?: string;
+    departureAt?: string;
+    gps?: string;
+    customerNotes?: string;
+    materialsNeeded?: string[];
+    safetyNotes?: string[];
+    punchList?: string[];
+    voiceNoteStatus?: "not_recorded" | "captured_later";
+  } | null;
   measurementsJson: Record<string, unknown> | null;
   aiQuestionsJson: string[] | null;
   missingInfoJson: string[] | null;
@@ -141,6 +161,145 @@ export interface Estimate {
   targetMarginPct: number | null;
   subtotalCost: number;
   totalPrice: number;
+  createdAt?: string;
+}
+
+export interface AIEstimateSuggestion {
+  id: string;
+  kind: "assembly" | "costItem";
+  code: string;
+  title: string;
+  rationale: string;
+  quantity: number;
+  unit: string;
+  confidence: number;
+  resolution: {
+    status: "resolved" | "unresolved";
+    reason: string;
+    target: {
+      id: string;
+      kind: "assembly" | "costItem";
+      code: string;
+      name: string;
+      unitOfMeasure: string;
+      matchMethod: "id" | "exact-name" | "contains-name";
+      matchScore: number;
+    } | null;
+  };
+}
+
+export function getAIEstimateSuggestions(token: string, estimateId: string, scopeOfWork: string) {
+  return apiFetch<{ scopeOfWork: string; suggestions: AIEstimateSuggestion[]; knowledgeMatch: KnowledgeScopeMatch }>(
+    `/api/v1/estimates/${estimateId}/ai-suggestions`,
+    {
+      token,
+      method: "POST",
+      body: JSON.stringify({ scopeOfWork }),
+    }
+  );
+}
+
+export function applyAIEstimateSuggestions(
+  token: string,
+  estimateId: string,
+  suggestions: Array<{
+    id: string;
+    kind: "assembly" | "costItem";
+    title: string;
+    quantity: number;
+    status: "pending" | "accepted" | "rejected";
+    description?: string;
+    targetId?: string;
+    targetKind?: "assembly" | "costItem";
+  }>
+) {
+  return apiFetch<{
+    applied: Array<{ suggestionId: string; lineItemId: string; title: string; quantity: number }>;
+    skipped: Array<{ suggestionId: string; title: string; status: "pending" | "accepted" | "rejected"; reason: string }>;
+  }>(`/api/v1/estimates/${estimateId}/ai-suggestions/apply`, {
+    token,
+    method: "POST",
+    body: JSON.stringify({ suggestions }),
+  });
+}
+
+export interface KnowledgeStats {
+  readOnly: true;
+  assembliesCount: number;
+  costItemsCount: number;
+  tradesCount: number;
+  schemaCount: number;
+  indexedKeywordCount: number;
+  sourceFileCount: number;
+  loadWarnings: string[];
+  sources: {
+    exportsDir: string;
+    knowledgeDir: string;
+    schemasDir: string;
+  };
+}
+
+export interface KnowledgeTrade {
+  id: string;
+  name: string;
+  itemCount: number;
+  status: string;
+  coverage: string;
+  notes: string;
+  keywords: string[];
+}
+
+export interface KnowledgeSearchResult {
+  id: string;
+  type: "assembly" | "costItem";
+  name: string;
+  category: string;
+  trade: string | null;
+  unitOfMeasure: string | null;
+  description: string;
+  confidence: number;
+  matchedKeywords: string[];
+  rationale: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface KnowledgeScopeMatch {
+  detectedTrade: string | null;
+  confidenceScore: number;
+  assumptions: string[];
+  rationale: string[];
+  missingInformation: string[];
+  reviewWarnings: string[];
+  missingInputs: string[];
+  humanReviewWarnings: string[];
+  matchedAssemblies: KnowledgeSearchResult[];
+  matchedCostItems: KnowledgeSearchResult[];
+}
+
+export function getKnowledgeStats(token: string) {
+  return apiFetch<KnowledgeStats>("/api/v1/knowledge/stats", { token });
+}
+
+export function getKnowledgeTrades(token: string) {
+  return apiFetch<KnowledgeTrade[]>("/api/v1/knowledge/trades", { token });
+}
+
+export function getKnowledgeMatchScope(token: string, scopeText: string) {
+  return apiFetch<KnowledgeScopeMatch>("/api/v1/knowledge/match", {
+    token,
+    method: "POST",
+    body: JSON.stringify({ scopeText }),
+  });
+}
+
+export function searchKnowledge(token: string, input: { query: string; type?: "assembly" | "costItem" | "all"; trade?: string; limit?: number }) {
+  const params = new URLSearchParams();
+  params.set("q", input.query);
+  if (input.type) params.set("type", input.type);
+  if (input.trade) params.set("trade", input.trade);
+  if (input.limit) params.set("limit", String(input.limit));
+
+  return apiFetch<KnowledgeSearchResult[]>(`/api/v1/knowledge/search?${params.toString()}`, { token });
 }
 
 export function getProject(token: string, id: string) {
@@ -151,8 +310,64 @@ export function getProject(token: string, id: string) {
       siteVisits: SiteVisit[];
       projectFiles: ProjectFile[];
       proposals: Proposal[];
+      invoices: Array<Invoice & { lineItems: InvoiceLineItem[] }>;
+      contracts: Contract[];
+      changeOrders: ChangeOrder[];
+      tasks: ProjectTask[];
     }
   >(`/api/v1/projects/${id}`, { token });
+}
+
+export interface ChangeOrder {
+  id: string;
+  projectId: string;
+  estimateId: string | null;
+  coNumber: number;
+  description: string;
+  status: "draft" | "approved" | "rejected";
+  amount: number;
+  scheduleImpactDays: number | null;
+  approvedAt: string | null;
+  rejectedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChangeOrderLineItem {
+  id: string;
+  changeOrderId: string;
+  costItemId: string | null;
+  description: string;
+  quantity: number;
+  unitCost: number;
+  lineCost: number;
+  sortOrder: number;
+}
+
+export function listChangeOrdersByProject(token: string, projectId: string) {
+  return apiFetch<ChangeOrder[]>(`/api/v1/change-orders/by-project/${projectId}`, { token });
+}
+
+export function getChangeOrder(token: string, id: string) {
+  return apiFetch<ChangeOrder & { lineItems: ChangeOrderLineItem[] }>(`/api/v1/change-orders/${id}`, { token });
+}
+
+export interface ProjectTask {
+  id: string;
+  projectId: string;
+  title: string;
+  status: "todo" | "in_progress" | "blocked" | "completed";
+  assignedTo: string | null;
+  dueDate: string | null;
+  priority: "low" | "medium" | "high";
+  notes: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function listProjectTasks(token: string, projectId: string) {
+  return apiFetch<ProjectTask[]>(`/api/v1/projects/${projectId}/tasks`, { token });
 }
 
 export interface Proposal {
@@ -227,7 +442,7 @@ export interface Invoice {
   proposalId: string | null;
   invoiceNumber: number;
   type: "full" | "progress";
-  status: "draft" | "sent" | "paid" | "overdue" | "void";
+  status: "draft" | "sent" | "paid" | "overdue" | "void" | "partially_paid" | "cancelled";
   percentComplete: number | null;
   amount: number;
   dueDate: string | null;

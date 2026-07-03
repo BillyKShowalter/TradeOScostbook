@@ -9,7 +9,7 @@ export function ProjectMetricsCard({ metrics }: ProjectMetricsCardProps) {
   return (
     <Card className="border-border/70">
       <CardHeader>
-        <CardTitle>Metrics</CardTitle>
+        <CardTitle>At a glance</CardTitle>
       </CardHeader>
       <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {metrics.map((metric) => (
@@ -19,4 +19,3 @@ export function ProjectMetricsCard({ metrics }: ProjectMetricsCardProps) {
     </Card>
   );
 }
-

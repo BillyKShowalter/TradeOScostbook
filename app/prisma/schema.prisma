@@ -422,6 +422,7 @@ model Project {
   contracts    Contract[]
   siteVisits   SiteVisit[]
   projectFiles ProjectFile[]
+  tasks        ProjectTask[]
 
   @@index([orgId])
   @@index([customerId])
@@ -482,6 +483,9 @@ model ChangeOrder {
   description  String
   status       String   @default("draft")
   amount       Decimal  @default(0) @db.Decimal(14, 2)
+  scheduleImpactDays Int? @map("schedule_impact_days")
+  approvedAt   DateTime? @map("approved_at")
+  rejectedAt   DateTime? @map("rejected_at")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
 
@@ -548,6 +552,7 @@ model SiteVisit {
   projectId        String   @map("project_id")
   transcript       String?
   notes            String?
+  detailsJson      Json?    @map("details_json")
   measurementsJson Json?    @map("measurements_json")
   aiQuestionsJson  Json?    @map("ai_questions_json")
   missingInfoJson  Json?    @map("missing_info_json")
@@ -560,6 +565,26 @@ model SiteVisit {
 
   @@index([projectId, createdAt])
   @@map("site_visits")
+}
+
+model ProjectTask {
+  id          String    @id @default(uuid())
+  projectId   String    @map("project_id")
+  title       String
+  status      String    @default("todo")
+  assignedTo  String?   @map("assigned_to")
+  dueDate     DateTime? @map("due_date")
+  priority    String    @default("medium")
+  notes       String?
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, status])
+  @@index([projectId, dueDate])
+  @@map("project_tasks")
 }
 
 model ProjectFile {

@@ -63,6 +63,9 @@ export const proposalsController = {
   async send(req: Request, res: Response) {
     res.json(await service.send(req.params.id, requireOrgId(req)));
   },
+  async resend(req: Request, res: Response) {
+    res.json(await service.resend(req.params.id, requireOrgId(req)));
+  },
   async markViewed(req: Request, res: Response) {
     res.json(await service.markViewed(req.params.id, requireOrgId(req)));
   },
@@ -71,5 +74,8 @@ export const proposalsController = {
   },
   async reject(req: Request, res: Response) {
     res.json(await service.reject(req.params.id, requireOrgId(req)));
+  },
+  async duplicate(req: Request, res: Response) {
+    res.status(201).json(await service.duplicate(req.params.id, requireOrgId(req)));
   },
 };

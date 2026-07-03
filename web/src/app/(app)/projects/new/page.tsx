@@ -8,7 +8,10 @@ export default async function NewProjectPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">New project</h1>
+      <div className="space-y-2">
+        <h1 className="text-2xl font-semibold">Create project</h1>
+        <p className="text-sm text-muted-foreground">Give the job a clear name now so site notes, estimates, and invoices stay easy to find later.</p>
+      </div>
       <NewProjectForm customers={customers} />
     </div>
   );

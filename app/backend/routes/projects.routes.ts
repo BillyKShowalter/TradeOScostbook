@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { customersController, projectFilesController, projectsController, siteVisitsController } from "../controllers/projects.controller";
+import { projectTasksController } from "../controllers/projectTasks.controller";
 import { asyncHandler } from "../middleware/asyncHandler";
 
 export const customersRouter = Router();
@@ -21,3 +22,7 @@ projectsRouter.patch("/:id/site-visits/:siteVisitId", asyncHandler(siteVisitsCon
 projectsRouter.get("/:id/files", asyncHandler(projectFilesController.listByProject));
 projectsRouter.post("/:id/files", asyncHandler(projectFilesController.create));
 projectsRouter.delete("/:id/files/:fileId", asyncHandler(projectFilesController.remove));
+projectsRouter.get("/:id/tasks", asyncHandler(projectTasksController.listByProject));
+projectsRouter.post("/:id/tasks", asyncHandler(projectTasksController.create));
+projectsRouter.patch("/:id/tasks/:taskId", asyncHandler(projectTasksController.update));
+projectsRouter.delete("/:id/tasks/:taskId", asyncHandler(projectTasksController.remove));

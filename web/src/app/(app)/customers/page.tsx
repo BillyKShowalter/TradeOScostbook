@@ -9,15 +9,18 @@ export default async function CustomersPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Customers</h1>
-        <Link href="/customers/new" className={buttonVariants()}>
-          New customer
-        </Link>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="text-2xl font-semibold">Customers</h1>
+          <Link href="/customers/new" className={buttonVariants()}>
+            Add customer
+          </Link>
+        </div>
+        <p className="text-sm text-muted-foreground">Keep the people and companies you work for in one place so estimates and invoices stay tied to the right job.</p>
       </div>
 
       {customers.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No customers yet.</p>
+        <p className="text-sm text-muted-foreground">No customers yet. Add the first homeowner, builder, or property manager you want to track.</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {customers.map((customer) => (

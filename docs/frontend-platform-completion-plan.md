@@ -37,6 +37,8 @@ The backend is substantially further along than a typical "MVP backend" — this
 2. AI-assisted estimating that meaningfully reduces the time to build a first-draft estimate from a plain-English scope description, using the org's *own* cost book (not generic AI pricing).
 3. A CRM layer thin enough to ship fast but real enough that contractors stop using a separate spreadsheet/CRM for client tracking.
 
+The first AI Estimate Assist milestone is now implemented in code: the estimate assist page no longer uses client-only mock data and instead calls a scoped backend suggestion endpoint backed by the org's active cost book.
+
 ## 2. Feature Breakdown
 
 ### Must-have (this phase's MVP front-end)

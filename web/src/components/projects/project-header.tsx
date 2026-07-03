@@ -22,9 +22,9 @@ export function ProjectHeader({ project, subtitle, actions, className }: Project
             <p className="mt-2 max-w-2xl text-sm text-slate-300">{subtitle}</p>
           </div>
           <div className="flex flex-wrap gap-6 text-sm text-slate-300">
-            <Meta label="Customer" value={project.customerId ? "Linked customer" : "Unassigned"} />
-            <Meta label="Job type" value={project.jobType ?? "Not set"} />
-            <Meta label="Address" value={project.siteAddress ?? "No address yet"} />
+          <Meta label="Customer" value={project.customerId ? "Customer linked" : "Not linked yet"} />
+          <Meta label="Work type" value={project.jobType ?? "Not set"} />
+          <Meta label="Site address" value={project.siteAddress ?? "Not added yet"} />
           </div>
         </div>
         <div className="grid min-w-64 gap-3">

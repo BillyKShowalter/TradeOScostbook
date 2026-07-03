@@ -10,15 +10,18 @@ export default async function ProjectsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Projects</h1>
-        <Link href="/projects/new" className={buttonVariants()}>
-          New project
-        </Link>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="text-2xl font-semibold">Projects</h1>
+          <Link href="/projects/new" className={buttonVariants()}>
+            Add project
+          </Link>
+        </div>
+        <p className="text-sm text-muted-foreground">Each project keeps the site visit, estimate, proposal, contract, and invoice work tied to one job.</p>
       </div>
 
       {projects.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No projects yet.</p>
+        <p className="text-sm text-muted-foreground">No projects yet. Start with a customer, then create the first job you want to estimate.</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {projects.map((project) => (
