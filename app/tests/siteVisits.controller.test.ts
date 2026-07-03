@@ -50,13 +50,15 @@ describe("siteVisitsController.create", () => {
     expect(Array.isArray(data.aiQuestionsJson)).toBe(true);
     expect(data.aiQuestionsJson.length).toBeGreaterThan(0);
     expect(Array.isArray(data.missingInfoJson)).toBe(true);
-    expect(data.missingInfoJson[0]).toHaveProperty("field");
-    expect(data.missingInfoJson[0]).toHaveProperty("importance");
+    expect(typeof data.missingInfoJson[0]).toBe("string");
+    expect(data.missingInfoJson).toEqual(data.intakeResultJson.missingInformation.map((item: { reason: string }) => item.reason));
     expect(data.intakeResultJson).toMatchObject({
       trade: "Deck",
       projectType: "Outdoor Structure",
       category: "Exterior Improvements",
     });
+    expect(data.intakeResultJson.missingInformation[0]).toHaveProperty("field");
+    expect(data.intakeResultJson.missingInformation[0]).toHaveProperty("importance");
   });
 
   it("sets the project's jobType from the classified trade and advances status from lead", async () => {

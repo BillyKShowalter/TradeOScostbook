@@ -72,6 +72,15 @@ function buildIntakeScopeText(...parts: Array<string | null | undefined>): strin
   return parts.filter((part): part is string => Boolean(part && part.trim())).join(". ");
 }
 
+// The web app's SiteVisit.missingInfoJson contract predates buildProjectIntake()'s
+// richer { field, reason, importance } shape and still expects plain strings
+// (see web/src/lib/api.ts). Flatten to the human-readable reason here so the
+// existing UI keeps working; the full structured breakdown is still available
+// via intakeResultJson.missingInformation for any consumer that wants it.
+function toMissingInfoStrings(missingInformation: ReturnType<typeof buildProjectIntake>["missingInformation"]): string[] {
+  return missingInformation.map((item) => item.reason);
+}
+
 export const customersController = {
   async list(req: Request, res: Response) {
     res.json(
@@ -190,7 +199,7 @@ export const siteVisitsController = {
         notes: input.notes,
         measurementsJson: toInputJson(input.measurementsJson),
         aiQuestionsJson: toInputJson(intakeResult.followUpQuestions),
-        missingInfoJson: toInputJson(intakeResult.missingInformation),
+        missingInfoJson: toInputJson(toMissingInfoStrings(intakeResult.missingInformation)),
         confidenceScore: intakeResult.confidenceScore.score,
         intakeResultJson: toInputJson(intakeResult),
       },
@@ -225,7 +234,7 @@ export const siteVisitsController = {
         notes: mergedNotes,
         measurementsJson: toInputJson(mergedMeasurements),
         aiQuestionsJson: toInputJson(intakeResult.followUpQuestions),
-        missingInfoJson: toInputJson(intakeResult.missingInformation),
+        missingInfoJson: toInputJson(toMissingInfoStrings(intakeResult.missingInformation)),
         confidenceScore: intakeResult.confidenceScore.score,
         intakeResultJson: toInputJson(intakeResult),
       },
