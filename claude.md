@@ -57,7 +57,11 @@ TradeOS Cost Book
 - Real self-serve email/password auth now exists: `POST /api/v1/auth/signup` and `POST /api/v1/auth/login`, both public (rate-limited), issuing the same internal JWT the rest of the API already verifies
 - A Next.js (App Router, Next 16) front-end now exists in `web/`, alongside `app/`: signup/login/logout (httpOnly-cookie session, no token in client JS), a protected dashboard, and a typed API client — Phase 1 of `docs/frontend-platform-completion-plan.md`
 - The front-end now also covers customer/project CRUD and a working Estimate Builder (line-item search/add/remove, pricing-mode toggle, finalize) — live-verified end to end with a real browser against the real backend
+- The Estimate Builder now has a more workbench-like UX pass: keyboard-first line-item entry, grouped assembly search, running totals, profit/markup panel, and a tighter mobile layout — business logic unchanged
 - The front-end now also covers Proposal/Invoice/Contract UI end to end (create from an estimate, status transitions, sign, PDF download) — live-verified, and surfaced two real pre-existing backend bugs (missing invoice line items on `getById`, un-normalized Decimal fields on a project's nested estimates) that are now fixed
+- The front-end now also has a UI-only AI Estimate Assist screen under the estimate flow — scope textarea, mock suggestion generation, confidence badges, quantity editing, and accept/reject controls, with no backend AI wiring
+- Several sprints landed after this log's item 42 without a matching entry here (project intake/site-visit persistence, a deterministic intake brain, AI estimating architecture docs, and a `knowledge-engine` legacy data import) — those are real, committed work visible in `git log`, just not narrated in this file. Treat `git log --oneline` as more current than this log's numbered list until it is backfilled
+- Sprint 11 ("Project Lifecycle & Field Operations") is now substantially complete: the project detail route is a full tabbed Project Workspace (Overview, Estimate History, Proposals, Contracts, Invoices, Photos, Documents, Site Visits, Tasks, Change Orders, Timeline, Warranty, Notes, Activity), backed by a new `project_tasks` table/module, richer `site_visits.details_json` structured capture, and change-order schedule-impact/approval-timestamp fields — see `docs/PROJECT_LIFECYCLE.md`, `docs/PROJECT_STATUS.md`, `docs/NEXT_STEPS.md`, and `docs/SPRINT_11_CONTINUATION_NOTES.md`
 - Rolling notes exist in:
   - `docs/rolling-todo.md`
   - `docs/end-of-session-note.md`
@@ -92,6 +96,8 @@ TradeOS Cost Book
 - Scaffolded the Next.js front-end (`web/`): auth shell, typed API client, TanStack Query — live-verified end to end with a real Playwright browser against the real backend.
 - Built customer/project CRUD and a working Estimate Builder UI; found and fixed two real bugs in the live-test script (selector ambiguity, an RSC-prefetch-payload false positive) — neither was an app bug.
 - Built Proposal/Invoice/Contract UI; found and fixed two real backend bugs along the way (missing invoice line items on `getById`; un-normalized Decimal `totalPrice` on a project's nested estimates, which had been silently broken since estimates were first added).
+- Refined the Estimate Builder UX without changing estimate business logic: faster keyboard-driven line-item entry, grouped assembly search, running totals, a clearer profit/markup panel, and a more compact mobile layout.
+- Added a polished UI-only AI Estimate Assist screen with mock suggestions, confidence badges, accept/reject controls, a quantity editor, and an entry point from the estimate builder.
 
 ## Detailed Session Summary
 1. Added a new session-tracking file at the repo root:
@@ -444,9 +450,35 @@ TradeOS Cost Book
    - **Live-verified the full lifecycle with one real Playwright run**: signup → seed an assembly directly via the backend (fresh org has no cost book) → customer → project → estimate with one line item (left as draft, not finalized, since proposals/invoices just need *an* estimate to exist) → create proposal → send → accept → create contract from the accepted proposal → sign it → create an invoice from the same estimate → send → mark paid → downloaded all three PDFs through the binary proxy and verified each response actually starts with the `%PDF` magic bytes, not just a 200 status. Re-ran the previous session's customer/project/estimate-builder smoke test afterward to confirm no regression.
    - `npm test` (122/122, 30 suites), `npm run lint`, `npm run build` (backend) and `web`'s `npm run build`/`npm run lint` all pass. Updated `web/README.md` with the new pages and the binary-proxy note.
 
+41. Refined the Estimate Builder UX without changing business logic:
+   - Reworked the page into a clearer workbench layout with a top overview strip, a wider line-item workspace, and a sticky right rail for pricing, running totals, and shortcut help
+   - Made line-item entry faster with a compact quick-add bar, auto-focused search input, grouped assembly-first search results, and keyboard controls for `⌘/Ctrl+K`, arrow navigation, `Enter`, and `Esc`
+   - Added live running totals and a clearer profit/markup panel so the current job cost, gross profit, markup, margin, and total price are visible while editing
+   - Tightened mobile stacking and card hierarchy so the same builder stays readable on small screens without changing any backend calls or estimate logic
+   - `web`'s `npm run lint` and `npm run build` pass after the change
+
+42. Added a polished UI-only AI Estimate Assist screen under the estimate flow:
+   - Created a dedicated `/projects/[id]/estimates/[estimateId]/assist` page with a production-style header and a return path to the estimate builder
+   - Added a client-side assistant panel with a scope-of-work textarea, mock suggestion generation, confidence badges, quantity editing, accept/reject actions, and a summary rail
+   - Wired an "AI assist" entry point into the estimate builder so the new screen is reachable from the normal estimate workflow
+   - Kept it frontend-only: all suggestions are local mock data, and nothing calls or requires backend AI services
+   - `web`'s `npm run lint` and `npm run build` pass after the change
+
+43. Recovered and verified Sprint 11 ("Project Lifecycle & Field Operations") as a continuation session, since a prior Codex session had left it uncommitted and unverified:
+   - Found the actual working directory had ~97 uncommitted changed/new paths (the Sprint 11 Project Workspace/Timeline/Site Visits/Tasks/Change Orders work) plus one commit (`e31c1c8`, the knowledge-engine legacy data import) that existed on local `main` but had never been pushed to `origin/main`
+   - This session runs in an isolated git worktree branched fresh from `origin/main`, so it initially had neither — recovered both without touching the original working directory: captured the uncommitted tracked-file diff as a patch and applied it, copied over the untracked new files/directories, then cherry-picked `e31c1c8` (available via the shared object store even though it wasn't in this branch's history) and reapplied the stashed uncommitted work on top
+   - Before that fix, `npm test` showed 16 failing tests — all a single root cause: `packages/knowledge-engine/exports/json/costbook.json` didn't exist yet in the worktree because the import commit was missing, not a real regression in the new Sprint 11 code
+   - After the fix: backend `npm run lint`, `npm run build`, and `npm test` (274/274, 40/40 suites) all pass; frontend `npm run lint` and `npm run build` (all 25 routes, including the full Project Workspace tab set) both pass
+   - Confirmed by reading the actual component/route code (not just the docs) that the Project Workspace, Timeline, Site Visit, Change Order, and Documents/Photos/Tasks work described in `docs/PROJECT_STATUS.md` is real and wired to live backend endpoints, not placeholder UI — the only intentionally-placeholder pieces (derived-not-persisted timeline, no first-class warranty backend module) are the ones the docs already say are placeholder
+   - Docker was unavailable in this environment, so `npm run test:integration` (the live-Postgres RLS suite, which already has coverage for the new `project_tasks` table per `app/tests/rls.integration.ts`) and a live Playwright browser pass were both skipped — flagged as the first task for whenever Docker/Postgres is available again
+   - Wrote `docs/SPRINT_11_CONTINUATION_NOTES.md` with the full recovery/verification writeup
+   - No new Project Workspace/lifecycle feature code was written this session — Codex's implementation was already complete and correct; this session's job was recovery, verification, and documentation, not re-implementation
+
 ## Next Suggested Slice
+- Run `npm run test:integration` and a live Playwright pass against a real Postgres instance once Docker is available, to exercise the new `project_tasks` RLS policy and `site_visits.details_json` under forced RLS for real (currently only verified via mocked-Prisma unit tests and static builds).
+- Follow `docs/NEXT_STEPS.md`'s Sprint 12 recommendation: persist backend-owned activity events, customer-facing change-order acceptance, a first-class warranty module, document versioning, and AI-suggestion review telemetry.
 - Consider an Estimate Builder "duplicate from previous version" or multi-version comparison view now that projects can carry multiple estimate versions.
-- Add AI-assisted estimating (Phase 3 of `docs/frontend-platform-completion-plan.md`) — the one major piece of the original plan with no backend work started yet.
+- Add backend AI-assisted estimating (Phase 3 of `docs/frontend-platform-completion-plan.md`) when it is time to connect the new UI to a real model and persistence path.
 - Resolve why required-reviewer protection rules won't enable on the `production` Environment despite GitHub Pro — try the web UI, or check whether this needs an Organization-owned repo rather than a personal account.
 - Investigate and commit (or otherwise resolve) the uncommitted `api/` → `backend/` rename and untracked `vercel.json` that were already present in the working tree at the start of this session — undocumented in this log, so the reasoning/status should be confirmed before it's folded into a commit.
 - Deploy the actual API application somewhere (Vercel/Fly/Railway/a VM) pointed at the now-live Supabase database via the `tradeos_app` role.
