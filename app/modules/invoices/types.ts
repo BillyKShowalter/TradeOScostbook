@@ -7,6 +7,7 @@ export interface InvoiceLineItemInput {
 
 export interface CreateInvoiceInput {
   orgId?: string;
+  actorUserId?: string;
   projectId: string;
   estimateId?: string;
   proposalId?: string;
@@ -26,6 +27,17 @@ export interface InvoiceLineItemDTO {
   sortOrder: number;
 }
 
+export interface InvoiceDeliveryDTO {
+  id: string;
+  eventType: string;
+  deliveryChannel: string;
+  recipientEmail: string | null;
+  actorUserId: string | null;
+  metadata: Record<string, unknown> | null;
+  occurredAt: string;
+  createdAt: string;
+}
+
 export interface InvoiceDTO {
   id: string;
   projectId: string;
@@ -40,6 +52,7 @@ export interface InvoiceDTO {
   sentAt: Date | null;
   paidAt: Date | null;
   createdAt: Date;
+  deliveries: InvoiceDeliveryDTO[];
 }
 
 export interface InvoiceDocument {

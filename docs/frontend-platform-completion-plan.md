@@ -22,8 +22,8 @@ The backend is substantially further along than a typical "MVP backend" — this
 - Sign-up / sign-in / onboarding flow (the backend can verify a token; nothing issues one to an end user yet).
 - E-signature.
 - Reporting & Analytics module.
-- **Invoices** as a concept distinct from a Proposal — not in the original 12-module spec at all. New scope.
-- **Contracts** with a binding signature workflow distinct from a Proposal PDF — not in the original spec. New scope, overlaps with Proposal Generator + e-signature.
+- Full customer-facing invoice delivery / payment workflow UI.
+- Full customer-facing contract review / signature workflow UI.
 - **AI-assisted estimating** — not in the original spec at all. Entirely new.
 - Broader CRM features (lead pipeline, follow-up tasks, communication log) beyond the existing minimal Customer/Project records.
 
@@ -48,8 +48,8 @@ The first AI Estimate Assist milestone is now implemented in code: the estimate 
 - **Estimate Builder**: line-item editor, Cost Item/Assembly picker (the picker should surface `isTemplate` assemblies prominently — that mechanism is already built specifically to make this fast), overhead/profit panel, running summary. Fully backed by the existing Estimate Engine API.
 - **AI-assisted estimate drafting**: scope-of-work text box → suggested line items against the org's real cost book. New capability (Section 5).
 - **Proposal generation & send**: wraps the existing PDF generator; delivery/status tracking is now persisted server-side through `proposal_deliveries` plus proposal lifecycle timestamps and can be consumed by the frontend without inventing a second timeline.
-- **Invoice generation**: new entity and PDF template, distinct from a Proposal (a Proposal sells the job; an Invoice bills against it, potentially partially/progressively).
-- **Contracts**: a signable document derived from an accepted Proposal, with e-signature capture.
+- **Invoice generation**: distinct entity and PDF template, with persisted server-side lifecycle history (`invoice_deliveries`) so the frontend can show sent/paid/voided activity without reconstructing it.
+- **Contracts**: a signable document derived from an accepted Proposal, with persisted server-side signing/void history (`contract_events`) for project detail and future customer-facing workflows.
 - **Settings**: company profile/branding, users & permissions (the role model already exists server-side — this is just exposing it in UI), regions & pricing adjustments, supplier integrations (already has a real review-queue UI's worth of API behind it).
 
 ### Nice-to-have / later phases
@@ -133,7 +133,7 @@ Rough estimates assume 1–2 full-time engineers; adjust for actual team size.
 
 | Phase | Scope | Rough estimate |
 |---|---|---|
-| **0. API gaps** | Add missing CRUD (customer/project edit, invoice/contract data models + endpoints, proposal delivery-status tracking) | 1–2 weeks |
+| **0. API gaps** | Close any remaining contract-alignment gaps while UI build proceeds; core customer/project edits, proposal delivery tracking, invoice lifecycle history, and contract event history are now present server-side | 1–2 weeks |
 | **1. Auth & shell** | Sign up/in, onboarding wizard, Next.js app shell, API client, design system setup | 2–3 weeks |
 | **2. Core CRM + Estimate Builder** | Client/project management, full Estimate Builder (manual path), Proposal preview/send | 4–6 weeks |
 | **3. AI-assisted estimating** | Scope-to-suggestions pipeline, review UI, suggestion logging | 2–3 weeks |

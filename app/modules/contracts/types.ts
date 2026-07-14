@@ -1,15 +1,27 @@
 export interface CreateContractInput {
   orgId?: string;
+  actorUserId?: string;
   proposalId: string;
   termsText?: string;
 }
 
 export interface SignContractInput {
   orgId?: string;
+  actorUserId?: string;
   signerName: string;
   signerEmail?: string;
   signatureDataUrl?: string;
   signatureIp?: string;
+}
+
+export interface ContractEventDTO {
+  id: string;
+  eventType: string;
+  actorUserId: string | null;
+  recipientEmail: string | null;
+  metadata: Record<string, unknown> | null;
+  occurredAt: string;
+  createdAt: string;
 }
 
 export interface ContractDTO {
@@ -24,6 +36,7 @@ export interface ContractDTO {
   signatureIp: string | null;
   signedAt: Date | null;
   createdAt: Date;
+  events: ContractEventDTO[];
 }
 
 export interface ContractDocument {

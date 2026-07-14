@@ -8,11 +8,19 @@ const mockPrisma = {
     findFirst: jest.fn(),
     update: jest.fn(),
   },
+  contractEvent: {
+    create: jest.fn(),
+  },
 };
 
 jest.mock("../db/client", () => ({ prisma: mockPrisma }));
 jest.mock("../modules/contracts/pdf", () => ({
   renderContractPdf: jest.fn().mockResolvedValue(Buffer.from("pdf")),
+}));
+jest.mock("../modules/intelligence/service", () => ({
+  ActivityTimelineService: jest.fn().mockImplementation(() => ({
+    record: jest.fn().mockResolvedValue(undefined),
+  })),
 }));
 
 import { ContractsService } from "../modules/contracts/service";
@@ -42,12 +50,28 @@ describe("ContractsService", () => {
       signedAt: null,
       createdAt: new Date(),
     });
+    mockPrisma.contract.findFirst.mockResolvedValue({
+      id: "contract-1",
+      projectId: "project-1",
+      proposalId: "proposal-1",
+      status: "pending_signature",
+      termsText: "Custom terms",
+      signerName: null,
+      signerEmail: null,
+      signatureDataUrl: null,
+      signatureIp: null,
+      signedAt: null,
+      createdAt: new Date(),
+      events: [{ id: "event-1", eventType: "contract.created", actorUserId: "user-1", recipientEmail: null, metadataJson: null, occurredAt: new Date(), createdAt: new Date() }],
+      project: { id: "project-1", orgId: "org-1" },
+    });
 
     const service = new ContractsService();
-    const contract = await service.create({ orgId: "org-1", proposalId: "proposal-1" });
+    const contract = await service.create({ orgId: "org-1", actorUserId: "user-1", proposalId: "proposal-1" });
 
     expect(contract.status).toBe("pending_signature");
     expect(contract.termsText).toBe("Custom terms");
+    expect(contract.events[0]?.eventType).toBe("contract.created");
   });
 
   it("rejects creating a contract from a proposal that hasn't been accepted", async () => {
@@ -58,7 +82,31 @@ describe("ContractsService", () => {
   });
 
   it("signs a pending contract and stamps signedAt", async () => {
-    mockPrisma.contract.findFirst.mockResolvedValue({ id: "contract-1", status: "pending_signature" });
+    mockPrisma.contract.findFirst
+      .mockResolvedValueOnce({
+        id: "contract-1",
+        projectId: "project-1",
+        proposalId: "proposal-1",
+        status: "pending_signature",
+        signerEmail: null,
+        events: [],
+        project: { id: "project-1", orgId: "org-1" },
+      })
+      .mockResolvedValueOnce({
+        id: "contract-1",
+        projectId: "project-1",
+        proposalId: "proposal-1",
+        status: "signed",
+        termsText: "Custom terms",
+        signerName: "Jane Doe",
+        signerEmail: "jane@example.com",
+        signatureDataUrl: null,
+        signatureIp: "127.0.0.1",
+        signedAt: new Date(),
+        createdAt: new Date(),
+        events: [{ id: "event-2", eventType: "contract.signed", actorUserId: "user-1", recipientEmail: "jane@example.com", metadataJson: null, occurredAt: new Date(), createdAt: new Date() }],
+        project: { id: "project-1", orgId: "org-1" },
+      });
     mockPrisma.contract.update.mockResolvedValue({
       id: "contract-1",
       projectId: "project-1",
@@ -74,21 +122,43 @@ describe("ContractsService", () => {
     });
 
     const service = new ContractsService();
-    const contract = await service.sign("contract-1", { orgId: "org-1", signerName: "Jane Doe", signerEmail: "jane@example.com", signatureIp: "127.0.0.1" });
+    const contract = await service.sign("contract-1", {
+      orgId: "org-1",
+      actorUserId: "user-1",
+      signerName: "Jane Doe",
+      signerEmail: "jane@example.com",
+      signatureIp: "127.0.0.1",
+    });
 
     expect(contract.status).toBe("signed");
     expect(contract.signerName).toBe("Jane Doe");
+    expect(mockPrisma.contractEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ eventType: "contract.signed", actorUserId: "user-1" }) })
+    );
   });
 
   it("rejects signing a contract that is already signed", async () => {
-    mockPrisma.contract.findFirst.mockResolvedValue({ id: "contract-1", status: "signed" });
+    mockPrisma.contract.findFirst.mockResolvedValue({
+      id: "contract-1",
+      projectId: "project-1",
+      status: "signed",
+      events: [],
+      project: { id: "project-1", orgId: "org-1" },
+    });
 
     const service = new ContractsService();
     await expect(service.sign("contract-1", { orgId: "org-1", signerName: "Jane Doe" })).rejects.toThrow("cannot be signed");
   });
 
   it("rejects voiding a signed contract", async () => {
-    mockPrisma.contract.findFirst.mockResolvedValue({ id: "contract-1", status: "signed" });
+    mockPrisma.contract.findFirst.mockResolvedValue({
+      id: "contract-1",
+      projectId: "project-1",
+      status: "signed",
+      signerEmail: "jane@example.com",
+      events: [],
+      project: { id: "project-1", orgId: "org-1" },
+    });
 
     const service = new ContractsService();
     await expect(service.void("contract-1", "org-1")).rejects.toThrow("already been signed");

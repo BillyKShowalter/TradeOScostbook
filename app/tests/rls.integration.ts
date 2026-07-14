@@ -982,36 +982,77 @@ describe("live organization row-level security", () => {
       new InvoicesService().create({
         orgId: orgA,
         projectId: projectA,
+        actorUserId: adminUser,
         proposalId: proposal.id,
         lineItems: [{ description: "Deposit", quantity: 1, unitOfMeasure: "EA", unitCost: 1000 }],
       })
     );
     expect(invoice.amount).toBe(1000);
+    expect(invoice.deliveries.map((delivery) => delivery.eventType)).toEqual(["invoice.created"]);
+
+    const sentInvoice = await inSession(adminUser, orgA, "admin", async () => new InvoicesService().send(invoice.id, orgA, adminUser));
+    expect(sentInvoice.status).toBe("sent");
+    const paidInvoice = await inSession(adminUser, orgA, "admin", async () => new InvoicesService().markPaid(invoice.id, orgA, adminUser));
+    expect(paidInvoice.status).toBe("paid");
+    expect(paidInvoice.deliveries.map((delivery) => delivery.eventType)).toEqual(["invoice.paid", "invoice.sent", "invoice.created"]);
 
     const invoiceCrossOrgLookup = await inSession(otherUser, orgB, "owner", async () =>
       currentTransaction().invoice.findUnique({ where: { id: invoice.id } })
     );
     expect(invoiceCrossOrgLookup).toBeNull();
 
+    const visibleInvoiceDeliveries = await inSession(adminUser, orgA, "admin", async () =>
+      currentTransaction().invoiceDelivery.findMany({
+        where: { invoiceId: invoice.id },
+        orderBy: { occurredAt: "desc" },
+      })
+    );
+    expect(visibleInvoiceDeliveries.map((delivery) => delivery.eventType)).toEqual(["invoice.paid", "invoice.sent", "invoice.created"]);
+
+    const hiddenInvoiceDeliveries = await inSession(otherUser, orgB, "owner", async () =>
+      currentTransaction().invoiceDelivery.findMany({ where: { invoiceId: invoice.id } })
+    );
+    expect(hiddenInvoiceDeliveries).toEqual([]);
+
     await expect(
       inSession(viewerUser, orgA, "viewer", async () => new ContractsService().create({ orgId: orgA, proposalId: proposal.id }))
     ).rejects.toThrow();
 
     const contract = await inSession(adminUser, orgA, "admin", async () =>
-      new ContractsService().create({ orgId: orgA, proposalId: proposal.id })
+      new ContractsService().create({ orgId: orgA, actorUserId: adminUser, proposalId: proposal.id })
     );
     expect(contract.status).toBe("pending_signature");
+    expect(contract.events.map((event) => event.eventType)).toEqual(["contract.created"]);
 
     const signed = await inSession(adminUser, orgA, "admin", async () =>
-      new ContractsService().sign(contract.id, { orgId: orgA, signerName: "Jane Doe", signerEmail: "jane@example.com" })
+      new ContractsService().sign(contract.id, {
+        orgId: orgA,
+        actorUserId: adminUser,
+        signerName: "Jane Doe",
+        signerEmail: "jane@example.com",
+      })
     );
     expect(signed.status).toBe("signed");
     expect(signed.signerName).toBe("Jane Doe");
+    expect(signed.events.map((event) => event.eventType)).toEqual(["contract.signed", "contract.created"]);
 
     const contractCrossOrgLookup = await inSession(otherUser, orgB, "owner", async () =>
       currentTransaction().contract.findUnique({ where: { id: contract.id } })
     );
     expect(contractCrossOrgLookup).toBeNull();
+
+    const visibleContractEvents = await inSession(adminUser, orgA, "admin", async () =>
+      currentTransaction().contractEvent.findMany({
+        where: { contractId: contract.id },
+        orderBy: { occurredAt: "desc" },
+      })
+    );
+    expect(visibleContractEvents.map((event) => event.eventType)).toEqual(["contract.signed", "contract.created"]);
+
+    const hiddenContractEvents = await inSession(otherUser, orgB, "owner", async () =>
+      currentTransaction().contractEvent.findMany({ where: { contractId: contract.id } })
+    );
+    expect(hiddenContractEvents).toEqual([]);
   });
 });
 

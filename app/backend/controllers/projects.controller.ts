@@ -164,8 +164,14 @@ export const projectsController = {
         siteVisits: { orderBy: { createdAt: "desc" } },
         projectFiles: { orderBy: { createdAt: "desc" } },
         proposals: { orderBy: { createdAt: "desc" }, include: { deliveries: { orderBy: { occurredAt: "desc" } } } },
-        invoices: { orderBy: { createdAt: "desc" }, include: { lineItems: { orderBy: { sortOrder: "asc" } } } },
-        contracts: { orderBy: { createdAt: "desc" } },
+        invoices: {
+          orderBy: { createdAt: "desc" },
+          include: {
+            lineItems: { orderBy: { sortOrder: "asc" } },
+            deliveries: { orderBy: { occurredAt: "desc" } },
+          },
+        },
+        contracts: { orderBy: { createdAt: "desc" }, include: { events: { orderBy: { occurredAt: "desc" } } } },
         changeOrders: { orderBy: { createdAt: "desc" }, include: { lineItems: { orderBy: { sortOrder: "asc" } } } },
         tasks: { orderBy: [{ status: "asc" }, { dueDate: "asc" }, { createdAt: "desc" }] },
         jobs: { orderBy: [{ archivedAt: "asc" }, { scheduledStart: "asc" }, { createdAt: "desc" }] },

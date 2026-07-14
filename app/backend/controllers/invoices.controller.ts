@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import { InvoicesService } from "../../modules/invoices/service";
-import { requireOrgId } from "../requestContext";
+import { requireAuthContext, requireOrgId } from "../requestContext";
 
 const service = new InvoicesService();
 
@@ -30,7 +30,7 @@ export const invoicesController = {
     res.json(await service.getById(req.params.id, requireOrgId(req)));
   },
   async create(req: Request, res: Response) {
-    res.status(201).json(await service.create({ ...createSchema.parse(req.body), orgId: requireOrgId(req) }));
+    res.status(201).json(await service.create({ ...createSchema.parse(req.body), orgId: requireOrgId(req), actorUserId: requireAuthContext(req).userId }));
   },
   async getPdf(req: Request, res: Response) {
     const doc = await service.getPdf(req.params.id, requireOrgId(req));
@@ -39,12 +39,12 @@ export const invoicesController = {
     res.send(doc.buffer);
   },
   async send(req: Request, res: Response) {
-    res.json(await service.send(req.params.id, requireOrgId(req)));
+    res.json(await service.send(req.params.id, requireOrgId(req), requireAuthContext(req).userId));
   },
   async markPaid(req: Request, res: Response) {
-    res.json(await service.markPaid(req.params.id, requireOrgId(req)));
+    res.json(await service.markPaid(req.params.id, requireOrgId(req), requireAuthContext(req).userId));
   },
   async void(req: Request, res: Response) {
-    res.json(await service.void(req.params.id, requireOrgId(req)));
+    res.json(await service.void(req.params.id, requireOrgId(req), requireAuthContext(req).userId));
   },
 };

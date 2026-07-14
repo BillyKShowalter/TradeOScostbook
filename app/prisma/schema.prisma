@@ -53,6 +53,8 @@ model Organization {
   brandDocumentSettings BrandDocumentSettings?
   activityEvents ActivityEvent[]
   proposalDeliveries ProposalDelivery[]
+  invoiceDeliveries InvoiceDelivery[]
+  contractEvents  ContractEvent[]
   notifications  Notification[]
   attachments    Attachment[]
   comments       Comment[]
@@ -182,6 +184,8 @@ model AppUser {
   reviewedSupplierPriceUpdates SupplierPriceUpdate[]
   activityEvents ActivityEvent[]
   proposalDeliveries ProposalDelivery[]
+  invoiceDeliveries InvoiceDelivery[]
+  contractEvents  ContractEvent[]
   notifications Notification[]
   attachments   Attachment[]
   comments      Comment[]
@@ -913,6 +917,7 @@ model Invoice {
   proposal  Proposal?         @relation(fields: [proposalId], references: [id], onDelete: SetNull)
   lineItems InvoiceLineItem[]
   payments  Payment[]
+  deliveries InvoiceDelivery[]
 
   @@unique([projectId, invoiceNumber])
   @@index([estimateId])
@@ -1066,6 +1071,7 @@ model Contract {
 
   project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  events   ContractEvent[]
 
   @@index([projectId])
   @@index([proposalId])
@@ -1091,6 +1097,47 @@ model ProposalDelivery {
   @@index([orgId, proposalId, occurredAt])
   @@index([orgId, eventType, occurredAt])
   @@map("proposal_deliveries")
+}
+
+model InvoiceDelivery {
+  id              String   @id @default(uuid())
+  orgId           String   @map("org_id")
+  invoiceId       String   @map("invoice_id")
+  eventType       String   @map("event_type")
+  deliveryChannel String   @default("app") @map("delivery_channel")
+  recipientEmail  String?  @map("recipient_email")
+  actorUserId     String?  @map("actor_user_id")
+  metadataJson    Json?    @map("metadata_json")
+  occurredAt      DateTime @default(now()) @map("occurred_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  invoice      Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  actorUser    AppUser?     @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, invoiceId, occurredAt])
+  @@index([orgId, eventType, occurredAt])
+  @@map("invoice_deliveries")
+}
+
+model ContractEvent {
+  id              String   @id @default(uuid())
+  orgId           String   @map("org_id")
+  contractId      String   @map("contract_id")
+  eventType       String   @map("event_type")
+  actorUserId     String?  @map("actor_user_id")
+  recipientEmail  String?  @map("recipient_email")
+  metadataJson    Json?    @map("metadata_json")
+  occurredAt      DateTime @default(now()) @map("occurred_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  contract     Contract     @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  actorUser    AppUser?     @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, contractId, occurredAt])
+  @@index([orgId, eventType, occurredAt])
+  @@map("contract_events")
 }
 
 model ActivityEvent {
