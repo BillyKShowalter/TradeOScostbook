@@ -435,7 +435,7 @@ export class CrmService {
       return;
     }
 
-    const row = await prisma.project.findFirst({ where: { id: entityId, orgId } });
+    const row = await prisma.job.findFirst({ where: { id: entityId, orgId } });
     if (!row) throw new ApiError(404, `Job ${entityId} not found`);
   }
 

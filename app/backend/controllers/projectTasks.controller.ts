@@ -7,6 +7,7 @@ import { projectTaskPriorities, projectTaskStatuses } from "../../modules/projec
 const service = new ProjectTasksService();
 
 const createSchema = z.object({
+  jobId: z.string().uuid().optional(),
   title: z.string().min(1),
   assignedTo: z.string().trim().optional(),
   dueDate: z.string().datetime().optional(),
@@ -15,6 +16,7 @@ const createSchema = z.object({
 });
 
 const updateSchema = z.object({
+  jobId: z.string().uuid().nullable().optional(),
   title: z.string().min(1).optional(),
   status: z.enum(projectTaskStatuses).optional(),
   assignedTo: z.string().trim().nullable().optional(),
@@ -34,6 +36,7 @@ export const projectTasksController = {
       await service.create({
         orgId: requireOrgId(req),
         projectId: req.params.id,
+        jobId: body.jobId,
         title: body.title,
         assignedTo: body.assignedTo || undefined,
         dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
@@ -48,6 +51,7 @@ export const projectTasksController = {
     res.json(
       await service.update(req.params.taskId, {
         orgId: requireOrgId(req),
+        jobId: body.jobId,
         title: body.title,
         status: body.status,
         assignedTo: body.assignedTo,

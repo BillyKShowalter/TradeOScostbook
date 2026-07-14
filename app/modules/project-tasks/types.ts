@@ -7,6 +7,7 @@ export type ProjectTaskPriority = (typeof projectTaskPriorities)[number];
 export interface CreateProjectTaskInput {
   orgId?: string;
   projectId: string;
+  jobId?: string | null;
   title: string;
   assignedTo?: string;
   dueDate?: Date;
@@ -16,6 +17,7 @@ export interface CreateProjectTaskInput {
 
 export interface UpdateProjectTaskInput {
   orgId?: string;
+  jobId?: string | null;
   title?: string;
   status?: ProjectTaskStatus;
   assignedTo?: string | null;
@@ -27,6 +29,7 @@ export interface UpdateProjectTaskInput {
 export interface ProjectTaskDTO {
   id: string;
   projectId: string;
+  jobId: string | null;
   title: string;
   status: ProjectTaskStatus;
   assignedTo: string | null;

@@ -22,10 +22,15 @@ export class ProjectTasksService {
   async create(input: CreateProjectTaskInput): Promise<ProjectTaskDTO> {
     const project = await prisma.project.findFirst({ where: { id: input.projectId, orgId: input.orgId } });
     if (!project) throw new ApiError(404, `Project ${input.projectId} not found`);
+    if (input.jobId) {
+      const job = await prisma.job.findFirst({ where: { id: input.jobId, orgId: input.orgId, projectId: input.projectId, archivedAt: null } });
+      if (!job) throw new ApiError(404, `Job ${input.jobId} not found`);
+    }
 
     const row = await prisma.projectTask.create({
       data: {
         projectId: input.projectId,
+        jobId: input.jobId ?? null,
         title: input.title,
         assignedTo: input.assignedTo,
         dueDate: input.dueDate,
@@ -46,6 +51,7 @@ export class ProjectTasksService {
     const row = await prisma.projectTask.update({
       where: { id },
       data: {
+        jobId: input.jobId !== undefined ? input.jobId : existing.jobId,
         title: input.title ?? existing.title,
         status: nextStatus,
         assignedTo: input.assignedTo !== undefined ? input.assignedTo : existing.assignedTo,
@@ -70,6 +76,7 @@ export class ProjectTasksService {
 function toDTO(row: {
   id: string;
   projectId: string;
+  jobId: string | null;
   title: string;
   status: string;
   assignedTo: string | null;
@@ -83,6 +90,7 @@ function toDTO(row: {
   return {
     id: row.id,
     projectId: row.projectId,
+    jobId: row.jobId,
     title: row.title,
     status: row.status as ProjectTaskStatus,
     assignedTo: row.assignedTo,
