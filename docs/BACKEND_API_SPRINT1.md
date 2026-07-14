@@ -13,6 +13,7 @@ Authentication:
 
 Roles:
 - `owner`
+- `admin`
 - `dispatcher`
 - `technician`
 
