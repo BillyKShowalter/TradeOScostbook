@@ -43,6 +43,7 @@ RC1 hardening.
 
 - legacy roles remain in compatibility mode
 - several lifecycle states still normalize older stored values
+- cost-item and assembly substring code search still lacks trigram indexing, so mixed name-or-code search can remain scan-heavy
 - older setup notes and deep-dive documents required archival and should stay archived
 
 ## Explicit non-goals

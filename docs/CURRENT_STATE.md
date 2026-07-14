@@ -7,6 +7,7 @@ related_code:
   - app/backend/server.ts
   - app/domain/contracts.ts
   - app/prisma/schema.prisma
+  - app/prisma/migrations/20260703090000_add_search_trgm_indexes/migration.sql
   - app/backend/routes
   - web/src/app
   - .github/workflows/verify-repository.yml
@@ -56,9 +57,18 @@ See module docs in `docs/modules/`.
 ## Known blockers and unresolved technical debt
 
 - Supplier feed connectors are not live
+- Cost-item and assembly combined name-or-code substring search can still degrade into scan-heavy plans because only `name` columns are trigram-indexed today
 - Documentation governance was missing before this branch and is being added here
 - Production deployment state and environment approvals are not inferred from code and must be verified per environment
 - Some older implementation notes and planning artifacts required archiving because they conflicted with the live repository
+
+## Recent verified infrastructure facts
+
+- migration `20260703090000_add_search_trgm_indexes` enables PostgreSQL `pg_trgm`
+- the migration adds GIN trigram indexes on `cost_items.name`, `assemblies.name`, `materials.name`, and `suppliers.name`
+- this supports the current case-insensitive substring-search behavior used by cost-item and assembly name search, and it covers representative name-search patterns for materials and future supplier search surfaces
+- RLS behavior is unchanged because the indexes only affect query planning, not tenancy enforcement
+- verification state: the migration is merged on `main`; the PR notes local migration and `EXPLAIN` verification on a throwaway Postgres 18 cluster, while the repository's own `npm run test:integration` harness was still recommended separately in that PR
 
 ## Current verification surface
 
