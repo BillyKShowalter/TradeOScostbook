@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "db:seed": "npm --prefix app run db:seed",
     "docs:check": "node scripts/docs-check.mjs",
     "docs:test": "node --test scripts/__tests__/docs-check.test.mjs"
   },
