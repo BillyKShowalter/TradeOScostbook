@@ -19,16 +19,18 @@ import { proposalsRouter } from "./routes/proposals.routes";
 import { invoicesRouter } from "./routes/invoices.routes";
 import { contractsRouter } from "./routes/contracts.routes";
 import { adminDashboardRouter } from "./routes/adminDashboard.routes";
-import { customersRouter, projectsRouter } from "./routes/projects.routes";
+import { projectsRouter } from "./routes/projects.routes";
 import { changeOrdersRouter } from "./routes/changeOrders.routes";
 import { supplierIntegrationRouter } from "./routes/supplierIntegration.routes";
 import { organizationProvisioningRouter } from "./routes/organizationProvisioning.routes";
 import { authRouter } from "./routes/auth.routes";
+import { accountRouter } from "./routes/account.routes";
 import { projectIntakeRouter } from "./routes/projectIntake.routes";
 import { knowledgeRuntimeRouter } from "./routes/knowledgeRuntime.routes";
 import { settingsRouter } from "./routes/settings.routes";
 import { brandStudioRouter } from "./routes/brandStudio.routes";
 import { intelligenceRouter } from "./routes/intelligence.routes";
+import { companyRouter, customerImportRouter, customersRouter as crmCustomersRouter, invoicePaymentsRouter, jobsRouter, notesRouter } from "./routes/crm.routes";
 
 export function createServer() {
   const app = express();
@@ -65,6 +67,7 @@ export function createServer() {
 
   // requireAuth now verifies bearer JWTs and loads org membership context.
   app.use("/api/v1", requireAuth, databaseSession);
+  app.use("/api/v1/account", accountRouter);
 
   app.use("/api/v1/cost-database", costDatabaseRouter);
   app.use("/api/v1/labor-rates", laborDatabaseRouter);
@@ -77,15 +80,20 @@ export function createServer() {
   app.use("/api/v1/proposals", proposalGeneratorRouter);
   app.use("/api/v1/proposals", proposalsRouter);
   app.use("/api/v1/invoices", invoicesRouter);
+  app.use("/api/v1/invoices", invoicePaymentsRouter);
   app.use("/api/v1/contracts", contractsRouter);
   app.use("/api/v1/admin", adminDashboardRouter);
-  app.use("/api/v1/customers", customersRouter);
+  app.use("/api/v1/customers", crmCustomersRouter);
   app.use("/api/v1/projects", projectsRouter);
+  app.use("/api/v1/jobs", jobsRouter);
+  app.use("/api/v1/notes", notesRouter);
   app.use("/api/v1/change-orders", changeOrdersRouter);
   app.use("/api/v1/supplier-integrations", supplierIntegrationRouter);
   app.use("/api/v1/project-intake", projectIntakeRouter);
   app.use("/api/v1/knowledge", knowledgeRuntimeRouter);
   app.use("/api/v1/settings", settingsRouter);
+  app.use("/api/v1/company", companyRouter);
+  app.use("/api/v1/import/customers", customerImportRouter);
   app.use("/api/v1/brand-studio", brandStudioRouter);
   app.use("/api/v1/intelligence", intelligenceRouter);
 

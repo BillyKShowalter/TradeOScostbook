@@ -7,41 +7,81 @@ import { signAuthToken } from "../../backend/auth/jwt";
 // that references both — enough to exercise the full estimate -> proposal
 // flow described in the README.
 async function main() {
-  const org = await prisma.organization.upsert({
-    where: { id: "00000000-0000-0000-0000-000000000001" },
-    update: {},
-    create: {
-      id: "00000000-0000-0000-0000-000000000001",
-      name: "Sample Contracting Co.",
-      regionCode: "US-TX-AUSTIN",
-    },
-  });
+  const organizations = await Promise.all([
+    prisma.organization.upsert({
+      where: { id: "00000000-0000-0000-0000-000000000001" },
+      update: { name: "Sample Contracting Co.", regionCode: "US-TX-AUSTIN" },
+      create: {
+        id: "00000000-0000-0000-0000-000000000001",
+        name: "Sample Contracting Co.",
+        regionCode: "US-TX-AUSTIN",
+      },
+    }),
+    prisma.organization.upsert({
+      where: { id: "00000000-0000-0000-0000-000000000002" },
+      update: { name: "Second Sample Services", regionCode: "US-IN-INDIANAPOLIS" },
+      create: {
+        id: "00000000-0000-0000-0000-000000000002",
+        name: "Second Sample Services",
+        regionCode: "US-IN-INDIANAPOLIS",
+      },
+    }),
+  ]);
+  const [org, secondOrg] = organizations;
 
-  const user = await prisma.appUser.upsert({
-    where: { authSubject: "seed-user-1" },
-    update: {},
-    create: {
-      authSubject: "seed-user-1",
-      email: "seed@example.com",
-      fullName: "Seed User",
-    },
-  });
+  const [user, secondUser] = await Promise.all([
+    prisma.appUser.upsert({
+      where: { authSubject: "seed-user-1" },
+      update: { email: "seed@example.com", fullName: "Seed User" },
+      create: {
+        authSubject: "seed-user-1",
+        email: "seed@example.com",
+        fullName: "Seed User",
+      },
+    }),
+    prisma.appUser.upsert({
+      where: { authSubject: "seed-user-2" },
+      update: { email: "seed2@example.com", fullName: "Second Seed User" },
+      create: {
+        authSubject: "seed-user-2",
+        email: "seed2@example.com",
+        fullName: "Second Seed User",
+      },
+    }),
+  ]);
 
-  await prisma.organizationMembership.upsert({
-    where: {
-      orgId_userId: {
+  await Promise.all([
+    prisma.organizationMembership.upsert({
+      where: {
+        orgId_userId: {
+          orgId: org.id,
+          userId: user.id,
+        },
+      },
+      update: { status: "active", role: "owner" },
+      create: {
         orgId: org.id,
         userId: user.id,
+        role: "owner",
+        status: "active",
       },
-    },
-    update: { status: "active", role: "owner" },
-    create: {
-      orgId: org.id,
-      userId: user.id,
-      role: "owner",
-      status: "active",
-    },
-  });
+    }),
+    prisma.organizationMembership.upsert({
+      where: {
+        orgId_userId: {
+          orgId: secondOrg.id,
+          userId: secondUser.id,
+        },
+      },
+      update: { status: "active", role: "owner" },
+      create: {
+        orgId: secondOrg.id,
+        userId: secondUser.id,
+        role: "owner",
+        status: "active",
+      },
+    }),
+  ]);
 
   const division = await prisma.division.create({
     data: { orgId: org.id, code: "02", name: "Sitework", sortOrder: 1 },
@@ -115,12 +155,33 @@ async function main() {
     data: { orgId: org.id, name: "Jane Homeowner", email: "jane@example.com" },
   });
 
+  await prisma.serviceAddress.create({
+    data: {
+      orgId: org.id,
+      customerId: customer.id,
+      label: "Primary",
+      addressLine1: "101 Main Street",
+      city: "Austin",
+      state: "TX",
+      postalCode: "78701",
+      isPrimary: true,
+    },
+  });
+
   await prisma.project.create({
     data: { orgId: org.id, customerId: customer.id, name: "Backyard Drainage Fix", status: "estimating" },
   });
 
+  await prisma.customer.create({
+    data: { orgId: secondOrg.id, name: "Bob Facility Manager", email: "bob@example.com", phone: "317-555-0100" },
+  });
+
   // eslint-disable-next-line no-console
-  console.log("Seed complete:", { orgId: org.id, userId: user.id, templateAssemblyId: drivewayBaseTemplate.id });
+  console.log("Seed complete:", {
+    organizations: [org.id, secondOrg.id],
+    users: [user.id, secondUser.id],
+    templateAssemblyId: drivewayBaseTemplate.id,
+  });
   if (process.env.AUTH_JWT_SECRET) {
     const token = signAuthToken(
       {

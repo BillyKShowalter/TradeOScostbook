@@ -36,6 +36,11 @@ const materialForSupplierQueue = "10000000-0000-0000-0000-000000000072";
 const projectA = "10000000-0000-0000-0000-000000000081";
 const projectB = "20000000-0000-0000-0000-000000000082";
 const projectTaskA = "10000000-0000-0000-0000-000000000083";
+const customerA = "10000000-0000-0000-0000-000000000084";
+const customerB = "20000000-0000-0000-0000-000000000085";
+const serviceAddressA = "10000000-0000-0000-0000-000000000086";
+const serviceAddressB = "20000000-0000-0000-0000-000000000087";
+const equipmentAssetA = "10000000-0000-0000-0000-000000000088";
 const estimateA = "10000000-0000-0000-0000-000000000091";
 const assemblyForEstimateA = "10000000-0000-0000-0000-000000000092";
 const settingsA = "10000000-0000-0000-0000-000000000093";
@@ -54,6 +59,9 @@ const tagAssignmentA = "10000000-0000-0000-0000-000000000105";
 const savedViewA = "10000000-0000-0000-0000-000000000106";
 const recentItemA = "10000000-0000-0000-0000-000000000107";
 const featureFlagA = "10000000-0000-0000-0000-000000000108";
+const serviceAgreementA = "10000000-0000-0000-0000-000000000109";
+const invoiceForPaymentA = "10000000-0000-0000-0000-000000000110";
+const paymentA = "10000000-0000-0000-0000-000000000111";
 
 describe("live organization row-level security", () => {
   beforeAll(async () => {
@@ -120,10 +128,54 @@ describe("live organization row-level security", () => {
         afterState: { membershipId: viewerMembership, role: "viewer", status: "active" },
       },
     });
+    await adminClient.customer.createMany({
+      data: [
+        { id: customerA, orgId: orgA, name: "Org A Customer", email: "orga@example.com" },
+        { id: customerB, orgId: orgB, name: "Org B Customer", email: "orgb@example.com" },
+      ],
+    });
+    await adminClient.serviceAddress.createMany({
+      data: [
+        {
+          id: serviceAddressA,
+          orgId: orgA,
+          customerId: customerA,
+          label: "Primary",
+          addressLine1: "101 Org A Street",
+          city: "Indianapolis",
+          state: "IN",
+          postalCode: "46201",
+          isPrimary: true,
+        },
+        {
+          id: serviceAddressB,
+          orgId: orgB,
+          customerId: customerB,
+          label: "Primary",
+          addressLine1: "202 Org B Street",
+          city: "Columbus",
+          state: "OH",
+          postalCode: "43004",
+          isPrimary: true,
+        },
+      ],
+    });
+    await adminClient.customerEquipment.create({
+      data: {
+        id: equipmentAssetA,
+        orgId: orgA,
+        customerId: customerA,
+        serviceAddressId: serviceAddressA,
+        name: "Furnace",
+        manufacturer: "Carrier",
+        model: "X100",
+        status: "active",
+      },
+    });
     await adminClient.project.createMany({
       data: [
-        { id: projectA, orgId: orgA, name: "Org A Project" },
-        { id: projectB, orgId: orgB, name: "Org B Project" },
+        { id: projectA, orgId: orgA, customerId: customerA, name: "Org A Project" },
+        { id: projectB, orgId: orgB, customerId: customerB, name: "Org B Project" },
       ],
     });
     await adminClient.projectTask.create({
@@ -148,6 +200,19 @@ describe("live organization row-level security", () => {
         },
         subtotalCost: 200,
         totalPrice: 200,
+      },
+    });
+    await adminClient.serviceAgreement.create({
+      data: {
+        id: serviceAgreementA,
+        orgId: orgA,
+        customerId: customerA,
+        serviceAddressId: serviceAddressA,
+        projectId: projectA,
+        name: "Preventative Maintenance",
+        status: "active",
+        billingCadence: "monthly",
+        amount: 99,
       },
     });
     await adminClient.organizationSettings.createMany({
@@ -305,6 +370,28 @@ describe("live organization row-level security", () => {
         scopeKey: orgA,
       },
     });
+    await adminClient.invoice.create({
+      data: {
+        id: invoiceForPaymentA,
+        projectId: projectA,
+        estimateId: estimateA,
+        invoiceNumber: 99,
+        type: "full",
+        status: "sent",
+        amount: 150,
+      },
+    });
+    await adminClient.payment.create({
+      data: {
+        id: paymentA,
+        orgId: orgA,
+        invoiceId: invoiceForPaymentA,
+        amount: 150,
+        paymentDate: new Date("2026-07-01T00:00:00.000Z"),
+        method: "card",
+        status: "recorded",
+      },
+    });
   });
 
   afterAll(async () => {
@@ -422,6 +509,67 @@ describe("live organization row-level security", () => {
             title: "Viewer blocked task",
             status: "todo",
             priority: "low",
+          },
+        })
+      )
+    ).rejects.toThrow();
+  });
+
+  it("enforces crm foundation tenant boundaries for service addresses, customer equipment, agreements, payments, and notes", async () => {
+    const visibleAddress = await inSession(adminUser, orgA, "admin", async () =>
+      currentTransaction().serviceAddress.findUnique({ where: { id: serviceAddressA } })
+    );
+    expect(visibleAddress?.customerId).toBe(customerA);
+
+    const hiddenAddress = await inSession(otherUser, orgB, "owner", async () =>
+      currentTransaction().serviceAddress.findUnique({ where: { id: serviceAddressA } })
+    );
+    expect(hiddenAddress).toBeNull();
+
+    const visibleEquipment = await inSession(adminUser, orgA, "admin", async () =>
+      currentTransaction().customerEquipment.findUnique({ where: { id: equipmentAssetA } })
+    );
+    expect(visibleEquipment?.serviceAddressId).toBe(serviceAddressA);
+
+    const visibleAgreement = await inSession(adminUser, orgA, "admin", async () =>
+      currentTransaction().serviceAgreement.findUnique({ where: { id: serviceAgreementA } })
+    );
+    expect(visibleAgreement?.projectId).toBe(projectA);
+
+    const visiblePayment = await inSession(adminUser, orgA, "admin", async () =>
+      currentTransaction().payment.findUnique({ where: { id: paymentA } })
+    );
+    expect(visiblePayment?.invoiceId).toBe(invoiceForPaymentA);
+
+    const hiddenPayment = await inSession(otherUser, orgB, "owner", async () =>
+      currentTransaction().payment.findUnique({ where: { id: paymentA } })
+    );
+    expect(hiddenPayment).toBeNull();
+
+    await expect(
+      inSession(viewerUser, orgA, "viewer", async () =>
+        currentTransaction().serviceAddress.create({
+          data: {
+            orgId: orgA,
+            customerId: customerA,
+            addressLine1: "Viewer blocked",
+            city: "Indianapolis",
+            state: "IN",
+            postalCode: "46201",
+          },
+        })
+      )
+    ).rejects.toThrow();
+
+    await expect(
+      inSession(adminUser, orgA, "admin", async () =>
+        currentTransaction().payment.create({
+          data: {
+            orgId: orgB,
+            invoiceId: invoiceForPaymentA,
+            amount: 10,
+            paymentDate: new Date(),
+            method: "cash",
           },
         })
       )

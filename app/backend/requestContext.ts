@@ -17,8 +17,16 @@ export function requireOrgId(req: Request): string {
 
 export function requireOrgAdmin(req: Request): AuthContext {
   const auth = requireAuthContext(req);
-  if (!["owner", "admin"].includes(auth.role)) {
+  if (!["owner", "admin", "dispatcher"].includes(auth.role)) {
     throw new ApiError(403, "Admin access required");
+  }
+  return auth;
+}
+
+export function requireRoles(req: Request, allowedRoles: string[]): AuthContext {
+  const auth = requireAuthContext(req);
+  if (!allowedRoles.includes(auth.role)) {
+    throw new ApiError(403, "You do not have permission to perform this action");
   }
   return auth;
 }

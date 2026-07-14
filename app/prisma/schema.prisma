@@ -39,8 +39,12 @@ model Organization {
   costItems      CostItem[]
   assemblies     Assembly[]
   customers      Customer[]
+  serviceAddresses ServiceAddress[]
+  customerEquipment CustomerEquipment[]
   projects       Project[]
   estimates      Estimate[]
+  serviceAgreements ServiceAgreement[]
+  payments       Payment[]
   settings       OrganizationSettings?
   brandProfile   BrandProfile?
   brandAssets    BrandAsset[]
@@ -54,6 +58,8 @@ model Organization {
   savedViews     SavedView[]
   recentItems    RecentItem[]
   featureFlags   FeatureFlag[]
+  invites        OrganizationInvite[]
+  refreshTokens  AuthRefreshToken[]
 
   @@map("organizations")
 }
@@ -178,6 +184,10 @@ model AppUser {
   savedViews    SavedView[]
   recentItems   RecentItem[]
   tagAssignments TagAssignment[]
+  passwordResetTokens PasswordResetToken[]
+  refreshTokens AuthRefreshToken[]
+  totpCredential UserTotpCredential?
+  sentInvites   OrganizationInvite[] @relation("InviteSender")
 
   @@map("users")
 }
@@ -516,8 +526,61 @@ model Customer {
 
   organization Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
   projects     Project[]
+  serviceAddresses ServiceAddress[]
+  equipmentAssets CustomerEquipment[]
+  serviceAgreements ServiceAgreement[]
 
   @@map("customers")
+}
+
+model ServiceAddress {
+  id           String    @id @default(uuid())
+  orgId        String    @map("org_id")
+  customerId   String    @map("customer_id")
+  label        String?
+  addressLine1 String    @map("address_line_1")
+  addressLine2 String?   @map("address_line_2")
+  city         String
+  state        String
+  postalCode   String    @map("postal_code")
+  country      String?   @default("US")
+  isPrimary    Boolean   @default(false) @map("is_primary")
+  deletedAt    DateTime? @map("deleted_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  organization Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  customer     Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  equipmentAssets CustomerEquipment[]
+  serviceAgreements ServiceAgreement[]
+
+  @@index([orgId, customerId])
+  @@map("service_addresses")
+}
+
+model CustomerEquipment {
+  id               String    @id @default(uuid())
+  orgId            String    @map("org_id")
+  customerId       String    @map("customer_id")
+  serviceAddressId String?   @map("service_address_id")
+  name             String
+  manufacturer     String?
+  model            String?
+  serialNumber     String?   @map("serial_number")
+  installedAt      DateTime? @map("installed_at")
+  status           String    @default("active")
+  notes            String?
+  deletedAt        DateTime? @map("deleted_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  organization   Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  customer       Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  serviceAddress ServiceAddress? @relation(fields: [serviceAddressId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, customerId])
+  @@index([serviceAddressId])
+  @@map("customer_equipment")
 }
 
 model Project {
@@ -544,6 +607,7 @@ model Project {
   siteVisits   SiteVisit[]
   projectFiles ProjectFile[]
   tasks        ProjectTask[]
+  serviceAgreements ServiceAgreement[]
 
   @@index([orgId])
   @@index([customerId])
@@ -743,11 +807,125 @@ model Invoice {
   estimate  Estimate?         @relation(fields: [estimateId], references: [id], onDelete: SetNull)
   proposal  Proposal?         @relation(fields: [proposalId], references: [id], onDelete: SetNull)
   lineItems InvoiceLineItem[]
+  payments  Payment[]
 
   @@unique([projectId, invoiceNumber])
   @@index([estimateId])
   @@index([proposalId])
   @@map("invoices")
+}
+
+model Payment {
+  id             String    @id @default(uuid())
+  orgId          String    @map("org_id")
+  invoiceId      String    @map("invoice_id")
+  amount         Decimal   @db.Decimal(14, 2)
+  paymentDate    DateTime  @map("payment_date")
+  method         String
+  status         String    @default("recorded")
+  reference      String?
+  notes          String?
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  invoice      Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, invoiceId])
+  @@map("payments")
+}
+
+model ServiceAgreement {
+  id               String    @id @default(uuid())
+  orgId            String    @map("org_id")
+  customerId       String    @map("customer_id")
+  serviceAddressId String?   @map("service_address_id")
+  projectId        String?   @map("project_id")
+  name             String
+  status           String    @default("draft")
+  startDate        DateTime? @map("start_date")
+  endDate          DateTime? @map("end_date")
+  billingCadence   String?   @map("billing_cadence")
+  amount           Decimal?  @db.Decimal(14, 2)
+  terms            String?
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  organization   Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  customer       Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  serviceAddress ServiceAddress? @relation(fields: [serviceAddressId], references: [id], onDelete: SetNull)
+  project        Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, customerId])
+  @@index([projectId])
+  @@map("service_agreements")
+}
+
+model OrganizationInvite {
+  id              String    @id @default(uuid())
+  orgId           String    @map("org_id")
+  email           String
+  role            String
+  tokenHash       String    @unique @map("token_hash")
+  invitedByUserId String    @map("invited_by_user_id")
+  expiresAt       DateTime  @map("expires_at")
+  acceptedAt      DateTime? @map("accepted_at")
+  status          String    @default("pending")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  invitedBy    AppUser      @relation("InviteSender", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, email, status])
+  @@map("organization_invites")
+}
+
+model AuthRefreshToken {
+  id             String    @id @default(uuid())
+  orgId          String    @map("org_id")
+  userId         String    @map("user_id")
+  membershipId   String    @map("membership_id")
+  tokenHash      String    @unique @map("token_hash")
+  expiresAt      DateTime  @map("expires_at")
+  lastUsedAt     DateTime? @map("last_used_at")
+  revokedAt      DateTime? @map("revoked_at")
+  replacedById   String?   @map("replaced_by_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user         AppUser      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, orgId])
+  @@index([membershipId])
+  @@map("auth_refresh_tokens")
+}
+
+model PasswordResetToken {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at")
+  consumedAt DateTime? @map("consumed_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user AppUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("password_reset_tokens")
+}
+
+model UserTotpCredential {
+  id              String    @id @default(uuid())
+  userId          String    @unique @map("user_id")
+  secretEncrypted String    @map("secret_encrypted")
+  enabledAt       DateTime? @map("enabled_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  user AppUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_totp_credentials")
 }
 
 model InvoiceLineItem {
