@@ -4,6 +4,7 @@ import {
   runWithBackgroundDatabaseSession,
   runWithDatabaseSession,
 } from "../db/requestSession";
+import type { SupportedRole } from "../domain";
 import { OrganizationProvisioningService } from "../modules/organization-provisioning/service";
 import { MaterialDatabaseService } from "../modules/material-database/service";
 import { SupplierIntegrationService } from "../modules/supplier-integration/service";
@@ -1058,7 +1059,7 @@ describe("live organization row-level security", () => {
   });
 });
 
-function inSession<T>(userId: string, orgId: string, role: string, operation: () => Promise<T>): Promise<T> {
+function inSession<T>(userId: string, orgId: string, role: SupportedRole, operation: () => Promise<T>): Promise<T> {
   return runWithDatabaseSession(appClient, { userId, orgId, role }, operation, "integration-test");
 }
 

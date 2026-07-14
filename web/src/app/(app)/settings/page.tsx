@@ -21,7 +21,7 @@ export default async function SettingsPage() {
     <SettingsConsole
       initialDraft={mergeTradeOsSettingsDraft(persisted?.settings)}
       initialWorkspaceData={{
-        currentRole: persisted?.currentRole ?? "viewer",
+        currentRole: persisted?.currentRole ?? "technician",
         canManageWorkspace: persisted?.canManageWorkspace ?? false,
         teamMembers: persisted?.teamMembers ?? [],
         roleProfiles: persisted?.roleProfiles ?? [],

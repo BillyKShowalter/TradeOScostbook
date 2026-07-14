@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../db/client";
 import { ApiError } from "../../backend/middleware/errorHandler";
 import { OrganizationSettingsDTO, OrganizationSettingsSnapshot, SettingsRoleProfileDTO, SettingsTeamMemberDTO, UpdateOrganizationSettingsInput } from "./types";
+import { canonicalRoles, isLegacyRole, normalizeRole } from "../../domain";
 
 export class OrganizationSettingsService {
   private readonly adminDashboard = new AdminDashboardService();
@@ -34,7 +35,7 @@ export class OrganizationSettingsService {
     return {
       orgId,
       updatedAt: row?.updatedAt ?? null,
-      currentRole: auth.role,
+      currentRole: normalizeRole(auth.role),
       canManageWorkspace,
       teamMembers,
       roleProfiles,
@@ -80,7 +81,7 @@ export class OrganizationSettingsService {
     return {
       orgId,
       updatedAt: row.updatedAt,
-      currentRole: auth.role,
+      currentRole: normalizeRole(auth.role),
       canManageWorkspace: auth.role === "owner" || auth.role === "admin",
       teamMembers,
       roleProfiles: buildRoleProfiles(teamMembers),
@@ -138,23 +139,38 @@ function buildRoleProfiles(teamMembers: SettingsTeamMemberDTO[]): SettingsRolePr
       description: "Operations and team administration without ownership transfer rights.",
       status: "system",
     },
-    estimator: {
-      title: "Estimator",
-      description: "Estimating, intake, proposal drafting, and pricing execution.",
+    dispatcher: {
+      title: "Dispatcher",
+      description: "Customer operations, intake coordination, scheduling prep, and billing support.",
       status: "system",
     },
-    viewer: {
-      title: "Viewer",
-      description: "Read-only visibility for leadership, finance, or external stakeholders.",
+    technician: {
+      title: "Technician",
+      description: "Field delivery, job notes, and read access to assigned customer and project context.",
       status: "system",
     },
   };
 
-  return Object.entries(roleMeta).map(([role, meta]) => ({
+  const profiles = canonicalRoles.map((role) => ({
     role,
-    title: meta.title,
-    description: meta.description,
-    memberCount: teamMembers.filter((member) => member.role === role && member.status === "active").length,
-    status: meta.status,
+    title: roleMeta[role].title,
+    description: roleMeta[role].description,
+    memberCount: teamMembers.filter((member) => normalizeRole(member.role) === role && member.status === "active").length,
+    status: roleMeta[role].status,
   }));
+
+  const legacyRoles = Array.from(
+    new Set(teamMembers.map((member) => member.role).filter((role) => isLegacyRole(role)))
+  );
+
+  return [
+    ...profiles,
+    ...legacyRoles.map((role) => ({
+      role,
+      title: `${role[0].toUpperCase()}${role.slice(1)} (Legacy)`,
+      description: `Deprecated compatibility role. Canonical beta role: ${normalizeRole(role)}.`,
+      memberCount: teamMembers.filter((member) => member.role === role && member.status === "active").length,
+      status: "system" as const,
+    })),
+  ];
 }

@@ -1,6 +1,7 @@
 import { prisma } from "../../db/client";
 import { ApiError } from "../../backend/middleware/errorHandler";
 import { CostDatabaseService } from "../cost-database/service";
+import { canTransitionChangeOrderStatus } from "../../domain";
 import {
   AddChangeOrderLineItemInput,
   ChangeOrderDTO,
@@ -126,7 +127,10 @@ export class ChangeOrdersService {
   }
 
   async approve(changeOrderId: string, orgId?: string): Promise<ChangeOrderDTO> {
-    await this.assertExists(changeOrderId, orgId);
+    const changeOrder = await this.assertExists(changeOrderId, orgId);
+    if (!canTransitionChangeOrderStatus(changeOrder.status, "approved")) {
+      throw new ApiError(409, `ChangeOrder ${changeOrderId} cannot be approved from status ${changeOrder.status}`);
+    }
     await this.recalculate(changeOrderId, orgId);
     const row = await prisma.changeOrder.update({
       where: { id: changeOrderId },
@@ -136,7 +140,10 @@ export class ChangeOrdersService {
   }
 
   async reject(changeOrderId: string, orgId?: string): Promise<ChangeOrderDTO> {
-    await this.assertExists(changeOrderId, orgId);
+    const changeOrder = await this.assertExists(changeOrderId, orgId);
+    if (!canTransitionChangeOrderStatus(changeOrder.status, "rejected")) {
+      throw new ApiError(409, `ChangeOrder ${changeOrderId} cannot be rejected from status ${changeOrder.status}`);
+    }
     const row = await prisma.changeOrder.update({
       where: { id: changeOrderId },
       data: { status: "rejected", rejectedAt: new Date(), approvedAt: null },
@@ -152,9 +159,10 @@ export class ChangeOrdersService {
     return toDTO(updated);
   }
 
-  private async assertExists(id: string, orgId?: string): Promise<void> {
+  private async assertExists(id: string, orgId?: string): Promise<{ status: "draft" | "approved" | "rejected" }> {
     const row = await prisma.changeOrder.findFirst({ where: { id, project: orgId ? { orgId } : undefined } });
     if (!row) throw new ApiError(404, `ChangeOrder ${id} not found`);
+    return { status: row.status as "draft" | "approved" | "rejected" };
   }
 
   private async assertDraft(id: string, orgId?: string): Promise<{ id: string; description: string }> {

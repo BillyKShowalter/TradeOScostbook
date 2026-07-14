@@ -3,6 +3,10 @@ import { customersController, projectFilesController, projectsController, siteVi
 import { projectTasksController } from "../controllers/projectTasks.controller";
 import { asyncHandler } from "../middleware/asyncHandler";
 
+// Deprecated compatibility surface only.
+// The mounted customer CRM API lives in crm.routes.ts and is the canonical
+// backend surface for /api/v1/customers. Keep this router unmounted until the
+// legacy controller code is removed in a dedicated cleanup sprint.
 export const customersRouter = Router();
 customersRouter.get("/", asyncHandler(customersController.list));
 customersRouter.post("/", asyncHandler(customersController.create));

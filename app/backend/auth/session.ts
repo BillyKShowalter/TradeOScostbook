@@ -3,6 +3,7 @@ import { basePrisma } from "../../db/client";
 import { AuthContext } from "./context";
 import { AuthClaims } from "./jwt";
 import { ApiError } from "../middleware/errorHandler";
+import { normalizeRole, SupportedRole } from "../../domain";
 
 export async function resolveAuthContext(claims: AuthClaims): Promise<AuthContext> {
   return basePrisma.$transaction(async (transaction) => {
@@ -36,7 +37,8 @@ export async function resolveAuthContext(claims: AuthClaims): Promise<AuthContex
     return {
       userId: user.id,
       orgId: membership.orgId,
-      role: membership.role,
+      role: membership.role as SupportedRole,
+      canonicalRole: normalizeRole(membership.role),
       email: user.email,
     };
   });

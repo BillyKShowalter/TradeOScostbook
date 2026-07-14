@@ -7,12 +7,20 @@ import { requireAuthContext, requireOrgId } from "../requestContext";
 import { toEstimateDTO } from "../../modules/estimate-engine/service";
 import { ActivityTimelineService } from "../../modules/intelligence/service";
 import { buildProjectIntake } from "../../modules/project-intake/service";
+import { canTransitionProjectStatus, normalizeProjectStatus, projectStatuses, siteVisitVoiceNoteStatuses } from "../../domain";
 
 // Lightweight CRUD for customers/projects. Not one of the 8 specified core
 // modules — this is plumbing required so the Estimate Engine has a projectId
 // to attach to, since estimates.project_id is not-null in the schema.
 
 const activityService = new ActivityTimelineService();
+
+function toProjectDTO<T extends { status: string }>(project: T): T & { status: ReturnType<typeof normalizeProjectStatus> } {
+  return {
+    ...project,
+    status: normalizeProjectStatus(project.status),
+  };
+}
 
 const customerSchema = z.object({
   orgId: z.string().uuid().optional(),
@@ -60,7 +68,7 @@ const siteVisitDetailsSchema = z.object({
   materialsNeeded: z.array(z.string().trim().min(1)).optional(),
   safetyNotes: z.array(z.string().trim().min(1)).optional(),
   punchList: z.array(z.string().trim().min(1)).optional(),
-  voiceNoteStatus: z.enum(["not_recorded", "captured_later"]).optional(),
+  voiceNoteStatus: z.enum(siteVisitVoiceNoteStatuses).optional(),
 });
 
 const siteVisitSchema = z.object({
@@ -140,7 +148,8 @@ export const customersController = {
 
 export const projectsController = {
   async list(req: Request, res: Response) {
-    res.json(await prisma.project.findMany({ where: { orgId: requireOrgId(req) }, orderBy: { createdAt: "desc" } }));
+    const rows = await prisma.project.findMany({ where: { orgId: requireOrgId(req) }, orderBy: { createdAt: "desc" } });
+    res.json(rows.map((row) => toProjectDTO(row)));
   },
   async create(req: Request, res: Response) {
     const auth = requireAuthContext(req);
@@ -153,7 +162,7 @@ export const projectsController = {
       title: `Project created: ${project.name}`,
       actorUserId: auth.userId,
     });
-    res.status(201).json(project);
+    res.status(201).json(toProjectDTO(project));
   },
   async getById(req: Request, res: Response) {
     const row = await prisma.project.findFirst({
@@ -182,7 +191,7 @@ export const projectsController = {
     // normalize through the same DTO mapper the estimate-engine module uses so
     // every consumer of "an estimate" sees the same numeric shape.
     res.json({
-      ...row,
+      ...toProjectDTO(row),
       title: row.name,
       projectAddress: row.siteAddress,
       estimates: row.estimates.map(toEstimateDTO),
@@ -230,35 +239,15 @@ export const projectsController = {
   async updateStatus(req: Request, res: Response) {
     const auth = requireAuthContext(req);
     const schema = z.object({
-      status: z.enum([
-        "lead",
-        "opportunity",
-        "estimate",
-        "proposal",
-        "contract",
-        "active_job",
-        "field_execution",
-        "change_orders",
-        "closeout",
-        "warranty",
-        "archived",
-        "site_visit",
-        "proposal_draft",
-        "proposal_sent",
-        "accepted",
-        "in_production",
-        "completed",
-        "lost",
-        "estimating",
-        "proposed",
-        "won",
-        "active",
-        "complete",
-      ]),
+      status: z.enum(projectStatuses),
     });
     const { status } = schema.parse(req.body);
     const existing = await prisma.project.findFirst({ where: { id: req.params.id, orgId: requireOrgId(req) } });
     if (!existing) throw new ApiError(404, `Project ${req.params.id} not found`);
+    const currentStatus = normalizeProjectStatus(existing.status);
+    if (!canTransitionProjectStatus(currentStatus, status)) {
+      throw new ApiError(409, `Project ${req.params.id} cannot transition from ${currentStatus} to ${status}`);
+    }
     const project = await prisma.project.update({ where: { id: req.params.id }, data: { status } });
     await activityService.record({
       orgId: requireOrgId(req),
@@ -269,7 +258,7 @@ export const projectsController = {
       actorUserId: auth.userId,
       metadata: { previousStatus: existing.status, nextStatus: status },
     });
-    res.json(project);
+    res.json(toProjectDTO(project));
   },
 };
 
@@ -313,9 +302,9 @@ export const siteVisitsController = {
     });
 
     if (!project.jobType && intakeResult.trade) {
-      await prisma.project.update({ where: { id: project.id }, data: { jobType: intakeResult.trade, status: "site_visit" } });
-    } else if (project.status === "lead") {
-      await prisma.project.update({ where: { id: project.id }, data: { status: "site_visit" } });
+      await prisma.project.update({ where: { id: project.id }, data: { jobType: intakeResult.trade, status: "estimating" } });
+    } else if (normalizeProjectStatus(project.status) === "lead") {
+      await prisma.project.update({ where: { id: project.id }, data: { status: "estimating" } });
     }
 
     await activityService.record({

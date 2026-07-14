@@ -35,6 +35,7 @@ import {
   UpdateSavedViewInput,
   UpsertFeatureFlagInput,
 } from "./types";
+import { normalizeActivityEventType } from "../../domain";
 
 const DEFAULT_LIMIT = 8;
 const DEFAULT_ACTIVITY_LIMIT = 40;
@@ -329,7 +330,7 @@ export class ActivityTimelineService {
         orgId: input.orgId,
         entityType: input.entityType,
         entityId: input.entityId,
-        eventType: input.eventType,
+        eventType: normalizeActivityEventType(input.eventType),
         title: input.title,
         description: input.description,
         actorUserId: input.actorUserId,

@@ -76,7 +76,7 @@ export function ProposalLifecyclePanel({ projectId, proposal }: ProposalLifecycl
             <form action={rejectFormAction} className="space-y-3">
               <HiddenFields projectId={projectId} proposalId={proposal.id} />
               <Button type="submit" variant="outline" className="w-full" disabled={isPending}>
-                {rejectPending ? "Saving…" : "Mark rejected"}
+                {rejectPending ? "Saving…" : "Mark declined"}
               </Button>
               {rejectState?.error && <p className="text-sm text-destructive">{rejectState.error}</p>}
             </form>

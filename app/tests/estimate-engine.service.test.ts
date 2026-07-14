@@ -157,7 +157,7 @@ describe("EstimateEngineService", () => {
         orgId: "org-1",
         projectId: "project-1",
         version: 1,
-        status: "sent",
+        status: "ready",
         overheadPct: 10,
         profitPct: 20,
         targetMarginPct: null,
@@ -168,11 +168,11 @@ describe("EstimateEngineService", () => {
     const service = new EstimateEngineService();
     const estimate = await service.finalize("estimate-1", "org-1");
 
-    expect(estimate.status).toBe("sent");
+    expect(estimate.status).toBe("ready");
     expect(mockPrisma.estimate.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "estimate-1" },
-        data: { status: "sent" },
+        data: { status: "ready" },
       })
     );
   });
@@ -269,4 +269,3 @@ describe("EstimateEngineService", () => {
     expect(duplicate.lineItems).toHaveLength(1);
   });
 });
-
