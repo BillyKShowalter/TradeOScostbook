@@ -78,6 +78,7 @@ The repository currently supports:
 - customers
 - projects
 - site visit intake
+- jobs and scheduling
 - estimate creation, duplication, comparison, and AI assist
 - proposals
 - contracts

@@ -135,7 +135,7 @@ The intended direction is:
 
 The following remain intentionally out of scope unless priorities change:
 
-- scheduling and dispatch
+- advanced dispatch optimization and route planning
 - payroll or accounting integrations
 - inventory systems
 - broad architecture rewrites
