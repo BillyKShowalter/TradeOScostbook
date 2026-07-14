@@ -20,9 +20,13 @@ Use them only to:
 Required checks:
 
 - verify exact path, branch, status, upstream, and worktree list
+- fetch origin before trusting the upstream comparison
+- read `docs/ENGINEERING_COMMAND_CENTER.md` and `docs/SESSION_HANDOFF.md` before deciding whether recovery is still needed
 - define the narrow recovery scope and explicit stop conditions
+- define explicit exclusions so recovery work does not turn into feature work
 - do not broaden recovery work into feature delivery without a fresh task boundary
-- report exact Git status and PR readiness before handing the branch back
+- refresh `docs/SESSION_HANDOFF.md` if the recovery session materially changes branch state
+- report exact final `git status --short --branch` and PR readiness before handing the branch back
 
 Policy:
 

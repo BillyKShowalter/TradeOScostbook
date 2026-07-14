@@ -6,6 +6,7 @@ source_of_truth: true
 related_code:
   - AGENTS.md
   - README.md
+  - docs/REPOSITORY_GOVERNANCE.md
   - app/backend/server.ts
   - app/domain/contracts.ts
   - app/prisma/schema.prisma
@@ -20,7 +21,9 @@ This directory is the documentation entry point for implementation truth in Trad
 
 Use these files first:
 
+- `docs/ENGINEERING_COMMAND_CENTER.md` for the current engineering mission, verified priorities, and startup/completion protocol
 - `docs/CURRENT_STATE.md` for verified implementation status
+- `docs/SESSION_HANDOFF.md` for the latest completed-session context and next exact task
 - `docs/PRODUCT_SCOPE.md` for product boundaries and non-goals
 - `docs/ARCHITECTURE.md` for repository and tenancy architecture
 - `docs/DOMAIN_MODEL.md` for canonical entity definitions and relationships
@@ -28,6 +31,7 @@ Use these files first:
 - `docs/RBAC_MATRIX.md` for canonical roles and permission expectations
 - `docs/WORKFLOW_LIFECYCLES.md` for status vocabulary and transition rules
 - `docs/ROADMAP.md` for future work only
+- `docs/REPOSITORY_GOVERNANCE.md` for protected-branch policy, required checks, and worktree lifecycle
 - `docs/DOC_OWNERSHIP.yml` for required documentation updates by code path
 
 ## Current versus archived
@@ -52,6 +56,8 @@ If a file is not in the authoritative list above, treat it as supporting materia
 Global source-of-truth files define shared rules.
 
 - `CURRENT_STATE.md` answers what exists now
+- `ENGINEERING_COMMAND_CENTER.md` answers where engineering should start right now
+- `SESSION_HANDOFF.md` answers what the last completed session did and what should happen next
 - `PRODUCT_SCOPE.md` answers what TradeOS is and is not trying to do
 - `ARCHITECTURE.md` answers how the system is structured
 - `DOMAIN_MODEL.md` answers what entities mean
@@ -59,6 +65,7 @@ Global source-of-truth files define shared rules.
 - `RBAC_MATRIX.md` answers who can do what
 - `WORKFLOW_LIFECYCLES.md` answers how statuses move
 - `ROADMAP.md` answers what is next
+- `REPOSITORY_GOVERNANCE.md` answers how repository work must be isolated, verified, reviewed, and merged
 
 Module docs under `docs/modules/` inherit those shared rules and should not redefine them. Module docs should link back to the global file instead of copying role or lifecycle rules.
 
@@ -114,6 +121,8 @@ Rename handling:
 ## Source-of-truth files
 
 - [CURRENT_STATE.md](CURRENT_STATE.md)
+- [ENGINEERING_COMMAND_CENTER.md](ENGINEERING_COMMAND_CENTER.md)
+- [SESSION_HANDOFF.md](SESSION_HANDOFF.md)
 - [PRODUCT_SCOPE.md](PRODUCT_SCOPE.md)
 - [ARCHITECTURE.md](ARCHITECTURE.md)
 - [DOMAIN_MODEL.md](DOMAIN_MODEL.md)
@@ -121,6 +130,7 @@ Rename handling:
 - [RBAC_MATRIX.md](RBAC_MATRIX.md)
 - [WORKFLOW_LIFECYCLES.md](WORKFLOW_LIFECYCLES.md)
 - [ROADMAP.md](ROADMAP.md)
+- [REPOSITORY_GOVERNANCE.md](REPOSITORY_GOVERNANCE.md)
 - [DOC_OWNERSHIP.yml](DOC_OWNERSHIP.yml)
 - [modules/](modules/)
 - [decisions/](decisions/)

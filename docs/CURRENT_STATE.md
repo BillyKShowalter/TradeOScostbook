@@ -35,7 +35,7 @@ The repository is no longer organized around MVP planning documents. The active 
 - Contracts
 - Invoices and payment recording
 - Change orders
-- Jobs and scheduling
+- Jobs and scheduling: job creation, assignment, scheduling, rescheduling, dispatcher coordination, and field-status workflows
 - Project tasks
 - Activity, notifications, recents, saved views, feature flags, and search-oriented intelligence primitives
 - Brand Studio

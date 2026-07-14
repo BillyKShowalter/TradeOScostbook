@@ -15,7 +15,7 @@ related_code:
 
 ## Purpose
 
-Own the project workspace, project detail route, files, site visits, and project tasks that tie the commercial and field workflows together.
+Own the project workspace, project detail route, files, site visits, project tasks, and project-linked job coordination that tie the commercial and field workflows together.
 
 ## Source code locations
 
@@ -31,6 +31,11 @@ Own the project workspace, project detail route, files, site visits, and project
 - `ProjectFile`
 - `SiteVisit`
 - `ProjectTask`
+
+Operational relationship:
+
+- projects are the workspace hub
+- jobs remain separate first-class execution records linked to projects, customers, and service addresses
 
 ## Routes
 
@@ -53,6 +58,8 @@ See [WORKFLOW_LIFECYCLES.md](../WORKFLOW_LIFECYCLES.md).
 - `/projects/new`
 - `/projects/[id]`
 - `/projects/[id]/intake`
+
+Project workspace surfaces also expose the current job and field-coordination workflow for the linked project.
 
 ## Tests
 

@@ -186,13 +186,17 @@ rules:
       - .github/workflows/**
     requires:
       - docs/README.md
+      - docs/REPOSITORY_GOVERNANCE.md
+      - docs/ENGINEERING_COMMAND_CENTER.md
     explanation: Workflow changes that affect documentation governance must update the docs entrypoint when behavior changes.
 
   - paths:
       - .github/pull_request_template.md
     requires:
       - docs/README.md
-    explanation: PR template changes affect contributor documentation workflow and should update the docs entrypoint.
+      - docs/REPOSITORY_GOVERNANCE.md
+      - docs/ENGINEERING_COMMAND_CENTER.md
+    explanation: PR template changes affect contributor startup and completion workflow and should stay aligned with the docs entrypoint, governance policy, and command-center operating rules.
 
   - paths:
       - scripts/docs-check*.mjs
@@ -200,7 +204,33 @@ rules:
     requires:
       - docs/README.md
       - docs/DOC_OWNERSHIP.yml
-    explanation: Docs-checker script changes must stay aligned with the documented ownership format and entrypoint.
+      - docs/ENGINEERING_COMMAND_CENTER.md
+    explanation: Docs-checker changes must stay aligned with the ownership rules, the docs entrypoint, and the current source-of-truth operating model.
+
+  - paths:
+      - AGENTS.md
+      - README.md
+      - docs/agent-prompts/**
+      - docs/decisions/ADR-004-worktree-policy.md
+    requires:
+      - docs/REPOSITORY_GOVERNANCE.md
+      - docs/ENGINEERING_COMMAND_CENTER.md
+    explanation: Worktree contracts, repository workflow guidance, and top-level contributor instructions must stay aligned with repository governance and the current engineering startup protocol.
+
+  - paths:
+      - docs/ROADMAP.md
+    requires:
+      - docs/ENGINEERING_COMMAND_CENTER.md
+    explanation: Milestone and roadmap changes must update the shared engineering mission summary.
+
+  - paths:
+      - docs/README.md
+      - docs/DOC_OWNERSHIP.yml
+    requires:
+      - docs/README.md
+      - docs/ENGINEERING_COMMAND_CENTER.md
+      - docs/REPOSITORY_GOVERNANCE.md
+    explanation: Source-of-truth hierarchy and operating-system documentation changes must keep the docs entrypoint, command center, and governance policy aligned.
 
 exemptions:
   - paths:

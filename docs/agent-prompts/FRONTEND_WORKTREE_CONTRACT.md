@@ -16,10 +16,13 @@ Use one linked worktree for one frontend task.
 Before editing:
 
 - verify path, branch, status, upstream, and worktree list
+- fetch origin before trusting the upstream comparison
+- read `docs/ENGINEERING_COMMAND_CENTER.md` and `docs/SESSION_HANDOFF.md`
 - confirm allowed frontend paths
 - confirm forbidden backend, schema, and migration paths
 - identify whether the change affects module docs, current state, API reference, RBAC, or lifecycle docs
 - record exact task scope and stop conditions
+- record explicit exclusions
 
 Required startup checks:
 
@@ -33,7 +36,9 @@ Required startup checks:
 
 Required completion checks:
 
-- report exact Git status
+- refresh `docs/SESSION_HANDOFF.md` for substantive or PR-ready work
+- update `docs/ENGINEERING_COMMAND_CENTER.md` only if operating context changed
+- report exact final `git status --short --branch`
 - report commits created
 - report PR readiness
 - confirm required docs were updated with the same branch when implementation status changed

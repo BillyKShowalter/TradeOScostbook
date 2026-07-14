@@ -27,6 +27,7 @@ Use one clean main worktree plus one linked worktree per active concurrent worke
 - concurrent work stays isolated
 - recovery worktrees stay temporary
 - cleanup must use Git worktree commands instead of destructive filesystem removal
+- the operational step-by-step lifecycle is documented in `docs/REPOSITORY_GOVERNANCE.md`
 
 ## Alternatives considered
 

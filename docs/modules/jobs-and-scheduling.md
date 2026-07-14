@@ -14,7 +14,7 @@ related_code:
 
 ## Purpose
 
-Own first-class field-execution jobs, technician assignments, dispatch transitions, schedule conflict detection, and ready-for-invoice signaling.
+Own first-class field-execution jobs, technician assignments, scheduling and rescheduling, dispatcher coordination, dispatch transitions, schedule conflict detection, and ready-for-invoice signaling.
 
 ## Source code locations
 
@@ -34,6 +34,15 @@ Own first-class field-execution jobs, technician assignments, dispatch transitio
 - `/api/v1/schedule`
 - `/api/v1/schedule/conflicts`
 
+Current supported operational scope:
+
+- job creation and update
+- technician assignment and reassignment
+- scheduling and rescheduling
+- schedule-conflict review
+- dispatcher-coordinated job-state progression within current RBAC limits
+- field-work coordination through completion and invoice readiness
+
 ## Permissions
 
 See [RBAC_MATRIX.md](../RBAC_MATRIX.md).
@@ -43,6 +52,7 @@ Important job-specific rules:
 - manager roles are `owner`, `admin`, and `dispatcher`
 - technician field access is scoped to active assignments
 - schedule conflict overrides are owner/admin only
+- dispatcher workflows are in scope today; only advanced optimization and route-planning features remain deferred
 
 ## Lifecycle and statuses
 

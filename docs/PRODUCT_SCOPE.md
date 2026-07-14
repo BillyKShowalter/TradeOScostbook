@@ -33,7 +33,7 @@ TradeOS owns:
 - site visit intake and operational notes
 - cost-book-backed estimating
 - proposal, contract, invoice, and payment-state workflows
-- jobs, technician assignment, and schedule conflict handling
+- jobs, technician assignment, scheduling and rescheduling, dispatcher coordination, and schedule conflict handling
 - activity and search primitives inside the authenticated workspace
 
 TradeOS does not currently claim to be:
@@ -48,6 +48,9 @@ TradeOS does not currently claim to be:
 
 - email and password sign-up, login, refresh, and httpOnly-cookie web sessions
 - project-first workflow from customer creation through invoice/payment-state updates
+- customer -> project -> job coordination with project-linked field execution records
+- job creation, assignment, scheduling, rescheduling, and operational status coordination
+- dispatcher workflows for technician assignment, schedule management, and permitted workload coordination
 - AI estimate assist as advisory input only
 - customer portal access to project-related commercial documents
 - Brand Studio for organization-scoped document presentation
@@ -57,6 +60,12 @@ TradeOS does not currently claim to be:
 
 - automated supplier feed integrations beyond the current stubbed fetch path
 - advanced dispatch optimization or routing
+- automated route optimization
+- fleet-routing intelligence
+- GPS fleet tracking
+- automatic technician-routing decisions
 - payroll and accounting reconciliation
 - public self-service payment processing
 - speculative platform rewrites or new deployable applications
+
+These exclusions do not remove the existing jobs, scheduling, technician-assignment, or dispatcher workflows already present in the product.

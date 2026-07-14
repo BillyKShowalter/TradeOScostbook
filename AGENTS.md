@@ -5,9 +5,33 @@ Essential knowledge for AI agents working in this repository.
 Documentation source of truth:
 
 - start with `docs/README.md`
+- read `docs/ENGINEERING_COMMAND_CENTER.md` immediately after environment verification
 - verify current implementation claims in `docs/CURRENT_STATE.md`
+- read `docs/SESSION_HANDOFF.md` for the latest completed-session context
 - use `docs/agent-prompts/AGENT_STARTUP_CHECKLIST.md` before substantial work
 - use `docs/agent-prompts/AGENT_COMPLETION_CHECKLIST.md` before handoff
+- use `docs/REPOSITORY_GOVERNANCE.md` for protected-branch policy, worktree lifecycle, and PR-readiness expectations
+
+## Worktree discipline
+
+Before substantial work:
+
+- verify the exact worktree path, exact branch, clean working tree requirement, upstream branch, and active worktree list
+- verify the remote repository target and fetch origin before trusting local branch comparisons
+- inspect the Command Center and latest Session Handoff before interpreting current priorities
+- confirm the allowed paths, forbidden paths, and explicit task scope before editing
+- review likely documentation impact before code or workflow changes
+
+Required rule:
+
+- do not interpret `continue` as permission to select another task or broaden scope
+
+Before handoff:
+
+- update `docs/SESSION_HANDOFF.md` for every substantive or PR-ready session
+- update `docs/ENGINEERING_COMMAND_CENTER.md` only when mission-critical operating context changed
+- report the exact final `git status --short --branch`
+- report PR readiness and any remaining documentation work in the same branch
 
 ## Big picture
 
@@ -60,6 +84,7 @@ The repository currently supports:
 - customers
 - projects
 - site visit intake
+- jobs and scheduling
 - estimate creation, duplication, comparison, and AI assist
 - proposals
 - contracts

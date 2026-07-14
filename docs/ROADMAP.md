@@ -17,11 +17,34 @@ RC1 hardening.
 
 ## Upcoming milestones
 
-### Lifecycle normalization
+### Next coherent milestone: Lifecycle normalization
 
-- reduce persisted legacy status values where compatibility shims remain
-- align contract pre-signature naming with canonical lifecycle language
+Business goal:
+
+- make project, proposal, contract, invoice, and job state transitions read the same way in storage, APIs, workspace UI, and portal surfaces so release readiness is not undermined by status drift
+
+Workflow focus:
+
+- office staff should be able to move one project from lead through estimate, proposal, contract, scheduling, execution, invoicing, and closeout preparation without seeing conflicting lifecycle labels or incompatible actions between screens
+
+Planned scope:
+
+- reduce persisted legacy project and proposal status values where compatibility shims remain
+- align contract pre-signature persistence with canonical lifecycle language
 - continue narrowing project status drift between stored values and canonical display states
+- preserve current RBAC boundaries and job override rules while making lifecycle behavior more explicit
+
+Explicit exclusions:
+
+- live supplier feed ingestion
+- advanced dispatch optimization
+- automated route optimization
+- fleet-routing intelligence
+- automatic technician-routing decisions
+- public payment processing
+- broad UI redesigns or architecture rewrites
+
+These exclusions do not remove the existing jobs, scheduling, technician-assignment, or dispatcher workflow surface already in scope.
 
 ### Release hardening
 
