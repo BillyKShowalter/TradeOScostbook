@@ -260,3 +260,150 @@ export function getStatusLabel(status: string): string {
 export function isTerminalStatus(status: string): boolean {
   return terminalStatuses.has(status);
 }
+
+function normalizeFromMap<T extends string>(status: string, map: Record<string, T>, fallback: T): T {
+  return map[status] ?? fallback;
+}
+
+export function normalizeProjectStatus(status: string): ProjectStatus {
+  return normalizeFromMap(status, legacyProjectStatusMap, "lead");
+}
+
+export function normalizeEstimateStatus(status: string): EstimateStatus {
+  return normalizeFromMap(status, legacyEstimateStatusMap, "draft");
+}
+
+export function normalizeProposalStatus(status: string): ProposalStatus {
+  return normalizeFromMap(status, legacyProposalStatusMap, "draft");
+}
+
+export function normalizeContractStatus(status: string): ContractStatus {
+  return normalizeFromMap(status, legacyContractStatusMap, "draft");
+}
+
+export function normalizeInvoiceStatus(status: string): InvoiceStatus {
+  return normalizeFromMap(status, legacyInvoiceStatusMap, "draft");
+}
+
+export function normalizeDisplayStatus(status: string): string {
+  if (status in legacyProjectStatusMap) return normalizeProjectStatus(status);
+  if (status in legacyEstimateStatusMap) return normalizeEstimateStatus(status);
+  if (status in legacyProposalStatusMap) return normalizeProposalStatus(status);
+  if (status in legacyContractStatusMap) return normalizeContractStatus(status);
+  if (status in legacyInvoiceStatusMap) return normalizeInvoiceStatus(status);
+  return status;
+}
+
+const projectTransitions: Record<ProjectStatus, readonly ProjectStatus[]> = {
+  lead: ["estimating", "archived"],
+  estimating: ["awarded", "on_hold", "archived"],
+  awarded: ["active", "on_hold", "archived"],
+  active: ["on_hold", "completed", "archived"],
+  on_hold: ["estimating", "awarded", "active", "archived"],
+  completed: ["archived"],
+  archived: [],
+};
+
+const estimateTransitions: Record<EstimateStatus, readonly EstimateStatus[]> = {
+  draft: ["ready", "expired", "superseded"],
+  ready: ["sent", "expired", "superseded"],
+  sent: ["viewed", "approved", "declined", "expired", "superseded"],
+  viewed: ["approved", "declined", "expired", "superseded"],
+  approved: [],
+  declined: [],
+  expired: [],
+  superseded: [],
+};
+
+const proposalTransitions: Record<ProposalStatus, readonly ProposalStatus[]> = {
+  draft: ["generated", "sent", "declined"],
+  generated: ["sent", "declined"],
+  sent: ["viewed", "accepted", "declined", "expired"],
+  viewed: ["accepted", "declined", "expired"],
+  accepted: [],
+  declined: [],
+  expired: [],
+};
+
+const contractTransitions: Record<ContractStatus, readonly ContractStatus[]> = {
+  draft: ["sent", "voided"],
+  sent: ["viewed", "signed", "voided"],
+  viewed: ["signed", "voided"],
+  signed: [],
+  voided: [],
+};
+
+const invoiceTransitions: Record<InvoiceStatus, readonly InvoiceStatus[]> = {
+  draft: ["sent", "voided"],
+  sent: ["viewed", "partially_paid", "paid", "overdue", "voided"],
+  viewed: ["partially_paid", "paid", "overdue", "voided"],
+  partially_paid: ["paid", "overdue", "voided"],
+  paid: [],
+  overdue: ["partially_paid", "paid", "voided"],
+  voided: [],
+};
+
+const changeOrderTransitions: Record<ChangeOrderStatus, readonly ChangeOrderStatus[]> = {
+  draft: ["approved", "rejected"],
+  approved: [],
+  rejected: [],
+};
+
+const taskTransitions: Record<TaskStatus, readonly TaskStatus[]> = {
+  todo: ["in_progress", "blocked", "completed"],
+  in_progress: ["todo", "blocked", "completed"],
+  blocked: ["todo", "in_progress", "completed"],
+  completed: [],
+};
+
+export function canTransitionProjectStatus(from: ProjectStatus, to: ProjectStatus): boolean {
+  return from === to || projectTransitions[from].includes(to);
+}
+
+export function canTransitionEstimateStatus(from: EstimateStatus, to: EstimateStatus): boolean {
+  return from === to || estimateTransitions[from].includes(to);
+}
+
+export function canTransitionProposalStatus(from: ProposalStatus, to: ProposalStatus): boolean {
+  return from === to || proposalTransitions[from].includes(to);
+}
+
+export function canTransitionContractStatus(from: ContractStatus, to: ContractStatus): boolean {
+  return from === to || contractTransitions[from].includes(to);
+}
+
+export function canTransitionInvoiceStatus(from: InvoiceStatus, to: InvoiceStatus): boolean {
+  return from === to || invoiceTransitions[from].includes(to);
+}
+
+export function canTransitionChangeOrderStatus(from: ChangeOrderStatus, to: ChangeOrderStatus): boolean {
+  return from === to || changeOrderTransitions[from].includes(to);
+}
+
+export function canTransitionTaskStatus(from: TaskStatus, to: TaskStatus): boolean {
+  return from === to || taskTransitions[from].includes(to);
+}
+
+export const canonicalActivityEventTypes = [
+  "attachment.uploaded",
+  "comment.created",
+  "customer.created",
+  "estimate.status_changed",
+  "invoice.payment_recorded",
+  "project.created",
+  "project.status_changed",
+  "proposal.accepted",
+  "proposal.declined",
+  "proposal.sent",
+  "proposal.viewed",
+  "site_visit.created",
+] as const;
+export type CanonicalActivityEventType = (typeof canonicalActivityEventTypes)[number];
+
+const legacyActivityEventMap: Record<string, CanonicalActivityEventType> = {
+  "project_file.uploaded": "attachment.uploaded",
+};
+
+export function normalizeActivityEventType(eventType: string): string {
+  return legacyActivityEventMap[eventType] ?? eventType;
+}

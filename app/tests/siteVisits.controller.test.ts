@@ -97,7 +97,7 @@ describe("siteVisitsController.create", () => {
 
     expect(mockPrisma.project.update).toHaveBeenCalledWith({
       where: { id: "project-1" },
-      data: { jobType: "Deck", status: "site_visit" },
+      data: { jobType: "Deck", status: "estimating" },
     });
   });
 
@@ -117,7 +117,7 @@ describe("siteVisitsController.create", () => {
 
     expect(mockPrisma.project.update).toHaveBeenCalledWith({
       where: { id: "project-1" },
-      data: { status: "site_visit" },
+      data: { status: "estimating" },
     });
   });
 
@@ -157,7 +157,7 @@ describe("siteVisitsController.create", () => {
     expect(data.intakeResultJson.trade).toBeNull();
     expect(mockPrisma.project.update).toHaveBeenCalledWith({
       where: { id: "project-1" },
-      data: { status: "site_visit" },
+      data: { status: "estimating" },
     });
   });
 });

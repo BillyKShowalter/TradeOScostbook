@@ -3,6 +3,7 @@ import { ApiError } from "../../backend/middleware/errorHandler";
 import { CostDatabaseService } from "../cost-database/service";
 import { AssembliesDatabaseService } from "../assemblies-database/service";
 import { applyOverhead, sellPrice } from "./formulas";
+import { canTransitionEstimateStatus, normalizeEstimateStatus } from "../../domain";
 import {
   AddLineItemInput,
   CreateEstimateInput,
@@ -181,14 +182,20 @@ export class EstimateEngineService {
   /** Locks the estimate so its line-item unit_cost snapshots and total never silently change again. */
   async finalize(estimateId: string, orgId?: string): Promise<EstimateDTO> {
     await this.recalculate(estimateId, orgId);
-    const row = await prisma.estimate.update({ where: { id: estimateId }, data: { status: "sent" } });
+    const estimate = await prisma.estimate.findFirst({ where: { id: estimateId, orgId } });
+    if (!estimate) throw new ApiError(404, `Estimate ${estimateId} not found`);
+    const currentStatus = normalizeEstimateStatus(estimate.status);
+    if (!canTransitionEstimateStatus(currentStatus, "ready")) {
+      throw new ApiError(409, `Estimate ${estimateId} cannot transition from ${currentStatus} to ready`);
+    }
+    const row = await prisma.estimate.update({ where: { id: estimateId }, data: { status: "ready" } });
     return toEstimateDTO(row);
   }
 
   private async assertDraft(estimateId: string, orgId?: string): Promise<void> {
     const estimate = await prisma.estimate.findFirst({ where: { id: estimateId, orgId } });
     if (!estimate) throw new ApiError(404, `Estimate ${estimateId} not found`);
-    if (estimate.status !== "draft") {
+    if (normalizeEstimateStatus(estimate.status) !== "draft") {
       throw new ApiError(409, `Estimate ${estimateId} is not in draft status and can no longer be modified`);
     }
   }
@@ -215,7 +222,7 @@ export function toEstimateDTO(row: {
     orgId: row.orgId,
     projectId: row.projectId,
     version: row.version,
-    status: row.status,
+    status: normalizeEstimateStatus(row.status),
     overheadPct: Number(row.overheadPct),
     profitPct: Number(row.profitPct),
     targetMarginPct: row.targetMarginPct != null ? Number(row.targetMarginPct) : null,

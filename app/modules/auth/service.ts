@@ -18,6 +18,7 @@ import {
   SignupInput,
   SupabaseBootstrapInput,
 } from "./types";
+import { normalizeRole } from "../../domain";
 
 const INVALID_CREDENTIALS = "Invalid email or password";
 const REFRESH_TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 30;
@@ -239,7 +240,7 @@ export class AuthService {
     return {
       inviteId: invite.id,
       email: invite.email,
-      role: invite.role,
+      role: invite.role as InviteTeamMemberResult["role"],
       expiresAt: invite.expiresAt,
       ...(process.env.NODE_ENV !== "production" ? { inviteToken: rawToken } : {}),
     };
@@ -426,7 +427,7 @@ export class AuthService {
         sub: context.authSubject,
         email: context.email,
         orgId: context.orgId,
-        role: context.role,
+        role: normalizeRole(context.role),
       },
       requireSecret()
     );
@@ -436,7 +437,7 @@ export class AuthService {
       refreshToken,
       user: { id: context.userId, email: context.email, fullName: context.fullName },
       organization: { id: context.orgId, name: context.orgName },
-      role: context.role,
+      role: normalizeRole(context.role),
     };
   }
 

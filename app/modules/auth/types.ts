@@ -1,3 +1,5 @@
+import type { CanonicalRole } from "../../domain";
+
 export interface SignupInput {
   organizationName: string;
   regionCode?: string;
@@ -36,7 +38,7 @@ export interface InviteTeamMemberInput {
   orgId: string;
   invitedByUserId: string;
   email: string;
-  role: string;
+  role: "dispatcher" | "technician";
 }
 
 export interface AcceptInviteInput {
@@ -57,7 +59,7 @@ export interface AuthSessionResult {
     id: string;
     name: string;
   };
-  role: string;
+  role: CanonicalRole;
 }
 
 export interface PasswordResetRequestResult {
@@ -68,7 +70,7 @@ export interface PasswordResetRequestResult {
 export interface InviteTeamMemberResult {
   inviteId: string;
   email: string;
-  role: string;
+  role: "dispatcher" | "technician";
   expiresAt: Date;
   inviteToken?: string;
 }

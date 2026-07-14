@@ -1,4 +1,5 @@
 import { PricingMode } from "./formulas";
+import type { EstimateStatus } from "../../domain";
 
 export interface CreateEstimateInput {
   orgId?: string;
@@ -28,7 +29,7 @@ export interface EstimateDTO {
   orgId: string | null;
   projectId: string;
   version: number;
-  status: string;
+  status: EstimateStatus;
   overheadPct: number;
   profitPct: number;
   targetMarginPct: number | null;

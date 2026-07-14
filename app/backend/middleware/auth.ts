@@ -3,6 +3,7 @@ import { verifyAnyAuthToken } from "../auth/jwt";
 import { ApiError } from "./errorHandler";
 import { AuthContext } from "../auth/context";
 import { resolveAuthContext } from "../auth/session";
+import { normalizeRole } from "../../domain";
 
 // Verifies identity and resolves the active database-backed organization
 // membership before request-scoped RLS session variables are established.
@@ -34,6 +35,7 @@ export function requireAuth(req: AuthedRequest, _res: Response, next: NextFuncti
         userId: "dev-header-user",
         orgId: headerOrgId,
         role: "owner",
+        canonicalRole: normalizeRole("owner"),
       };
       req.orgId = headerOrgId;
       next();
