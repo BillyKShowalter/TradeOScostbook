@@ -1,8 +1,40 @@
 import "server-only";
 import type { OrganizationSettingsResponse } from "@/lib/settings";
 import type { BrandAsset, BrandDocumentSettings, BrandProfile, BrandStudioPreview } from "@/lib/brand-studio";
+import {
+  contractStatuses,
+  estimateStatuses,
+  invoiceStatuses,
+  legacyContractStatusMap,
+  legacyEstimateStatusMap,
+  legacyInvoiceStatusMap,
+  legacyProjectStatusMap,
+  legacyProposalStatusMap,
+  projectStatuses,
+  proposalStatuses,
+  type ChangeOrderStatus,
+  type ContractStatus,
+  type EstimateStatus,
+  type InvoiceStatus,
+  type JobStatus,
+  type ProjectStatus,
+  type ProposalStatus,
+  type TaskStatus,
+} from "@/domain";
 
 const BACKEND_API_URL = process.env.BACKEND_API_URL ?? "http://localhost:4000";
+
+// The backend's canonical domain model (app/domain/contracts.ts) defines the
+// target status vocabulary, but not every service has finished migrating its
+// writes to it yet (e.g. contracts still default to the legacy
+// "pending_signature" instead of "sent", proposals still write "rejected"
+// instead of "declined" — see docs/DOMAIN_MODEL_CANONICAL.md's compatibility
+// notes). Normalize defensively at the API boundary using the existing
+// legacy maps rather than trusting every raw value is already canonical.
+function normalizeStatus<T extends string>(status: string, legacyMap: Record<string, T>, canonical: readonly T[], fallback: T): T {
+  if ((canonical as readonly string[]).includes(status)) return status as T;
+  return legacyMap[status] ?? fallback;
+}
 
 export class ApiClientError extends Error {
   constructor(
@@ -97,32 +129,8 @@ export function getCustomer(token: string, id: string) {
   return apiFetch<Customer & { projects: Project[] }>(`/api/v1/customers/${id}`, { token });
 }
 
-export const PROJECT_STATUSES = [
-  "lead",
-  "opportunity",
-  "estimate",
-  "proposal",
-  "contract",
-  "active_job",
-  "field_execution",
-  "change_orders",
-  "closeout",
-  "warranty",
-  "archived",
-  "site_visit",
-  "proposal_draft",
-  "proposal_sent",
-  "accepted",
-  "in_production",
-  "completed",
-  "lost",
-  "estimating",
-  "proposed",
-  "won",
-  "active",
-  "complete",
-] as const;
-export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
+export const PROJECT_STATUSES = projectStatuses;
+export type { ProjectStatus };
 
 export interface Project {
   id: string;
@@ -170,14 +178,51 @@ export interface ProjectFile {
 }
 
 export function listProjects(token: string) {
-  return apiFetch<Project[]>("/api/v1/projects", { token });
+  return apiFetch<Project[]>("/api/v1/projects", { token }).then((projects) =>
+    projects.map((project) => ({ ...project, status: normalizeStatus(project.status, legacyProjectStatusMap, projectStatuses, "lead") }))
+  );
+}
+
+export interface JobSummary {
+  id: string;
+  jobNumber: string;
+  title: string;
+  jobType: string;
+  status: JobStatus;
+  priority: "low" | "medium" | "high" | "urgent";
+  scheduledStart: string | null;
+  scheduledEnd: string | null;
+  archivedAt: string | null;
+}
+
+export function listJobsByProject(token: string, projectId: string) {
+  return apiFetch<{ items: JobSummary[]; page: number; pageSize: number; total: number }>(
+    `/api/v1/jobs?projectId=${projectId}`,
+    { token }
+  );
+}
+
+export interface ScheduleConflict {
+  type: "technician_overlap";
+  technicianId: string;
+  technicianName: string | null;
+  conflictingJobId: string;
+  conflictingJobNumber: string;
+  conflictingJobTitle: string;
+  conflictingScheduledStart: string;
+  conflictingScheduledEnd: string;
+}
+
+export interface ScheduleConflictResult {
+  conflicts: ScheduleConflict[];
+  overrideAllowed: boolean;
 }
 
 export interface Estimate {
   id: string;
   projectId: string;
   version: number;
-  status: string;
+  status: EstimateStatus;
   overheadPct: number;
   profitPct: number;
   targetMarginPct: number | null;
@@ -202,11 +247,16 @@ export interface EstimateLineItem {
 export type EstimateDetail = Estimate & { lineItems: EstimateLineItem[] };
 
 export function listEstimatesByProject(token: string, projectId: string) {
-  return apiFetch<Estimate[]>(`/api/v1/estimates/by-project/${projectId}`, { token });
+  return apiFetch<Estimate[]>(`/api/v1/estimates/by-project/${projectId}`, { token }).then((estimates) =>
+    estimates.map((estimate) => ({ ...estimate, status: normalizeStatus(estimate.status, legacyEstimateStatusMap, estimateStatuses, "draft") }))
+  );
 }
 
 export function getEstimate(token: string, id: string) {
-  return apiFetch<EstimateDetail>(`/api/v1/estimates/${id}`, { token });
+  return apiFetch<EstimateDetail>(`/api/v1/estimates/${id}`, { token }).then((estimate) => ({
+    ...estimate,
+    status: normalizeStatus(estimate.status, legacyEstimateStatusMap, estimateStatuses, "draft"),
+  }));
 }
 
 export interface AIEstimateSuggestion {
@@ -359,8 +409,17 @@ export function getProject(token: string, id: string) {
       contracts: Contract[];
       changeOrders: Array<ChangeOrder & { lineItems: ChangeOrderLineItem[] }>;
       tasks: ProjectTask[];
+      jobs: JobSummary[];
     }
-  >(`/api/v1/projects/${id}`, { token });
+  >(`/api/v1/projects/${id}`, { token }).then((project) => ({
+    ...project,
+    status: normalizeStatus(project.status, legacyProjectStatusMap, projectStatuses, "lead"),
+    estimates: project.estimates.map((estimate) => ({ ...estimate, status: normalizeStatus(estimate.status, legacyEstimateStatusMap, estimateStatuses, "draft") })),
+    proposals: project.proposals.map((proposal) => ({ ...proposal, status: normalizeStatus(proposal.status, legacyProposalStatusMap, proposalStatuses, "draft") })),
+    invoices: project.invoices.map((invoice) => ({ ...invoice, status: normalizeStatus(invoice.status, legacyInvoiceStatusMap, invoiceStatuses, "draft") })),
+    contracts: project.contracts.map((contract) => ({ ...contract, status: normalizeStatus(contract.status, legacyContractStatusMap, contractStatuses, "draft") })),
+    jobs: project.jobs ?? [],
+  }));
 }
 
 export interface ChangeOrder {
@@ -369,7 +428,7 @@ export interface ChangeOrder {
   estimateId: string | null;
   coNumber: number;
   description: string;
-  status: "draft" | "approved" | "rejected";
+  status: ChangeOrderStatus;
   amount: number;
   scheduleImpactDays: number | null;
   approvedAt: string | null;
@@ -401,7 +460,7 @@ export interface ProjectTask {
   id: string;
   projectId: string;
   title: string;
-  status: "todo" | "in_progress" | "blocked" | "completed";
+  status: TaskStatus;
   assignedTo: string | null;
   dueDate: string | null;
   priority: "low" | "medium" | "high";
@@ -415,11 +474,23 @@ export function listProjectTasks(token: string, projectId: string) {
   return apiFetch<ProjectTask[]>(`/api/v1/projects/${projectId}/tasks`, { token });
 }
 
+export interface ProposalDelivery {
+  id: string;
+  proposalId: string;
+  eventType: string;
+  deliveryChannel: string;
+  recipientEmail: string | null;
+  actorUserId: string | null;
+  metadata: Record<string, unknown> | null;
+  occurredAt: string;
+  createdAt: string;
+}
+
 export interface Proposal {
   id: string;
   projectId: string;
   estimateId: string | null;
-  status: "draft" | "sent" | "viewed" | "accepted" | "rejected";
+  status: ProposalStatus;
   companyName: string | null;
   showLineItemDetail: boolean;
   scopeOfWork: string | null;
@@ -436,6 +507,7 @@ export interface Proposal {
   viewedAt: string | null;
   respondedAt: string | null;
   createdAt: string;
+  deliveries: ProposalDelivery[];
 }
 
 export interface ProposalPaymentScheduleEntry {
@@ -460,11 +532,16 @@ export interface ProposalDraftPreview {
 }
 
 export function listProposalsByProject(token: string, projectId: string) {
-  return apiFetch<Proposal[]>(`/api/v1/proposals/by-project/${projectId}`, { token });
+  return apiFetch<Proposal[]>(`/api/v1/proposals/by-project/${projectId}`, { token }).then((proposals) =>
+    proposals.map((proposal) => ({ ...proposal, status: normalizeStatus(proposal.status, legacyProposalStatusMap, proposalStatuses, "draft") }))
+  );
 }
 
 export function getProposal(token: string, id: string) {
-  return apiFetch<Proposal>(`/api/v1/proposals/${id}`, { token });
+  return apiFetch<Proposal>(`/api/v1/proposals/${id}`, { token }).then((proposal) => ({
+    ...proposal,
+    status: normalizeStatus(proposal.status, legacyProposalStatusMap, proposalStatuses, "draft"),
+  }));
 }
 
 export function getProjectProposalDraft(token: string, projectId: string) {
@@ -480,6 +557,17 @@ export interface InvoiceLineItem {
   lineCost: number;
 }
 
+export interface InvoiceDelivery {
+  id: string;
+  eventType: string;
+  deliveryChannel: string;
+  recipientEmail: string | null;
+  actorUserId: string | null;
+  metadata: Record<string, unknown> | null;
+  occurredAt: string;
+  createdAt: string;
+}
+
 export interface Invoice {
   id: string;
   projectId: string;
@@ -487,28 +575,44 @@ export interface Invoice {
   proposalId: string | null;
   invoiceNumber: number;
   type: "full" | "progress";
-  status: "draft" | "sent" | "paid" | "overdue" | "void" | "partially_paid" | "cancelled";
+  status: InvoiceStatus;
   percentComplete: number | null;
   amount: number;
   dueDate: string | null;
   sentAt: string | null;
   paidAt: string | null;
   createdAt: string;
+  deliveries: InvoiceDelivery[];
 }
 
 export function listInvoicesByProject(token: string, projectId: string) {
-  return apiFetch<Invoice[]>(`/api/v1/invoices/by-project/${projectId}`, { token });
+  return apiFetch<Invoice[]>(`/api/v1/invoices/by-project/${projectId}`, { token }).then((invoices) =>
+    invoices.map((invoice) => ({ ...invoice, status: normalizeStatus(invoice.status, legacyInvoiceStatusMap, invoiceStatuses, "draft") }))
+  );
 }
 
 export function getInvoice(token: string, id: string) {
-  return apiFetch<Invoice & { lineItems: InvoiceLineItem[] }>(`/api/v1/invoices/${id}`, { token });
+  return apiFetch<Invoice & { lineItems: InvoiceLineItem[] }>(`/api/v1/invoices/${id}`, { token }).then((invoice) => ({
+    ...invoice,
+    status: normalizeStatus(invoice.status, legacyInvoiceStatusMap, invoiceStatuses, "draft"),
+  }));
+}
+
+export interface ContractEvent {
+  id: string;
+  eventType: string;
+  actorUserId: string | null;
+  recipientEmail: string | null;
+  metadata: Record<string, unknown> | null;
+  occurredAt: string;
+  createdAt: string;
 }
 
 export interface Contract {
   id: string;
   projectId: string;
   proposalId: string;
-  status: "pending_signature" | "signed" | "voided";
+  status: ContractStatus;
   termsText: string;
   signerName: string | null;
   signerEmail: string | null;
@@ -516,12 +620,18 @@ export interface Contract {
   signatureIp: string | null;
   signedAt: string | null;
   createdAt: string;
+  events: ContractEvent[];
 }
 
 export function listContractsByProject(token: string, projectId: string) {
-  return apiFetch<Contract[]>(`/api/v1/contracts/by-project/${projectId}`, { token });
+  return apiFetch<Contract[]>(`/api/v1/contracts/by-project/${projectId}`, { token }).then((contracts) =>
+    contracts.map((contract) => ({ ...contract, status: normalizeStatus(contract.status, legacyContractStatusMap, contractStatuses, "draft") }))
+  );
 }
 
 export function getContract(token: string, id: string) {
-  return apiFetch<Contract>(`/api/v1/contracts/${id}`, { token });
+  return apiFetch<Contract>(`/api/v1/contracts/${id}`, { token }).then((contract) => ({
+    ...contract,
+    status: normalizeStatus(contract.status, legacyContractStatusMap, contractStatuses, "draft"),
+  }));
 }

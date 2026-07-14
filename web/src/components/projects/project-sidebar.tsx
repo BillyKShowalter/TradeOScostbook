@@ -6,7 +6,7 @@ import { ProjectOverviewCard } from "@/components/projects/project-overview-card
 import { ProjectActivityFeed } from "@/components/projects/project-activity-feed";
 import { ProjectNotesCard } from "@/components/projects/project-notes-card";
 import { RecentDocumentsCard } from "@/components/projects/recent-documents-card";
-import type { ChangeOrder, Contract, Customer, Invoice, Project, ProjectTask, SiteVisit, Proposal, Estimate, ProjectFile } from "@/lib/api";
+import type { ChangeOrder, Contract, Customer, Invoice, JobSummary, Project, ProjectTask, SiteVisit, Proposal, Estimate, ProjectFile } from "@/lib/api";
 import { ProjectPhotoGallery } from "@/components/projects/project-photo-gallery";
 import { buildProjectActivity, getInvoiceDisplayStatus } from "@/lib/document-workflow";
 
@@ -21,9 +21,10 @@ interface ProjectSidebarProps {
   contracts: Contract[];
   changeOrders: ChangeOrder[];
   tasks: ProjectTask[];
+  jobs?: JobSummary[];
 }
 
-export function ProjectSidebar({ project, customer, siteVisits, proposals, estimates, projectFiles, invoices, contracts, changeOrders, tasks }: ProjectSidebarProps) {
+export function ProjectSidebar({ project, customer, siteVisits, proposals, estimates, projectFiles, invoices, contracts, changeOrders, tasks, jobs = [] }: ProjectSidebarProps) {
   const activity = buildProjectActivity({ ...project, customer, estimates, siteVisits, projectFiles, proposals, invoices, contracts, changeOrders, tasks }).slice(0, 6);
 
   return (
@@ -39,6 +40,7 @@ export function ProjectSidebar({ project, customer, siteVisits, proposals, estim
         metrics={[
           { label: "Estimates", value: String(estimates.length) },
           { label: "Visits", value: String(siteVisits.length) },
+          { label: "Jobs", value: String(jobs.length) },
           { label: "Proposals", value: String(proposals.length) },
           { label: "Contracts", value: String(contracts.length) },
           { label: "Invoices", value: String(invoices.length) },

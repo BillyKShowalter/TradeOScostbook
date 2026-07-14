@@ -14,7 +14,7 @@ import { SummaryMetricCard } from "@/components/shared/summary-metric-card";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import type { ChangeOrder, ChangeOrderLineItem, Contract, Customer, Estimate, Invoice, Project, ProjectFile, ProjectTask, Proposal, SiteVisit } from "@/lib/api";
+import type { ChangeOrder, ChangeOrderLineItem, Contract, Customer, Estimate, Invoice, JobSummary, Project, ProjectFile, ProjectTask, Proposal, SiteVisit } from "@/lib/api";
 import {
   buildProjectActivity,
   buildProjectNotifications,
@@ -24,6 +24,7 @@ import {
   getInvoiceDisplayStatus,
   getProposalDisplayStatus,
 } from "@/lib/document-workflow";
+import { projectStatuses, getStatusLabel } from "@/domain";
 
 type DetailedChangeOrder = ChangeOrder & { lineItems: ChangeOrderLineItem[] };
 
@@ -39,6 +40,7 @@ interface ProjectWorkspaceProps {
   contracts: Contract[];
   changeOrders: DetailedChangeOrder[];
   tasks: ProjectTask[];
+  jobs?: JobSummary[];
 }
 
 export async function ProjectWorkspace({
@@ -53,6 +55,7 @@ export async function ProjectWorkspace({
   contracts,
   changeOrders,
   tasks,
+  jobs = [],
 }: ProjectWorkspaceProps) {
   const activity = buildProjectActivity({ ...project, customer, estimates, siteVisits, projectFiles, proposals, invoices, contracts, changeOrders, tasks });
   const notifications = buildProjectNotifications({ ...project, proposals, contracts, invoices });
@@ -69,9 +72,10 @@ export async function ProjectWorkspace({
       return (
         <div className="grid gap-6">
           <FieldDashboard projectId={project.id} />
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
             <SummaryMetricCard label="Estimates" value={String(estimates.length)} />
             <SummaryMetricCard label="Site visits" value={String(siteVisits.length)} />
+            <SummaryMetricCard label="Jobs" value={String(jobs.length)} />
             <SummaryMetricCard label="Open tasks" value={String(openTasks.length)} />
             <SummaryMetricCard label="Change orders" value={String(changeOrders.length)} />
             <SummaryMetricCard label="Pipeline" value={formatCurrency(revenuePipeline)} />
@@ -96,21 +100,9 @@ export async function ProjectWorkspace({
                     defaultValue={project.status}
                     className="h-10 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                   >
-                    {[
-                      "lead",
-                      "opportunity",
-                      "estimate",
-                      "proposal",
-                      "contract",
-                      "active_job",
-                      "field_execution",
-                      "change_orders",
-                      "closeout",
-                      "warranty",
-                      "archived",
-                    ].map((status) => (
+                    {projectStatuses.map((status) => (
                       <option key={status} value={status}>
-                        {status.replaceAll("_", " ")}
+                        {getStatusLabel(status)}
                       </option>
                     ))}
                   </select>
@@ -126,6 +118,30 @@ export async function ProjectWorkspace({
               </CardContent>
             </Card>
           </div>
+          {jobs.length > 0 ? (
+            <Card className="border-border/70">
+              <CardHeader>
+                <CardTitle>Scheduled jobs</CardTitle>
+                <p className="text-sm text-muted-foreground">Read-only summary of jobs scheduled against this project.</p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {jobs.map((job) => (
+                  <div key={job.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/20 p-4">
+                    <div>
+                      <div className="font-medium text-foreground">
+                        {job.title} <span className="font-mono text-xs tabular-nums text-muted-foreground">#{job.jobNumber}</span>
+                      </div>
+                      <div className="mt-1 text-sm text-muted-foreground">
+                        {job.scheduledStart ? formatDateTime(job.scheduledStart) : "Not yet scheduled"}
+                        {job.scheduledEnd ? ` – ${formatDateTime(job.scheduledEnd)}` : ""}
+                      </div>
+                    </div>
+                    <StatusBadge status={job.status} />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          ) : null}
           <ActivityTimeline title="Recent project timeline" items={activity.slice(0, 8)} />
         </div>
       );

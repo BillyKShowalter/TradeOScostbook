@@ -1,4 +1,5 @@
-import type { ChangeOrder, Contract, Invoice, Project, ProjectFile, ProjectTask, Proposal, SiteVisit } from "@/lib/api";
+import type { ChangeOrder, Contract, ContractEvent, Invoice, InvoiceDelivery, Project, ProjectFile, ProjectTask, Proposal, ProposalDelivery, SiteVisit } from "@/lib/api";
+import { getStatusLabel } from "@/domain";
 
 export interface WorkflowEvent {
   id: string;
@@ -38,15 +39,13 @@ export function getProposalDisplayStatus(proposal: Proposal) {
     const ageMs = Date.now() - sentAt;
     if (ageMs > 1000 * 60 * 60 * 24 * 30) return "expired";
   }
-
-  if (proposal.status === "rejected") return "declined";
   return proposal.status;
 }
 
 export function getInvoiceDisplayStatus(invoice: Invoice) {
-  if (invoice.status === "void") return "cancelled";
-  if (invoice.status === "partially_paid") return "partially paid";
-  if (invoice.status !== "paid" && invoice.dueDate && new Date(invoice.dueDate).getTime() < Date.now()) return "overdue";
+  if (invoice.status !== "paid" && invoice.status !== "voided" && invoice.dueDate && new Date(invoice.dueDate).getTime() < Date.now()) {
+    return "overdue";
+  }
   return invoice.status;
 }
 
@@ -55,16 +54,72 @@ export function getInvoiceRunningBalance(invoice: Invoice) {
   return status === "paid" ? 0 : invoice.amount;
 }
 
-export function buildProposalTimeline(proposal: Proposal): WorkflowEvent[] {
-  return [
-    {
-      id: `${proposal.id}-draft`,
-      title: "Draft created",
-      description: "The proposal draft is ready for internal review and pricing.",
-      at: proposal.createdAt,
+// Backend delivery/event records use dotted event-type names (e.g.
+// "proposal.viewed", "contract.signed"). Humanize what we recognize; fall
+// back to the raw event type (label-cased) for anything new so an
+// unrecognized event still renders instead of disappearing silently.
+const EVENT_TYPE_TITLES: Record<string, string> = {
+  "proposal.sent": "Proposal sent",
+  "proposal.resent": "Proposal resent",
+  "proposal.viewed": "Proposal viewed",
+  "proposal.accepted": "Proposal accepted",
+  "proposal.rejected": "Proposal declined",
+  "proposal.declined": "Proposal declined",
+  "invoice.sent": "Invoice sent",
+  "invoice.viewed": "Invoice viewed",
+  "invoice.paid": "Invoice paid",
+  "contract.sent": "Contract sent",
+  "contract.viewed": "Contract viewed",
+  "contract.signed": "Contract signed",
+  "contract.voided": "Contract voided",
+};
+
+function humanizeEventType(eventType: string) {
+  return EVENT_TYPE_TITLES[eventType] ?? getStatusLabel(eventType.split(".").pop() ?? eventType);
+}
+
+function describeDeliveryChannel(deliveryChannel: string, recipientEmail: string | null) {
+  if (deliveryChannel === "email" && recipientEmail) return `Delivered by email to ${recipientEmail}.`;
+  if (deliveryChannel === "email") return "Delivered by email.";
+  if (deliveryChannel === "portal") return "Viewed in the customer portal.";
+  return "Recorded in the document timeline.";
+}
+
+function mapDeliveryEvents(
+  id: string,
+  category: WorkflowEvent["category"],
+  records: Array<{ eventType: string; deliveryChannel?: string; recipientEmail?: string | null; occurredAt: string }>
+): WorkflowEvent[] {
+  return records
+    .map((record, index) => ({
+      id: `${id}-${record.eventType}-${index}`,
+      title: humanizeEventType(record.eventType),
+      description: describeDeliveryChannel(record.deliveryChannel ?? "system", record.recipientEmail ?? null),
+      at: record.occurredAt,
       active: true,
-      category: "proposal",
-    },
+      category,
+    }))
+    .sort((a, b) => new Date(a.at ?? 0).getTime() - new Date(b.at ?? 0).getTime());
+}
+
+export function buildProposalTimeline(proposal: Proposal & { deliveries?: ProposalDelivery[] }): WorkflowEvent[] {
+  const created: WorkflowEvent = {
+    id: `${proposal.id}-draft`,
+    title: "Draft created",
+    description: "The proposal draft is ready for internal review and pricing.",
+    at: proposal.createdAt,
+    active: true,
+    category: "proposal",
+  };
+
+  if (proposal.deliveries && proposal.deliveries.length > 0) {
+    return [created, ...mapDeliveryEvents(proposal.id, "proposal", proposal.deliveries)];
+  }
+
+  // Legacy fallback for proposals recorded before delivery-history tracking
+  // landed: reconstruct from the timestamp fields already on the record.
+  return [
+    created,
     {
       id: `${proposal.id}-sent`,
       title: "Proposal sent",
@@ -95,16 +150,22 @@ export function buildProposalTimeline(proposal: Proposal): WorkflowEvent[] {
   ];
 }
 
-export function buildContractTimeline(contract: Contract): WorkflowEvent[] {
+export function buildContractTimeline(contract: Contract & { events?: ContractEvent[] }): WorkflowEvent[] {
+  const created: WorkflowEvent = {
+    id: `${contract.id}-created`,
+    title: "Contract created",
+    description: "The signable agreement was generated from the accepted proposal.",
+    at: contract.createdAt,
+    active: true,
+    category: "contract",
+  };
+
+  if (contract.events && contract.events.length > 0) {
+    return [created, ...mapDeliveryEvents(contract.id, "contract", contract.events)];
+  }
+
   return [
-    {
-      id: `${contract.id}-created`,
-      title: "Contract created",
-      description: "The signable agreement was generated from the accepted proposal.",
-      at: contract.createdAt,
-      active: true,
-      category: "contract",
-    },
+    created,
     {
       id: `${contract.id}-signed`,
       title: "Contract signed",
@@ -116,16 +177,30 @@ export function buildContractTimeline(contract: Contract): WorkflowEvent[] {
   ];
 }
 
-export function buildInvoiceTimeline(invoice: Invoice): WorkflowEvent[] {
+export function buildInvoiceTimeline(invoice: Invoice & { deliveries?: InvoiceDelivery[] }): WorkflowEvent[] {
+  const created: WorkflowEvent = {
+    id: `${invoice.id}-created`,
+    title: invoice.type === "progress" ? "Progress invoice generated" : "Invoice generated",
+    description: "Billing is ready for customer delivery.",
+    at: invoice.createdAt,
+    active: true,
+    category: "invoice",
+  };
+  const due: WorkflowEvent = {
+    id: `${invoice.id}-due`,
+    title: "Invoice due",
+    description: invoice.dueDate ? `Due ${formatDate(invoice.dueDate)}.` : "Due date has not been set yet.",
+    at: invoice.dueDate,
+    active: Boolean(invoice.dueDate),
+    category: "invoice",
+  };
+
+  if (invoice.deliveries && invoice.deliveries.length > 0) {
+    return [created, ...mapDeliveryEvents(invoice.id, "invoice", invoice.deliveries), due];
+  }
+
   return [
-    {
-      id: `${invoice.id}-created`,
-      title: invoice.type === "progress" ? "Progress invoice generated" : "Invoice generated",
-      description: "Billing is ready for customer delivery.",
-      at: invoice.createdAt,
-      active: true,
-      category: "invoice",
-    },
+    created,
     {
       id: `${invoice.id}-sent`,
       title: "Invoice sent",
@@ -134,14 +209,7 @@ export function buildInvoiceTimeline(invoice: Invoice): WorkflowEvent[] {
       active: Boolean(invoice.sentAt),
       category: "invoice",
     },
-    {
-      id: `${invoice.id}-due`,
-      title: "Invoice due",
-      description: invoice.dueDate ? `Due ${formatDate(invoice.dueDate)}.` : "Due date has not been set yet.",
-      at: invoice.dueDate,
-      active: Boolean(invoice.dueDate),
-      category: "invoice",
-    },
+    due,
     {
       id: `${invoice.id}-paid`,
       title: "Invoice paid",

@@ -62,7 +62,7 @@ export default async function CustomerPortalContractPage({ params }: { params: P
           <a href={`/api/documents/contracts/${contract.id}/pdf`} target="_blank" rel="noreferrer" className={buttonVariants({ variant: "outline" })}>
             Download signed contract PDF
           </a>
-          {contract.status === "pending_signature" ? (
+          {contract.status !== "signed" && contract.status !== "voided" ? (
             <SignContractForm contractId={contract.id} projectId={project.id} portal />
           ) : (
             <div className="rounded-xl border border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground">

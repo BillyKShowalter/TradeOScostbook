@@ -129,7 +129,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
             </form>
           )}
 
-          {invoice.status !== "paid" && invoice.status !== "void" && (
+          {invoice.status !== "paid" && invoice.status !== "voided" && (
             <form action={voidInvoiceAction}>
               <input type="hidden" name="invoiceId" value={invoice.id} />
               <input type="hidden" name="projectId" value={projectId} />
