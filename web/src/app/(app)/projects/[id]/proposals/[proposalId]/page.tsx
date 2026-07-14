@@ -4,7 +4,7 @@ import { ProposalContextPanel } from "@/components/proposals/proposal-context-pa
 import { ProposalLifecyclePanel } from "@/components/proposals/proposal-lifecycle-panel";
 import { ProposalReviewForm } from "@/components/proposals/proposal-review-form";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { MetricCard } from "@/components/shared/metric-card";
+import { SummaryMetricCard } from "@/components/shared/summary-metric-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,7 +46,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
         </Card>
 
         <div className="grid gap-6">
-          <Card className="border-border/70 bg-gradient-to-br from-card via-card to-muted/30">
+          <Card className="border-border/70 bg-muted/10">
             <CardHeader>
               <CardTitle>Proposal snapshot</CardTitle>
             </CardHeader>
@@ -64,9 +64,9 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
                 <div className="mt-1 font-medium">{getNextMilestone(displayStatus)}</div>
               </div>
               <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-1">
-                <MetricCard label="Low" value={formatCurrency(proposal.priceLow)} />
-                <MetricCard label="High" value={formatCurrency(proposal.priceHigh)} />
-                <MetricCard label="Final" value={formatCurrency(proposal.finalPrice)} />
+                <SummaryMetricCard label="Low" value={formatCurrency(proposal.priceLow)} />
+                <SummaryMetricCard label="High" value={formatCurrency(proposal.priceHigh)} />
+                <SummaryMetricCard label="Final" value={formatCurrency(proposal.finalPrice)} />
               </div>
               <div className="flex flex-col gap-3">
                 <Link href={`/projects/${projectId}/proposals/${proposal.id}/preview`} className={buttonVariants()}>
