@@ -17,6 +17,7 @@ Before editing:
 
 - verify path, branch, status, upstream, and worktree list
 - fetch origin before trusting the upstream comparison
+- read `docs/ENGINEERING_COMMAND_CENTER.md` and `docs/SESSION_HANDOFF.md`
 - confirm that changes stay inside allowed documentation and workflow paths
 - confirm forbidden runtime and product-code paths
 - identify which global docs, module docs, ADRs, or archive files will change
@@ -35,6 +36,8 @@ Required startup checks:
 
 Required completion checks:
 
+- refresh `docs/SESSION_HANDOFF.md` for substantive or PR-ready work
+- update `docs/ENGINEERING_COMMAND_CENTER.md` only when engineering operating context changed
 - documentation impact reviewed
 - exact final `git status --short --branch` reported
 - commits and PR readiness reported
