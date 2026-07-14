@@ -1,6 +1,7 @@
 export interface CreateContractInput {
   orgId?: string;
   actorUserId?: string;
+  actorRole?: string;
   proposalId: string;
   termsText?: string;
 }
@@ -8,6 +9,7 @@ export interface CreateContractInput {
 export interface SignContractInput {
   orgId?: string;
   actorUserId?: string;
+  actorRole?: string;
   signerName: string;
   signerEmail?: string;
   signatureDataUrl?: string;

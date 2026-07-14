@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../db/client";
 import { ApiError } from "../../backend/middleware/errorHandler";
 import { ActivityTimelineService } from "../intelligence/service";
+import { hasPermission } from "../../domain/contracts";
 import { renderInvoicePdf } from "./pdf";
 import { CreateInvoiceInput, InvoiceDTO, InvoiceDeliveryDTO, InvoiceDocument, InvoiceLineItemDTO, InvoiceLineItemInput } from "./types";
 
@@ -9,6 +10,7 @@ export class InvoicesService {
   private readonly activityService = new ActivityTimelineService();
 
   async create(input: CreateInvoiceInput): Promise<InvoiceDTO> {
+    assertInvoiceWriteAccess(input.actorRole);
     const project = await prisma.project.findFirst({ where: { id: input.projectId, orgId: input.orgId } });
     if (!project) throw new ApiError(404, `Project ${input.projectId} not found`);
 
@@ -122,7 +124,8 @@ export class InvoicesService {
     };
   }
 
-  async send(id: string, orgId?: string, actorUserId?: string): Promise<InvoiceDTO> {
+  async send(id: string, orgId?: string, actorUserId?: string, actorRole?: string): Promise<InvoiceDTO> {
+    assertInvoiceWriteAccess(actorRole);
     const row = await this.findOrThrow(id, orgId);
     if (row.status !== "draft") throw new ApiError(409, `Invoice ${id} has already been sent`);
     const updated = await prisma.invoice.update({ where: { id }, data: { status: "sent", sentAt: new Date() } });
@@ -138,7 +141,8 @@ export class InvoicesService {
     return this.getById(updated.id, orgId);
   }
 
-  async markPaid(id: string, orgId?: string, actorUserId?: string): Promise<InvoiceDTO> {
+  async markPaid(id: string, orgId?: string, actorUserId?: string, actorRole?: string): Promise<InvoiceDTO> {
+    assertInvoiceWriteAccess(actorRole);
     const row = await this.findOrThrow(id, orgId);
     if (!["sent", "overdue"].includes(row.status)) throw new ApiError(409, `Invoice ${id} cannot be marked paid from status ${row.status}`);
     const updated = await prisma.invoice.update({ where: { id }, data: { status: "paid", paidAt: new Date() } });
@@ -154,10 +158,11 @@ export class InvoicesService {
     return this.getById(updated.id, orgId);
   }
 
-  async void(id: string, orgId?: string, actorUserId?: string): Promise<InvoiceDTO> {
+  async void(id: string, orgId?: string, actorUserId?: string, actorRole?: string): Promise<InvoiceDTO> {
+    assertInvoiceWriteAccess(actorRole);
     const row = await this.findOrThrow(id, orgId);
     if (row.status === "paid") throw new ApiError(409, `Invoice ${id} has already been paid and cannot be voided`);
-    const updated = await prisma.invoice.update({ where: { id }, data: { status: "void" } });
+    const updated = await prisma.invoice.update({ where: { id }, data: { status: "voided" } });
     await this.recordDeliveryEvent({
       orgId: orgId ?? row.project.orgId ?? undefined,
       invoiceId: row.id,
@@ -165,7 +170,7 @@ export class InvoicesService {
       actorUserId,
       eventType: "invoice.voided",
       recipientEmail: row.project.customer?.email ?? null,
-      metadata: { previousStatus: row.status, newStatus: "void", invoiceNumber: row.invoiceNumber },
+      metadata: { previousStatus: row.status, newStatus: "voided", invoiceNumber: row.invoiceNumber },
     });
     return this.getById(updated.id, orgId);
   }
@@ -334,4 +339,10 @@ function toDeliveryDTO(row: {
 function asRecord(value: Prisma.JsonValue | null): Record<string, unknown> | null {
   if (!value || Array.isArray(value) || typeof value !== "object") return null;
   return value as Record<string, unknown>;
+}
+
+function assertInvoiceWriteAccess(role?: string) {
+  if (!role || !hasPermission(role, "billing.write")) {
+    throw new ApiError(403, "You do not have permission to manage invoices");
+  }
 }

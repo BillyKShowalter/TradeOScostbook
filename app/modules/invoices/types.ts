@@ -8,6 +8,7 @@ export interface InvoiceLineItemInput {
 export interface CreateInvoiceInput {
   orgId?: string;
   actorUserId?: string;
+  actorRole?: string;
   projectId: string;
   estimateId?: string;
   proposalId?: string;

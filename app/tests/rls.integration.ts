@@ -983,6 +983,7 @@ describe("live organization row-level security", () => {
         orgId: orgA,
         projectId: projectA,
         actorUserId: adminUser,
+        actorRole: "admin",
         proposalId: proposal.id,
         lineItems: [{ description: "Deposit", quantity: 1, unitOfMeasure: "EA", unitCost: 1000 }],
       })
@@ -990,9 +991,9 @@ describe("live organization row-level security", () => {
     expect(invoice.amount).toBe(1000);
     expect(invoice.deliveries.map((delivery) => delivery.eventType)).toEqual(["invoice.created"]);
 
-    const sentInvoice = await inSession(adminUser, orgA, "admin", async () => new InvoicesService().send(invoice.id, orgA, adminUser));
+    const sentInvoice = await inSession(adminUser, orgA, "admin", async () => new InvoicesService().send(invoice.id, orgA, adminUser, "admin"));
     expect(sentInvoice.status).toBe("sent");
-    const paidInvoice = await inSession(adminUser, orgA, "admin", async () => new InvoicesService().markPaid(invoice.id, orgA, adminUser));
+    const paidInvoice = await inSession(adminUser, orgA, "admin", async () => new InvoicesService().markPaid(invoice.id, orgA, adminUser, "admin"));
     expect(paidInvoice.status).toBe("paid");
     expect(paidInvoice.deliveries.map((delivery) => delivery.eventType)).toEqual(["invoice.paid", "invoice.sent", "invoice.created"]);
 
@@ -1019,7 +1020,7 @@ describe("live organization row-level security", () => {
     ).rejects.toThrow();
 
     const contract = await inSession(adminUser, orgA, "admin", async () =>
-      new ContractsService().create({ orgId: orgA, actorUserId: adminUser, proposalId: proposal.id })
+      new ContractsService().create({ orgId: orgA, actorUserId: adminUser, actorRole: "admin", proposalId: proposal.id })
     );
     expect(contract.status).toBe("pending_signature");
     expect(contract.events.map((event) => event.eventType)).toEqual(["contract.created"]);
@@ -1028,6 +1029,7 @@ describe("live organization row-level security", () => {
       new ContractsService().sign(contract.id, {
         orgId: orgA,
         actorUserId: adminUser,
+        actorRole: "admin",
         signerName: "Jane Doe",
         signerEmail: "jane@example.com",
       })

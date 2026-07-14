@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../db/client";
 import { ApiError } from "../../backend/middleware/errorHandler";
 import { ActivityTimelineService } from "../intelligence/service";
+import { hasPermission } from "../../domain/contracts";
 import { renderContractPdf } from "./pdf";
 import { ContractDTO, ContractDocument, ContractEventDTO, CreateContractInput, SignContractInput } from "./types";
 
@@ -13,6 +14,7 @@ export class ContractsService {
   private readonly activityService = new ActivityTimelineService();
 
   async create(input: CreateContractInput): Promise<ContractDTO> {
+    assertContractWriteAccess(input.actorRole);
     const proposal = await prisma.proposal.findFirst({
       where: { id: input.proposalId, project: input.orgId ? { orgId: input.orgId } : undefined },
     });
@@ -55,6 +57,7 @@ export class ContractsService {
   }
 
   async sign(id: string, input: SignContractInput): Promise<ContractDTO> {
+    assertContractWriteAccess(input.actorRole);
     const row = await this.findOrThrow(id, input.orgId);
     if (row.status !== "pending_signature") throw new ApiError(409, `Contract ${id} cannot be signed from status ${row.status}`);
     const updated = await prisma.contract.update({
@@ -84,7 +87,8 @@ export class ContractsService {
     return this.getById(updated.id, input.orgId);
   }
 
-  async void(id: string, orgId?: string, actorUserId?: string): Promise<ContractDTO> {
+  async void(id: string, orgId?: string, actorUserId?: string, actorRole?: string): Promise<ContractDTO> {
+    assertContractWriteAccess(actorRole);
     const row = await this.findOrThrow(id, orgId);
     if (row.status === "signed") throw new ApiError(409, `Contract ${id} has already been signed and cannot be voided`);
     const updated = await prisma.contract.update({ where: { id }, data: { status: "voided" } });
@@ -226,4 +230,10 @@ function toEventDTO(row: {
 function asRecord(value: Prisma.JsonValue | null): Record<string, unknown> | null {
   if (!value || Array.isArray(value) || typeof value !== "object") return null;
   return value as Record<string, unknown>;
+}
+
+function assertContractWriteAccess(role?: string) {
+  if (!role || !hasPermission(role, "documents.manage")) {
+    throw new ApiError(403, "You do not have permission to manage contracts");
+  }
 }

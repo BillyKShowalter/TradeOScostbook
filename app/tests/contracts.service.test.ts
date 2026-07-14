@@ -67,7 +67,7 @@ describe("ContractsService", () => {
     });
 
     const service = new ContractsService();
-    const contract = await service.create({ orgId: "org-1", actorUserId: "user-1", proposalId: "proposal-1" });
+    const contract = await service.create({ orgId: "org-1", actorUserId: "user-1", actorRole: "admin", proposalId: "proposal-1" });
 
     expect(contract.status).toBe("pending_signature");
     expect(contract.termsText).toBe("Custom terms");
@@ -78,7 +78,15 @@ describe("ContractsService", () => {
     mockPrisma.proposal.findFirst.mockResolvedValue({ id: "proposal-1", projectId: "project-1", status: "sent" });
 
     const service = new ContractsService();
-    await expect(service.create({ orgId: "org-1", proposalId: "proposal-1" })).rejects.toThrow("must be accepted");
+    await expect(service.create({ orgId: "org-1", actorRole: "admin", proposalId: "proposal-1" })).rejects.toThrow("must be accepted");
+  });
+
+  it("rejects contract mutations for roles without documents.manage", async () => {
+    const service = new ContractsService();
+
+    await expect(service.create({ orgId: "org-1", actorRole: "technician", proposalId: "proposal-1" })).rejects.toThrow(
+      "manage contracts"
+    );
   });
 
   it("signs a pending contract and stamps signedAt", async () => {
@@ -125,6 +133,7 @@ describe("ContractsService", () => {
     const contract = await service.sign("contract-1", {
       orgId: "org-1",
       actorUserId: "user-1",
+      actorRole: "admin",
       signerName: "Jane Doe",
       signerEmail: "jane@example.com",
       signatureIp: "127.0.0.1",
@@ -147,7 +156,7 @@ describe("ContractsService", () => {
     });
 
     const service = new ContractsService();
-    await expect(service.sign("contract-1", { orgId: "org-1", signerName: "Jane Doe" })).rejects.toThrow("cannot be signed");
+    await expect(service.sign("contract-1", { orgId: "org-1", actorRole: "admin", signerName: "Jane Doe" })).rejects.toThrow("cannot be signed");
   });
 
   it("rejects voiding a signed contract", async () => {
@@ -161,6 +170,6 @@ describe("ContractsService", () => {
     });
 
     const service = new ContractsService();
-    await expect(service.void("contract-1", "org-1")).rejects.toThrow("already been signed");
+    await expect(service.void("contract-1", "org-1", "user-1", "admin")).rejects.toThrow("already been signed");
   });
 });

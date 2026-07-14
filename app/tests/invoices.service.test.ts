@@ -74,6 +74,7 @@ describe("InvoicesService", () => {
     const invoice = await service.create({
       orgId: "org-1",
       actorUserId: "user-1",
+      actorRole: "admin",
       projectId: "project-1",
       lineItems: [{ description: "Concrete pour", quantity: 10, unitOfMeasure: "sqft", unitCost: 50 }],
     });
@@ -130,7 +131,7 @@ describe("InvoicesService", () => {
     });
 
     const service = new InvoicesService();
-    await service.create({ orgId: "org-1", projectId: "project-1", estimateId: "estimate-1", type: "progress", percentComplete: 50 });
+    await service.create({ orgId: "org-1", actorRole: "admin", projectId: "project-1", estimateId: "estimate-1", type: "progress", percentComplete: 50 });
 
     expect(mockPrisma.invoice.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -146,8 +147,21 @@ describe("InvoicesService", () => {
 
     const service = new InvoicesService();
     await expect(
-      service.create({ orgId: "org-1", projectId: "project-1", estimateId: "estimate-1", type: "progress" })
+      service.create({ orgId: "org-1", actorRole: "admin", projectId: "project-1", estimateId: "estimate-1", type: "progress" })
     ).rejects.toThrow("percentComplete");
+  });
+
+  it("rejects invoice mutations for roles without billing.write", async () => {
+    const service = new InvoicesService();
+
+    await expect(
+      service.create({
+        orgId: "org-1",
+        actorRole: "technician",
+        projectId: "project-1",
+        lineItems: [{ description: "Concrete pour", quantity: 10, unitOfMeasure: "sqft", unitCost: 50 }],
+      })
+    ).rejects.toThrow("manage invoices");
   });
 
   it("marks a sent invoice paid", async () => {
@@ -194,7 +208,7 @@ describe("InvoicesService", () => {
     });
 
     const service = new InvoicesService();
-    const invoice = await service.markPaid("invoice-1", "org-1", "user-1");
+    const invoice = await service.markPaid("invoice-1", "org-1", "user-1", "admin");
 
     expect(invoice.status).toBe("paid");
     expect(mockPrisma.invoiceDelivery.create).toHaveBeenCalledWith(
@@ -212,7 +226,7 @@ describe("InvoicesService", () => {
     });
 
     const service = new InvoicesService();
-    await expect(service.void("invoice-1", "org-1")).rejects.toThrow("already been paid");
+    await expect(service.void("invoice-1", "org-1", "user-1", "admin")).rejects.toThrow("already been paid");
   });
 
   it("returns line items with the invoice on getById", async () => {
