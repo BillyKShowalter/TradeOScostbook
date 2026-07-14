@@ -18,7 +18,7 @@ related_code:
 - worktree path: `/Users/showb/TradeOS-governance`
 - branch: `chore/repository-governance-hardening`
 - base branch: `main`
-- latest commit: `77af6d0 test(docs): enforce operating-system documentation rules`
+- latest commit: verify with `git log -1 --oneline` before resuming; this handoff should not be trusted as the source of the branch HEAD SHA
 - PR number: not opened
 
 ## Mission
