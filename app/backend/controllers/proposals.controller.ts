@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import { ProposalsService } from "../../modules/proposals/service";
-import { requireOrgId } from "../requestContext";
+import { requireAuthContext, requireOrgId } from "../requestContext";
 
 const service = new ProposalsService();
 
@@ -61,19 +61,19 @@ export const proposalsController = {
     res.send(doc.buffer);
   },
   async send(req: Request, res: Response) {
-    res.json(await service.send(req.params.id, requireOrgId(req)));
+    res.json(await service.send(req.params.id, requireOrgId(req), requireAuthContext(req).userId));
   },
   async resend(req: Request, res: Response) {
-    res.json(await service.resend(req.params.id, requireOrgId(req)));
+    res.json(await service.resend(req.params.id, requireOrgId(req), requireAuthContext(req).userId));
   },
   async markViewed(req: Request, res: Response) {
-    res.json(await service.markViewed(req.params.id, requireOrgId(req)));
+    res.json(await service.markViewed(req.params.id, requireOrgId(req), requireAuthContext(req).userId));
   },
   async accept(req: Request, res: Response) {
-    res.json(await service.accept(req.params.id, requireOrgId(req)));
+    res.json(await service.accept(req.params.id, requireOrgId(req), requireAuthContext(req).userId));
   },
   async reject(req: Request, res: Response) {
-    res.json(await service.reject(req.params.id, requireOrgId(req)));
+    res.json(await service.reject(req.params.id, requireOrgId(req), requireAuthContext(req).userId));
   },
   async duplicate(req: Request, res: Response) {
     res.status(201).json(await service.duplicate(req.params.id, requireOrgId(req)));

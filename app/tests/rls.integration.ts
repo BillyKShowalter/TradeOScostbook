@@ -951,6 +951,22 @@ describe("live organization row-level security", () => {
     expect(sent.status).toBe("sent");
     const accepted = await inSession(adminUser, orgA, "admin", async () => new ProposalsService().accept(proposal.id, orgA));
     expect(accepted.status).toBe("accepted");
+    expect(accepted.deliveries.map((delivery) => delivery.eventType)).toEqual(["proposal.accepted", "proposal.sent"]);
+
+    const visibleDeliveries = await inSession(adminUser, orgA, "admin", async () =>
+      currentTransaction().proposalDelivery.findMany({
+        where: { proposalId: proposal.id },
+        orderBy: { occurredAt: "desc" },
+      })
+    );
+    expect(visibleDeliveries.map((delivery) => delivery.eventType)).toEqual(["proposal.accepted", "proposal.sent"]);
+
+    const hiddenDeliveries = await inSession(otherUser, orgB, "owner", async () =>
+      currentTransaction().proposalDelivery.findMany({
+        where: { proposalId: proposal.id },
+      })
+    );
+    expect(hiddenDeliveries).toEqual([]);
 
     await expect(
       inSession(viewerUser, orgA, "viewer", async () =>

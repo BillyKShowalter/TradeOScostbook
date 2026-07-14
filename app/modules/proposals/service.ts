@@ -1,9 +1,11 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../db/client";
 import { ApiError } from "../../backend/middleware/errorHandler";
 import { ProposalGeneratorService } from "../proposal-generator/service";
 import { ProposalDocument } from "../proposal-generator/types";
 import { ProjectIntakeService } from "../project-intake/service";
-import { CreateProposalInput, ProposalDTO, ProposalDraftPreviewDTO } from "./types";
+import { ActivityTimelineService } from "../intelligence/service";
+import { CreateProposalInput, ProposalDTO, ProposalDeliveryDTO, ProposalDraftPreviewDTO } from "./types";
 
 interface PaymentScheduleEntry {
   label: string;
@@ -14,6 +16,7 @@ interface PaymentScheduleEntry {
 export class ProposalsService {
   private readonly proposalGenerator = new ProposalGeneratorService();
   private readonly projectIntake = new ProjectIntakeService();
+  private readonly activityService = new ActivityTimelineService();
 
   async create(input: CreateProposalInput): Promise<ProposalDTO> {
     const row = input.estimateId
@@ -25,6 +28,7 @@ export class ProposalsService {
   async listByProject(projectId: string, orgId?: string): Promise<ProposalDTO[]> {
     const rows = await prisma.proposal.findMany({
       where: { projectId, project: orgId ? { orgId } : undefined },
+      include: { deliveries: { orderBy: { occurredAt: "desc" } } },
       orderBy: { createdAt: "desc" },
     });
     return rows.map(toDTO);
@@ -104,40 +108,76 @@ export class ProposalsService {
     });
   }
 
-  async send(id: string, orgId?: string): Promise<ProposalDTO> {
+  async send(id: string, orgId?: string, actorUserId?: string): Promise<ProposalDTO> {
     const row = await this.findOrThrow(id, orgId);
     if (row.status !== "draft") throw new ApiError(409, `Proposal ${id} has already been sent`);
     this.normalizePaymentSchedule(row.paymentScheduleJson);
     const updated = await prisma.proposal.update({ where: { id }, data: { status: "sent", sentAt: new Date() } });
+    await this.recordDeliveryEvent({
+      orgId: orgId ?? row.project.orgId ?? undefined,
+      proposalId: row.id,
+      projectId: row.projectId,
+      actorUserId,
+      eventType: "proposal.sent",
+      recipientEmail: row.project.customer?.email ?? null,
+      metadata: { previousStatus: row.status, newStatus: "sent" },
+    });
     await prisma.project.update({ where: { id: row.projectId }, data: { status: "proposal_sent" } });
-    return toDTO(updated);
+    return this.getById(updated.id, orgId);
   }
 
-  async markViewed(id: string, orgId?: string): Promise<ProposalDTO> {
+  async markViewed(id: string, orgId?: string, actorUserId?: string): Promise<ProposalDTO> {
     const row = await this.findOrThrow(id, orgId);
     if (row.status === "draft") throw new ApiError(409, `Proposal ${id} has not been sent yet`);
     if (row.status === "viewed" || row.status === "accepted" || row.status === "rejected") return toDTO(row);
     const updated = await prisma.proposal.update({ where: { id }, data: { status: "viewed", viewedAt: new Date() } });
-    return toDTO(updated);
+    await this.recordDeliveryEvent({
+      orgId: orgId ?? row.project.orgId ?? undefined,
+      proposalId: row.id,
+      projectId: row.projectId,
+      actorUserId,
+      eventType: "proposal.viewed",
+      recipientEmail: row.project.customer?.email ?? null,
+      metadata: { previousStatus: row.status, newStatus: "viewed" },
+    });
+    return this.getById(updated.id, orgId);
   }
 
-  async accept(id: string, orgId?: string): Promise<ProposalDTO> {
+  async accept(id: string, orgId?: string, actorUserId?: string): Promise<ProposalDTO> {
     const row = await this.findOrThrow(id, orgId);
     if (!["sent", "viewed"].includes(row.status)) throw new ApiError(409, `Proposal ${id} cannot be accepted from status ${row.status}`);
     const updated = await prisma.proposal.update({ where: { id }, data: { status: "accepted", respondedAt: new Date() } });
+    await this.recordDeliveryEvent({
+      orgId: orgId ?? row.project.orgId ?? undefined,
+      proposalId: row.id,
+      projectId: row.projectId,
+      actorUserId,
+      eventType: "proposal.accepted",
+      recipientEmail: row.project.customer?.email ?? null,
+      metadata: { previousStatus: row.status, newStatus: "accepted" },
+    });
     await prisma.project.update({ where: { id: row.projectId }, data: { status: "accepted" } });
-    return toDTO(updated);
+    return this.getById(updated.id, orgId);
   }
 
-  async reject(id: string, orgId?: string): Promise<ProposalDTO> {
+  async reject(id: string, orgId?: string, actorUserId?: string): Promise<ProposalDTO> {
     const row = await this.findOrThrow(id, orgId);
     if (!["sent", "viewed"].includes(row.status)) throw new ApiError(409, `Proposal ${id} cannot be rejected from status ${row.status}`);
     const updated = await prisma.proposal.update({ where: { id }, data: { status: "rejected", respondedAt: new Date() } });
+    await this.recordDeliveryEvent({
+      orgId: orgId ?? row.project.orgId ?? undefined,
+      proposalId: row.id,
+      projectId: row.projectId,
+      actorUserId,
+      eventType: "proposal.rejected",
+      recipientEmail: row.project.customer?.email ?? null,
+      metadata: { previousStatus: row.status, newStatus: "rejected" },
+    });
     await prisma.project.update({ where: { id: row.projectId }, data: { status: "proposal_draft" } });
-    return toDTO(updated);
+    return this.getById(updated.id, orgId);
   }
 
-  async resend(id: string, orgId?: string): Promise<ProposalDTO> {
+  async resend(id: string, orgId?: string, actorUserId?: string): Promise<ProposalDTO> {
     const row = await this.findOrThrow(id, orgId);
     if (!["sent", "viewed"].includes(row.status)) {
       throw new ApiError(409, `Proposal ${id} cannot be resent from status ${row.status}`);
@@ -150,8 +190,17 @@ export class ProposalsService {
         sentAt: new Date(),
       },
     });
+    await this.recordDeliveryEvent({
+      orgId: orgId ?? row.project.orgId ?? undefined,
+      proposalId: row.id,
+      projectId: row.projectId,
+      actorUserId,
+      eventType: "proposal.resent",
+      recipientEmail: row.project.customer?.email ?? null,
+      metadata: { previousStatus: row.status, newStatus: "sent" },
+    });
     await prisma.project.update({ where: { id: row.projectId }, data: { status: "proposal_sent" } });
-    return toDTO(updated);
+    return this.getById(updated.id, orgId);
   }
 
   async duplicate(id: string, orgId?: string): Promise<ProposalDTO> {
@@ -178,9 +227,58 @@ export class ProposalsService {
   }
 
   private async findOrThrow(id: string, orgId?: string) {
-    const row = await prisma.proposal.findFirst({ where: { id, project: orgId ? { orgId } : undefined } });
+    const row = await prisma.proposal.findFirst({
+      where: { id, project: orgId ? { orgId } : undefined },
+      include: {
+        deliveries: { orderBy: { occurredAt: "desc" } },
+        project: {
+          include: {
+            customer: {
+              select: { email: true },
+            },
+          },
+        },
+      },
+    });
     if (!row) throw new ApiError(404, `Proposal ${id} not found`);
     return row;
+  }
+
+  private async recordDeliveryEvent(input: {
+    orgId?: string;
+    proposalId: string;
+    projectId: string;
+    actorUserId?: string;
+    eventType: string;
+    recipientEmail?: string | null;
+    metadata?: Record<string, unknown>;
+  }): Promise<void> {
+    if (!input.orgId) {
+      throw new ApiError(500, `Proposal ${input.proposalId} is missing organization scope`);
+    }
+    await prisma.proposalDelivery.create({
+      data: {
+        orgId: input.orgId,
+        proposalId: input.proposalId,
+        eventType: input.eventType,
+        recipientEmail: input.recipientEmail,
+        actorUserId: input.actorUserId,
+        metadataJson: input.metadata as Prisma.InputJsonValue | undefined,
+      },
+    });
+    await this.activityService.record({
+      orgId: input.orgId,
+      entityType: "project",
+      entityId: input.projectId,
+      eventType: input.eventType,
+      title: input.eventType.replace("proposal.", "Proposal ").replaceAll("_", " "),
+      actorUserId: input.actorUserId,
+      metadata: {
+        proposalId: input.proposalId,
+        recipientEmail: input.recipientEmail ?? null,
+        ...(input.metadata ?? {}),
+      },
+    });
   }
 
   private async createFromEstimate(input: CreateProposalInput) {
@@ -317,6 +415,17 @@ function toDTO(row: {
   viewedAt: Date | null;
   respondedAt: Date | null;
   createdAt: Date;
+  deliveries?: Array<{
+    id: string;
+    proposalId: string;
+    eventType: string;
+    deliveryChannel: string;
+    recipientEmail: string | null;
+    actorUserId: string | null;
+    metadataJson: Prisma.JsonValue | null;
+    occurredAt: Date;
+    createdAt: Date;
+  }>;
 }): ProposalDTO {
   return {
     id: row.id,
@@ -338,6 +447,31 @@ function toDTO(row: {
     sentAt: row.sentAt,
     viewedAt: row.viewedAt,
     respondedAt: row.respondedAt,
+    createdAt: row.createdAt,
+    deliveries: (row.deliveries ?? []).map(toDeliveryDTO),
+  };
+}
+
+function toDeliveryDTO(row: {
+  id: string;
+  proposalId: string;
+  eventType: string;
+  deliveryChannel: string;
+  recipientEmail: string | null;
+  actorUserId: string | null;
+  metadataJson: Prisma.JsonValue | null;
+  occurredAt: Date;
+  createdAt: Date;
+}): ProposalDeliveryDTO {
+  return {
+    id: row.id,
+    proposalId: row.proposalId,
+    eventType: row.eventType,
+    deliveryChannel: row.deliveryChannel,
+    recipientEmail: row.recipientEmail,
+    actorUserId: row.actorUserId,
+    metadata: asRecord(row.metadataJson),
+    occurredAt: row.occurredAt,
     createdAt: row.createdAt,
   };
 }

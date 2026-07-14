@@ -163,7 +163,7 @@ export const projectsController = {
         estimates: { orderBy: { version: "desc" } },
         siteVisits: { orderBy: { createdAt: "desc" } },
         projectFiles: { orderBy: { createdAt: "desc" } },
-        proposals: { orderBy: { createdAt: "desc" } },
+        proposals: { orderBy: { createdAt: "desc" }, include: { deliveries: { orderBy: { occurredAt: "desc" } } } },
         invoices: { orderBy: { createdAt: "desc" }, include: { lineItems: { orderBy: { sortOrder: "asc" } } } },
         contracts: { orderBy: { createdAt: "desc" } },
         changeOrders: { orderBy: { createdAt: "desc" }, include: { lineItems: { orderBy: { sortOrder: "asc" } } } },

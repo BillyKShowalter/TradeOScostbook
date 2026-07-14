@@ -1,3 +1,15 @@
+export interface ProposalDeliveryDTO {
+  id: string;
+  proposalId: string;
+  eventType: string;
+  deliveryChannel: string;
+  recipientEmail: string | null;
+  actorUserId: string | null;
+  metadata: Record<string, unknown> | null;
+  occurredAt: Date;
+  createdAt: Date;
+}
+
 export interface CreateProposalInput {
   orgId?: string;
   estimateId?: string;
@@ -36,6 +48,7 @@ export interface ProposalDTO {
   viewedAt: Date | null;
   respondedAt: Date | null;
   createdAt: Date;
+  deliveries: ProposalDeliveryDTO[];
 }
 
 export interface ProposalDraftPreviewDTO {

@@ -52,6 +52,7 @@ model Organization {
   brandAssets    BrandAsset[]
   brandDocumentSettings BrandDocumentSettings?
   activityEvents ActivityEvent[]
+  proposalDeliveries ProposalDelivery[]
   notifications  Notification[]
   attachments    Attachment[]
   comments       Comment[]
@@ -180,6 +181,7 @@ model AppUser {
   memberships  OrganizationMembership[]
   reviewedSupplierPriceUpdates SupplierPriceUpdate[]
   activityEvents ActivityEvent[]
+  proposalDeliveries ProposalDelivery[]
   notifications Notification[]
   attachments   Attachment[]
   comments      Comment[]
@@ -736,6 +738,7 @@ model Proposal {
   estimate  Estimate?  @relation(fields: [estimateId], references: [id], onDelete: SetNull)
   invoices  Invoice[]
   contracts Contract[]
+  deliveries ProposalDelivery[]
 
   @@index([projectId])
   @@index([estimateId])
@@ -1067,6 +1070,27 @@ model Contract {
   @@index([projectId])
   @@index([proposalId])
   @@map("contracts")
+}
+
+model ProposalDelivery {
+  id             String   @id @default(uuid())
+  orgId          String   @map("org_id")
+  proposalId     String   @map("proposal_id")
+  eventType      String   @map("event_type")
+  deliveryChannel String  @default("app") @map("delivery_channel")
+  recipientEmail String?  @map("recipient_email")
+  actorUserId    String?  @map("actor_user_id")
+  metadataJson   Json?    @map("metadata_json")
+  occurredAt     DateTime @default(now()) @map("occurred_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  proposal     Proposal     @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  actorUser    AppUser?     @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, proposalId, occurredAt])
+  @@index([orgId, eventType, occurredAt])
+  @@map("proposal_deliveries")
 }
 
 model ActivityEvent {

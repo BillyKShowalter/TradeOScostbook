@@ -20,7 +20,6 @@ The backend is substantially further along than a typical "MVP backend" — this
 
 - Any customer-facing UI at all.
 - Sign-up / sign-in / onboarding flow (the backend can verify a token; nothing issues one to an end user yet).
-- Proposal delivery/status tracking (sent/viewed/signed) — flagged as a known gap in the original module spec too.
 - E-signature.
 - Reporting & Analytics module.
 - **Invoices** as a concept distinct from a Proposal — not in the original 12-module spec at all. New scope.
@@ -48,7 +47,7 @@ The first AI Estimate Assist milestone is now implemented in code: the estimate 
 - **Project management**: list/detail/status-change — API exists (`/api/v1/projects`), needs an edit endpoint added.
 - **Estimate Builder**: line-item editor, Cost Item/Assembly picker (the picker should surface `isTemplate` assemblies prominently — that mechanism is already built specifically to make this fast), overhead/profit panel, running summary. Fully backed by the existing Estimate Engine API.
 - **AI-assisted estimate drafting**: scope-of-work text box → suggested line items against the org's real cost book. New capability (Section 5).
-- **Proposal generation & send**: wraps the existing PDF generator; **add delivery/status tracking** (new: `proposal_deliveries`-style table, sent/viewed/signed states).
+- **Proposal generation & send**: wraps the existing PDF generator; delivery/status tracking is now persisted server-side through `proposal_deliveries` plus proposal lifecycle timestamps and can be consumed by the frontend without inventing a second timeline.
 - **Invoice generation**: new entity and PDF template, distinct from a Proposal (a Proposal sells the job; an Invoice bills against it, potentially partially/progressively).
 - **Contracts**: a signable document derived from an accepted Proposal, with e-signature capture.
 - **Settings**: company profile/branding, users & permissions (the role model already exists server-side — this is just exposing it in UI), regions & pricing adjustments, supplier integrations (already has a real review-queue UI's worth of API behind it).
