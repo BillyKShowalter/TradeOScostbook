@@ -105,6 +105,12 @@ Each exemption supports:
 
 Rules are additive. If multiple rules match the same code changes, the checker requires the union of all referenced docs.
 
+Rename handling:
+
+- code-path ownership checks apply to both the old and new path for renamed files
+- ordinary edits to living docs do not automatically require `docs/README.md`
+- `docs/README.md` is reserved for documentation-governance, hierarchy, ownership-rule, checker, PR-template, and docs-workflow changes
+
 ## Source-of-truth files
 
 - [CURRENT_STATE.md](CURRENT_STATE.md)

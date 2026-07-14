@@ -24,6 +24,11 @@ const config = {
   rules: [
     { paths: ["app/prisma/schema.prisma"], requires: ["docs/DOMAIN_MODEL.md"], explanation: "schema" },
     { paths: ["app/modules/jobs/**"], requires: ["docs/modules/jobs-and-scheduling.md"], explanation: "jobs" },
+    {
+      paths: ["app/modules/crm/**"],
+      requires: ["docs/modules/crm.md", "docs/API_REFERENCE.md", "docs/DOMAIN_MODEL.md", "docs/CURRENT_STATE.md"],
+      explanation: "crm",
+    },
     { paths: ["app/domain/contracts.ts"], requires: ["docs/RBAC_MATRIX.md", "docs/WORKFLOW_LIFECYCLES.md"], explanation: "contracts" },
   ],
   exemptions: [{ paths: ["app/tests/**"], reason: "tests only" }],
@@ -111,9 +116,9 @@ test("report marks failures clearly", () => {
 
 test("changed files include committed, staged, unstaged, and untracked paths", () => {
   const responses = new Map([
-    ["diff --name-only origin/main...HEAD", "app/domain/contracts.ts\n"],
-    ["diff --name-only --cached", "docs/RBAC_MATRIX.md\n"],
-    ["diff --name-only", "docs/WORKFLOW_LIFECYCLES.md\n"],
+    ["diff --name-status -M origin/main...HEAD", "M\tapp/domain/contracts.ts\n"],
+    ["diff --name-status -M --cached", "M\tdocs/RBAC_MATRIX.md\n"],
+    ["diff --name-status -M", "M\tdocs/WORKFLOW_LIFECYCLES.md\n"],
     ["ls-files --others --exclude-standard", "docs/new-file.md\n"],
   ]);
   const git = (args) => responses.get(args.join(" ")) ?? "";
@@ -122,5 +127,89 @@ test("changed files include committed, staged, unstaged, and untracked paths", (
     "docs/RBAC_MATRIX.md",
     "docs/WORKFLOW_LIFECYCLES.md",
     "docs/new-file.md",
+  ]);
+});
+
+test("rename within same owned path requires the same docs", () => {
+  const result = evaluateOwnership({
+    changedFiles: [
+      "app/modules/jobs/service.ts",
+      "app/modules/jobs/service-renamed.ts",
+      "docs/modules/jobs-and-scheduling.md",
+    ],
+    config,
+  });
+  assert.deepEqual(result.requiredDocs, ["docs/modules/jobs-and-scheduling.md"]);
+  assert.deepEqual(result.missingDocs, []);
+});
+
+test("rename across ownership boundaries unions old and new path requirements", () => {
+  const result = evaluateOwnership({
+    changedFiles: [
+      "app/modules/jobs/service.ts",
+      "app/modules/crm/service.ts",
+      "docs/modules/jobs-and-scheduling.md",
+      "docs/modules/crm.md",
+      "docs/API_REFERENCE.md",
+      "docs/DOMAIN_MODEL.md",
+      "docs/CURRENT_STATE.md",
+    ],
+    config,
+  });
+  assert.deepEqual(result.requiredDocs, [
+    "docs/API_REFERENCE.md",
+    "docs/CURRENT_STATE.md",
+    "docs/DOMAIN_MODEL.md",
+    "docs/modules/crm.md",
+    "docs/modules/jobs-and-scheduling.md",
+  ]);
+  assert.deepEqual(result.missingDocs, []);
+});
+
+test("old-path rule is still enforced for renames", () => {
+  const result = evaluateOwnership({
+    changedFiles: [
+      "app/modules/jobs/service.ts",
+      "app/modules/crm/service.ts",
+      "docs/modules/crm.md",
+      "docs/API_REFERENCE.md",
+      "docs/DOMAIN_MODEL.md",
+      "docs/CURRENT_STATE.md",
+    ],
+    config,
+  });
+  assert.deepEqual(result.missingDocs, ["docs/modules/jobs-and-scheduling.md"]);
+});
+
+test("new-path rule is enforced for renames", () => {
+  const result = evaluateOwnership({
+    changedFiles: [
+      "app/modules/jobs/service.ts",
+      "app/modules/crm/service.ts",
+      "docs/modules/jobs-and-scheduling.md",
+    ],
+    config,
+  });
+  assert.deepEqual(result.missingDocs, [
+    "docs/API_REFERENCE.md",
+    "docs/CURRENT_STATE.md",
+    "docs/DOMAIN_MODEL.md",
+    "docs/modules/crm.md",
+  ]);
+});
+
+test("exact rename and modified rename entries are both parsed", () => {
+  const responses = new Map([
+    ["diff --name-status -M origin/main...HEAD", "R100\tapp/modules/jobs/service.ts\tapp/modules/jobs/service-renamed.ts\nR087\tapp/modules/crm/service.ts\tapp/modules/crm/service-v2.ts\n"],
+    ["diff --name-status -M --cached", ""],
+    ["diff --name-status -M", ""],
+    ["ls-files --others --exclude-standard", ""],
+  ]);
+  const git = (args) => responses.get(args.join(" ")) ?? "";
+  assert.deepEqual(getChangedFiles("origin/main", git), [
+    "app/modules/crm/service-v2.ts",
+    "app/modules/crm/service.ts",
+    "app/modules/jobs/service-renamed.ts",
+    "app/modules/jobs/service.ts",
   ]);
 });

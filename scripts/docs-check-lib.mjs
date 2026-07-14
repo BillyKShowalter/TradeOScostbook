@@ -95,9 +95,9 @@ export function resolveBaseRef({ argsBase = null, env = process.env, git = defau
 
 export function getChangedFiles(baseRef, git = defaultGit) {
   try {
-    const committed = splitOutput(git(["diff", "--name-only", `${baseRef}...HEAD`]));
-    const staged = splitOutput(git(["diff", "--name-only", "--cached"]));
-    const unstaged = splitOutput(git(["diff", "--name-only"]));
+    const committed = collectPathsFromNameStatus(splitOutput(git(["diff", "--name-status", "-M", `${baseRef}...HEAD`])));
+    const staged = collectPathsFromNameStatus(splitOutput(git(["diff", "--name-status", "-M", "--cached"])));
+    const unstaged = collectPathsFromNameStatus(splitOutput(git(["diff", "--name-status", "-M"])));
     const untracked = splitOutput(git(["ls-files", "--others", "--exclude-standard"]));
     return [...new Set([...committed, ...staged, ...unstaged, ...untracked])].sort();
   } catch (error) {
@@ -179,6 +179,22 @@ function defaultGit(args) {
 
 function splitOutput(output) {
   return output.split("\n").map((line) => line.trim()).filter(Boolean);
+}
+
+function collectPathsFromNameStatus(lines) {
+  const paths = [];
+  for (const line of lines) {
+    const parts = line.split("\t").filter(Boolean);
+    if (parts.length < 2) continue;
+    const status = parts[0];
+    if (status.startsWith("R") || status.startsWith("C")) {
+      if (parts[1]) paths.push(parts[1]);
+      if (parts[2]) paths.push(parts[2]);
+      continue;
+    }
+    if (parts[1]) paths.push(parts[1]);
+  }
+  return paths;
 }
 
 export function ensureConfigExists(configPath) {

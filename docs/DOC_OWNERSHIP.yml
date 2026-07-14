@@ -184,12 +184,23 @@ rules:
 
   - paths:
       - .github/workflows/**
-      - .github/pull_request_template.md
-      - docs/**
-      - scripts/**
     requires:
       - docs/README.md
-    explanation: Documentation-governance and workflow changes must update the docs entrypoint when behavior changes.
+    explanation: Workflow changes that affect documentation governance must update the docs entrypoint when behavior changes.
+
+  - paths:
+      - .github/pull_request_template.md
+    requires:
+      - docs/README.md
+    explanation: PR template changes affect contributor documentation workflow and should update the docs entrypoint.
+
+  - paths:
+      - scripts/docs-check*.mjs
+      - scripts/__tests__/docs-check.test.mjs
+    requires:
+      - docs/README.md
+      - docs/DOC_OWNERSHIP.yml
+    explanation: Docs-checker script changes must stay aligned with the documented ownership format and entrypoint.
 
 exemptions:
   - paths:
