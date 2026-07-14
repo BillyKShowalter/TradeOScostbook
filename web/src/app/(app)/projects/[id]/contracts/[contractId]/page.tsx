@@ -108,7 +108,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
             Open customer portal view
           </Link>
 
-          {contract.status === "pending_signature" && (
+          {contract.status !== "signed" && contract.status !== "voided" && (
             <>
               <SignContractForm contractId={contract.id} projectId={projectId} />
               <form action={voidContractAction}>

@@ -14,7 +14,7 @@ export function NewProjectForm({ customers }: { customers: Customer[] }) {
   const [state, formAction, isPending] = useActionState(createProjectAction, undefined);
 
   return (
-    <Card className="max-w-3xl border-border/70 bg-gradient-to-br from-card via-card to-muted/30">
+    <Card className="max-w-3xl border-border/70 bg-muted/10">
       <CardHeader>
         <CardTitle>Project details</CardTitle>
       </CardHeader>

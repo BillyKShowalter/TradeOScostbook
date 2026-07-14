@@ -37,7 +37,7 @@ export default async function ProjectIntakePage({ params }: { params: Promise<{ 
         <StatusBadge status={project.status} />
       </div>
 
-      <Card className="border-border/70 bg-gradient-to-br from-card via-card to-muted/30">
+      <Card className="border-border/70 bg-muted/10">
         <CardHeader>
           <CardTitle>{project.name}</CardTitle>
         </CardHeader>

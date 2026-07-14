@@ -104,7 +104,7 @@ export function EstimateBuilder({ projectId, estimateId }: { projectId: string; 
         </div>
       </div>
 
-      <Card className="border-border/70 bg-gradient-to-br from-card via-card to-muted/20">
+      <Card className="border-border/70 bg-muted/10">
         <CardContent className="grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricTile label="Line items" value={runningTotals.lineItemCount.toString()} detail="Counted in the running total" />
           <MetricTile label="Job cost" value={formatCurrency(runningTotals.subtotalCost)} detail="Cost basis from line items" />
@@ -171,7 +171,7 @@ export function EstimateBuilder({ projectId, estimateId }: { projectId: string; 
         <div className="space-y-6 xl:sticky xl:top-20 xl:self-start">
           <PricingPanel estimateId={estimateId} estimate={estimate} pricingModeLabel={pricingModeLabel} onUpdated={invalidate} />
 
-          <Card className="border-border/70 bg-gradient-to-br from-card via-card to-muted/20">
+          <Card className="border-border/70 bg-muted/10">
             <CardHeader>
               <CardTitle>Running totals</CardTitle>
               <CardDescription>Live pricing signals update as line items and pricing change.</CardDescription>

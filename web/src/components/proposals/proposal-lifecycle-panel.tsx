@@ -94,7 +94,7 @@ export function ProposalLifecyclePanel({ projectId, proposal }: ProposalLifecycl
           </form>
         )}
 
-        {proposal.status === "rejected" && (
+        {proposal.status === "declined" && (
           <form action={duplicateFormAction} className="space-y-3">
             <HiddenFields projectId={projectId} proposalId={proposal.id} />
             <Button type="submit" variant="outline" className="w-full" disabled={isPending}>

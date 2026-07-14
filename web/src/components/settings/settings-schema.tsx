@@ -70,6 +70,7 @@ export type SettingsCardDefinition =
       description: string;
       columns?: 1 | 2;
       fields: SettingsFieldDefinition[];
+      sampleData?: boolean;
     }
   | {
       kind: "assets";
@@ -77,6 +78,7 @@ export type SettingsCardDefinition =
       title: string;
       description: string;
       assets: SettingsAssetDefinition[];
+      sampleData?: boolean;
     }
   | {
       kind: "status";
@@ -84,6 +86,7 @@ export type SettingsCardDefinition =
       title: string;
       description: string;
       items: SettingsStatusItem[];
+      sampleData?: boolean;
     }
   | {
       kind: "records";
@@ -91,6 +94,7 @@ export type SettingsCardDefinition =
       title: string;
       description: string;
       rows: SettingsRecordRow[];
+      sampleData?: boolean;
     }
   | {
       kind: "preview";
@@ -98,6 +102,7 @@ export type SettingsCardDefinition =
       title: string;
       description: string;
       preview: "branding" | "documents" | "email";
+      sampleData?: boolean;
     };
 
 export interface SettingsSectionDefinition {
@@ -656,6 +661,7 @@ export const settingsSections: SettingsSectionDefinition[] = [
       {
         kind: "status",
         id: "knowledge-diagnostics",
+        sampleData: true,
         title: "Runtime Diagnostics",
         description: "Status surfaces to wire to future backend endpoints.",
         items: [
@@ -856,6 +862,7 @@ export const settingsSections: SettingsSectionDefinition[] = [
       {
         kind: "records",
         id: "template-library",
+        sampleData: true,
         title: "Template Families",
         description: "Suggested structure until backend template versioning is connected.",
         rows: [
@@ -954,6 +961,7 @@ export const settingsSections: SettingsSectionDefinition[] = [
       {
         kind: "records",
         id: "integration-status",
+        sampleData: true,
         title: "Connection Status",
         description: "Scaffolded surfaces for future OAuth and token-based integrations.",
         rows: [
@@ -1006,6 +1014,7 @@ export const settingsSections: SettingsSectionDefinition[] = [
       {
         kind: "records",
         id: "api-key-inventory",
+        sampleData: true,
         title: "Issued Credentials",
         description: "Placeholder inventory to wire to key-management endpoints later.",
         rows: [
@@ -1075,6 +1084,7 @@ export const settingsSections: SettingsSectionDefinition[] = [
       {
         kind: "records",
         id: "security-devices",
+        sampleData: true,
         title: "Device Management",
         description: "Recent devices and sessions to eventually back with live auth data.",
         rows: [
@@ -1101,6 +1111,7 @@ export const settingsSections: SettingsSectionDefinition[] = [
       {
         kind: "status",
         id: "billing-usage",
+        sampleData: true,
         title: "Usage Snapshot",
         description: "Placeholder billing data until live subscription endpoints are available.",
         items: [
@@ -1129,6 +1140,7 @@ export const settingsSections: SettingsSectionDefinition[] = [
       {
         kind: "records",
         id: "backup-history",
+        sampleData: true,
         title: "Backup Timeline",
         description: "Recovery scaffolding ready for infrastructure-backed status data.",
         rows: [
@@ -1155,6 +1167,7 @@ export const settingsSections: SettingsSectionDefinition[] = [
       {
         kind: "records",
         id: "audit-events",
+        sampleData: true,
         title: "Recent Activity",
         description: "Recent administrative events ready to connect to backend audit endpoints.",
         rows: [

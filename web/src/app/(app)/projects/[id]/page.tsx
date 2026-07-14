@@ -43,6 +43,7 @@ export default async function ProjectDetailPage({
           contracts={project.contracts}
           changeOrders={project.changeOrders}
           tasks={project.tasks}
+          jobs={project.jobs}
         />
 
         <ProjectSidebar
@@ -56,6 +57,7 @@ export default async function ProjectDetailPage({
           contracts={project.contracts}
           changeOrders={project.changeOrders}
           tasks={project.tasks}
+          jobs={project.jobs}
         />
       </div>
     </div>

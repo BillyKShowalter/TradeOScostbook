@@ -14,6 +14,7 @@ import {
   Upload,
   WandSparkles,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -630,7 +631,14 @@ function SettingsCard({
   return (
     <Card id={`card-${section.id}-${card.id}`} className="rounded-[24px] border-border/70">
       <CardHeader>
-        <CardTitle>{card.title}</CardTitle>
+        <div className="flex items-center gap-2">
+          <CardTitle>{card.title}</CardTitle>
+          {card.sampleData ? (
+            <Badge variant="outline" className="border-accent-foreground/30 bg-accent text-accent-foreground">
+              Sample data
+            </Badge>
+          ) : null}
+        </div>
         <CardDescription>{card.description}</CardDescription>
       </CardHeader>
       <CardContent>

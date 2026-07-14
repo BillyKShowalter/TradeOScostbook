@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { createProposalAction } from "@/app/actions/proposals";
 import { PaymentScheduleFields } from "@/components/proposals/payment-schedule-fields";
-import { MetricCard } from "@/components/shared/metric-card";
+import { SummaryMetricCard } from "@/components/shared/summary-metric-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -25,7 +25,7 @@ export function NewProposalForm({
   const hasEstimates = estimates.length > 0;
 
   return (
-    <Card className="border-border/70 bg-gradient-to-br from-card via-card to-muted/30">
+    <Card className="border-border/70 bg-muted/10">
       <CardHeader>
         <CardTitle>Proposal Draft</CardTitle>
       </CardHeader>
@@ -62,9 +62,9 @@ export function NewProposalForm({
             </div>
           </div>
           <div className="grid gap-5 md:grid-cols-3">
-            <MetricCard label="Job type" value={draft.normalizedJobType ?? "Needs confirmation"} />
-            <MetricCard label="AI confidence" value={draft.confidenceScore !== null ? `${draft.confidenceScore}%` : "Not scored"} />
-            <MetricCard label="Range" value={`${formatCurrency(draft.priceLow)} - ${formatCurrency(draft.priceHigh)}`} />
+            <SummaryMetricCard label="Job type" value={draft.normalizedJobType ?? "Needs confirmation"} />
+            <SummaryMetricCard label="AI confidence" value={draft.confidenceScore !== null ? `${draft.confidenceScore}%` : "Not scored"} />
+            <SummaryMetricCard label="Range" value={`${formatCurrency(draft.priceLow)} - ${formatCurrency(draft.priceHigh)}`} />
           </div>
           {(draft.missingInfo.length > 0 || draft.aiQuestions.length > 0) && (
             <div className="grid gap-5 md:grid-cols-2">

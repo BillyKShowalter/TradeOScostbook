@@ -192,7 +192,7 @@ export function AIEstimateAssist({
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.6fr)]">
       <div className="space-y-6">
-        <Card className="border-border/70 bg-gradient-to-br from-card via-card to-muted/25">
+        <Card className="border-border/70 bg-muted/10">
           <CardHeader className="space-y-2">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -327,7 +327,7 @@ export function AIEstimateAssist({
       </div>
 
       <div className="space-y-6 xl:sticky xl:top-20 xl:self-start">
-        <Card className="border-border/70 bg-gradient-to-br from-card via-card to-muted/20">
+        <Card className="border-border/70 bg-muted/10">
           <CardHeader>
             <CardTitle>Estimate builder handoff</CardTitle>
             <CardDescription>Accepted suggestions flow into the existing Estimate Engine write path only after review.</CardDescription>
@@ -370,7 +370,7 @@ export function AIEstimateAssist({
           </CardContent>
         </Card>
 
-        <Card className="border-border/70 bg-gradient-to-br from-card via-card to-muted/20">
+        <Card className="border-border/70 bg-muted/10">
           <CardHeader>
             <CardTitle>Knowledge Engine runtime</CardTitle>
             <CardDescription>Read-only runtime data loaded straight from the migrated package files.</CardDescription>

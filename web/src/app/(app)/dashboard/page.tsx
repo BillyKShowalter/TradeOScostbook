@@ -17,9 +17,9 @@ export default async function DashboardPage() {
       ])
     : [[], null];
 
-  const activeJobs = projectDetails.filter((project) => ["active_job", "field_execution", "active", "in_production"].includes(project.status)).length;
+  const activeJobs = projectDetails.filter((project) => project.status === "active").length;
   const jobsWithFieldActivity = projectDetails.filter((project) => project.siteVisits.length > 0 || project.tasks.length > 0).length;
-  const pendingContracts = projectDetails.flatMap((project) => project.contracts).filter((contract) => contract.status === "pending_signature").length;
+  const pendingContracts = projectDetails.flatMap((project) => project.contracts).filter((contract) => ["sent", "viewed"].includes(contract.status)).length;
   const pendingInvoices = projectDetails
     .flatMap((project) => project.invoices)
     .filter((invoice) => ["sent", "overdue", "partially paid"].includes(getInvoiceDisplayStatus(invoice))).length;
@@ -46,7 +46,7 @@ export default async function DashboardPage() {
       <div>
         <h1 className="text-2xl font-semibold">Dashboard</h1>
         <p className="text-sm text-muted-foreground">
-          Signed in as {session?.email}. Track the full project lifecycle from opportunity through field execution, change orders, closeout, and warranty readiness.
+          Signed in as {session?.email}. Track the full project lifecycle from lead through estimating, active work, and completion.
         </p>
       </div>
 
