@@ -2,6 +2,13 @@
 
 Essential knowledge for AI agents working in this repository.
 
+Documentation source of truth:
+
+- start with `docs/README.md`
+- verify current implementation claims in `docs/CURRENT_STATE.md`
+- use `docs/agent-prompts/AGENT_STARTUP_CHECKLIST.md` before substantial work
+- use `docs/agent-prompts/AGENT_COMPLETION_CHECKLIST.md` before handoff
+
 ## Big picture
 
 Two independent deployables:
@@ -111,6 +118,12 @@ Frontend verification:
 cd web
 npm run lint
 npm run build
+```
+
+Documentation verification:
+
+```bash
+npm run docs:check
 ```
 
 ## Production hardening already present
