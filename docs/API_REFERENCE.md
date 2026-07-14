@@ -43,6 +43,7 @@ Public routes are limited to:
 - controllers own Zod validation and HTTP shaping
 - services return typed DTOs
 - browser clients normally talk to the backend through `web/src/lib/api.ts` or `web/src/lib/clientApi.ts`
+- signup/login themselves go through Supabase Auth directly in Server Actions (`web/src/app/actions/auth.ts`), not through `api.ts` — the module previously also exported unused `signup`/`login`/`AuthSession` helpers that duplicated this path; those were removed as dead code
 - binary documents are proxied separately from JSON APIs
 
 ## Error conventions
@@ -57,6 +58,8 @@ Known Prisma mappings include:
 - unique-constraint conflicts to `409`
 - foreign-key conflicts to `409`
 - record-not-found conditions to `404`
+
+`mapPrismaKnownRequestError` (the function implementing this mapping) is an internal helper local to `errorHandler.ts`; it is not exported, since no other module has ever needed to call it directly.
 
 ## Route groups
 

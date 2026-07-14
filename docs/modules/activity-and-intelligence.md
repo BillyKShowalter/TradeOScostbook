@@ -56,6 +56,10 @@ See [RBAC_MATRIX.md](../RBAC_MATRIX.md).
 
 - `app/tests/intelligence.service.test.ts`
 
+## Implementation notes
+
+- this module's `DOC_OWNERSHIP.yml` grouping is shared with `ai-estimate-assist`/`knowledge-runtime`; a recent internal dead-code cleanup touched `knowledge-runtime/repository.ts` (see `modules/ai-estimate-assist.md`) but did not change anything in `app/modules/intelligence/*` or this module's behavior
+
 ## Known limitations
 
 - some older product timelines are still partly derived from record timestamps plus compatibility history

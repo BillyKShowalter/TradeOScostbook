@@ -54,6 +54,10 @@ Current enforced rule:
 - `app/tests/estimate-engine.service.test.ts`
 - `app/tests/estimate-engine.formulas.test.ts`
 
+## Implementation notes
+
+- `EstimateEngineService` now imports the shared `round2()` helper from `estimate-engine/formulas.ts` instead of defining a duplicate private copy (cleanup only; no change to pricing behavior)
+
 ## Known limitations
 
 - downstream commercial workflows still rely on compatibility status normalization in some paths

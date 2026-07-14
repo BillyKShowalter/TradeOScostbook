@@ -2,7 +2,7 @@ import type { CanonicalRole, OrganizationMemberStatus, SupportedRole } from "../
 export type { OrganizationMemberStatus } from "../../domain";
 export { organizationMemberStatuses } from "../../domain";
 
-export interface CreateOrganizationInput {
+interface CreateOrganizationInput {
   name: string;
   regionCode?: string;
 }

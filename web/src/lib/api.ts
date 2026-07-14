@@ -75,21 +75,6 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   return body as T;
 }
 
-export interface AuthSession {
-  token: string;
-  user: { id: string; email: string; fullName: string | null };
-  organization: { id: string; name: string };
-  role: string;
-}
-
-export function signup(input: { organizationName: string; regionCode?: string; email: string; password: string; fullName?: string }) {
-  return apiFetch<AuthSession>("/api/v1/auth/signup", { method: "POST", body: JSON.stringify(input) });
-}
-
-export function login(input: { email: string; password: string }) {
-  return apiFetch<AuthSession>("/api/v1/auth/login", { method: "POST", body: JSON.stringify(input) });
-}
-
 export function getOrganizationSettings(token: string) {
   return apiFetch<OrganizationSettingsResponse>("/api/v1/settings", { token });
 }
@@ -531,12 +516,6 @@ export interface ProposalDraftPreview {
   paymentSchedule: ProposalPaymentScheduleEntry[];
 }
 
-export function listProposalsByProject(token: string, projectId: string) {
-  return apiFetch<Proposal[]>(`/api/v1/proposals/by-project/${projectId}`, { token }).then((proposals) =>
-    proposals.map((proposal) => ({ ...proposal, status: normalizeStatus(proposal.status, legacyProposalStatusMap, proposalStatuses, "draft") }))
-  );
-}
-
 export function getProposal(token: string, id: string) {
   return apiFetch<Proposal>(`/api/v1/proposals/${id}`, { token }).then((proposal) => ({
     ...proposal,
@@ -583,12 +562,6 @@ export interface Invoice {
   paidAt: string | null;
   createdAt: string;
   deliveries: InvoiceDelivery[];
-}
-
-export function listInvoicesByProject(token: string, projectId: string) {
-  return apiFetch<Invoice[]>(`/api/v1/invoices/by-project/${projectId}`, { token }).then((invoices) =>
-    invoices.map((invoice) => ({ ...invoice, status: normalizeStatus(invoice.status, legacyInvoiceStatusMap, invoiceStatuses, "draft") }))
-  );
 }
 
 export function getInvoice(token: string, id: string) {

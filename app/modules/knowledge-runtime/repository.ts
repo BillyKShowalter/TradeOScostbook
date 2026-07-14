@@ -1,6 +1,7 @@
 import { getCachedKnowledgeRepositorySnapshot, resetKnowledgeRuntimeCache } from "./cache";
 import { loadKnowledgeEngineSnapshot } from "./loader";
 import { KnowledgeAssemblyRecord, KnowledgeCostItemRecord, KnowledgeRepositorySnapshot, KnowledgeSearchInput, KnowledgeSearchResult, KnowledgeStats, KnowledgeTrade, RawKnowledgeAssembly, RawKnowledgeCostItem } from "./types";
+import { round2 } from "../estimate-engine/formulas";
 
 const TRADE_ALIASES: Record<string, string[]> = {
   "Tree Service": ["tree", "stump", "grind", "arborist", "brush", "debris"],
@@ -317,8 +318,4 @@ function uniqueStrings(values: string[]) {
 
 function slugify(value: string) {
   return normalizeText(value).replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-}
-
-function round2(value: number) {
-  return Math.round(value * 100) / 100;
 }
