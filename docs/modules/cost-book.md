@@ -79,6 +79,10 @@ See [RBAC_MATRIX.md](../RBAC_MATRIX.md).
 - `app/tests/assemblies-database.service.test.ts`
 - `app/tests/estimate-engine.formulas.test.ts`
 
+## Implementation notes
+
+- `cost-database` and `assemblies-database` services import the shared `round2()` rounding helper from `estimate-engine/formulas.ts` rather than each defining their own private copy (cleanup only; rounding behavior unchanged)
+
 ## Known limitations
 
 - system-wide shared template catalogs are not the current model; assemblies are tenant-scoped

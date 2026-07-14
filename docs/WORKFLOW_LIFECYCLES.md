@@ -62,6 +62,8 @@ Compatibility persistence:
 - persisted values such as `rejected` normalize to canonical `declined`
 - proposal-linked downstream statuses are normalized for display through `legacyEstimateStatusMap`
 
+Implementation note: `EstimateEngineService`'s cost/price rounding now imports the shared `round2()` helper from `estimate-engine/formulas.ts` instead of defining its own private copy (a duplication cleanup with no change to rounding behavior or transition rules).
+
 ## Proposals
 
 Canonical display states:

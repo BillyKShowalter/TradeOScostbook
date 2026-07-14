@@ -54,6 +54,15 @@ See module docs in `docs/modules/`.
 - Supplier integration feed ingestion is scaffolded around a stub fetcher; queue, review, audit, and scheduling plumbing are real
 - Customer portal exists for proposal, contract, invoice, and project views, but hardening is still tracked as RC work
 
+## Recent internal cleanup
+
+- Five duplicate private `round2()` rounding helpers (in `cost-database`, `assemblies-database`, `change-orders`, `estimate-engine`, and `knowledge-runtime` services) were consolidated to import the one already exported from `app/modules/estimate-engine/formulas.ts`. No rounding behavior changed.
+- Four internal-only exports (`mapPrismaKnownRequestError`, `CreateOrganizationInput`, `SupplierPriceUpdateStatus`, `SupplierFeedQuote`, `ClientApiError`) had their `export` keyword removed after confirming no other file imports them.
+- Confirmed-dead frontend code was removed: the unused shadcn `Select` primitive (`web/src/components/ui/select.tsx`), an unwired AI-suggestions component pair, an unused project-files panel, and a dead Supabase browser-client wrapper (`web/src/lib/supabase/client.ts`) that had already been superseded by server-side `@supabase/ssr` usage.
+- Unused `web/src/lib/api.ts` helpers (`signup`, `login`, `AuthSession`, `listProposalsByProject`, `listInvoicesByProject`) were removed after confirming the real auth path calls Supabase directly from Server Actions and that no caller used the two list helpers.
+- `claude.md` was renamed to `CLAUDE.md` — both names pointed at the same file only because of this machine's case-insensitive filesystem; git tracked the lowercase name, which would not resolve as `CLAUDE.md` on a case-sensitive filesystem (Linux CI, most Docker images).
+- Explicitly *not* removed: `web/src/components/ui/checkbox.tsx` and the `lucide-react` dependency — both are live (used by Brand Studio and Settings consoles), and `@supabase/supabase-js` — it is a required peer dependency of the actively-used `@supabase/ssr` package, not a dead dependency.
+
 ## Known blockers and unresolved technical debt
 
 - Supplier feed connectors are not live

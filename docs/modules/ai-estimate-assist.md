@@ -53,6 +53,10 @@ See [RBAC_MATRIX.md](../RBAC_MATRIX.md).
 - `app/tests/knowledge-runtime.matcher.test.ts`
 - `app/tests/knowledge-runtime.controller.test.ts`
 
+## Implementation notes
+
+- `knowledge-runtime/repository.ts` now imports the shared `round2()` helper from `estimate-engine/formulas.ts` instead of defining a duplicate private copy (cleanup only; matcher/scoring behavior unchanged)
+
 ## Known limitations
 
 - no autonomous estimate writes

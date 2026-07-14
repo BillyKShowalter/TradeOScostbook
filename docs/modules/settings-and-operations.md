@@ -66,6 +66,10 @@ Important current rule:
 - `app/tests/supplier-integration.scheduler.test.ts`
 - `app/tests/supplier-integration.worker.test.ts`
 
+## Implementation notes
+
+- `admin-dashboard`'s `CreateOrganizationInput` and `supplier-integration`'s `SupplierPriceUpdateStatus`/`SupplierFeedQuote` are file-local types; their `export` keyword was removed after confirming no other module imports them by name
+
 ## Known limitations
 
 - live supplier feed fetching is still stubbed
