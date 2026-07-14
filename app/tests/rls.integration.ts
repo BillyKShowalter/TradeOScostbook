@@ -22,10 +22,12 @@ const orgA = "10000000-0000-0000-0000-000000000001";
 const orgB = "20000000-0000-0000-0000-000000000002";
 const adminUser = "10000000-0000-0000-0000-000000000011";
 const viewerUser = "10000000-0000-0000-0000-000000000012";
+const technicianUser = "10000000-0000-0000-0000-000000000014";
 const otherUser = "20000000-0000-0000-0000-000000000021";
 const estimatorUser = "10000000-0000-0000-0000-000000000013";
 const adminMembership = "10000000-0000-0000-0000-000000000031";
 const viewerMembership = "10000000-0000-0000-0000-000000000032";
+const technicianMembership = "10000000-0000-0000-0000-000000000034";
 const otherMembership = "20000000-0000-0000-0000-000000000041";
 const estimatorMembership = "10000000-0000-0000-0000-000000000033";
 const divisionA = "10000000-0000-0000-0000-000000000051";
@@ -62,6 +64,9 @@ const featureFlagA = "10000000-0000-0000-0000-000000000108";
 const serviceAgreementA = "10000000-0000-0000-0000-000000000109";
 const invoiceForPaymentA = "10000000-0000-0000-0000-000000000110";
 const paymentA = "10000000-0000-0000-0000-000000000111";
+const jobA = "10000000-0000-0000-0000-000000000112";
+const jobB = "20000000-0000-0000-0000-000000000113";
+const technicianAssignmentA = "10000000-0000-0000-0000-000000000114";
 
 describe("live organization row-level security", () => {
   beforeAll(async () => {
@@ -75,6 +80,7 @@ describe("live organization row-level security", () => {
       data: [
         { id: adminUser, authSubject: "rls-admin", email: "rls-admin@example.com" },
         { id: viewerUser, authSubject: "rls-viewer", email: "rls-viewer@example.com" },
+        { id: technicianUser, authSubject: "rls-technician", email: "rls-tech@example.com", fullName: "Assigned Technician" },
         { id: otherUser, authSubject: "rls-other", email: "rls-other@example.com" },
         { id: estimatorUser, authSubject: "rls-estimator", email: "rls-estimator@example.com" },
       ],
@@ -83,6 +89,7 @@ describe("live organization row-level security", () => {
       data: [
         { id: adminMembership, orgId: orgA, userId: adminUser, role: "admin", status: "active" },
         { id: viewerMembership, orgId: orgA, userId: viewerUser, role: "viewer", status: "active" },
+        { id: technicianMembership, orgId: orgA, userId: technicianUser, role: "technician", status: "active" },
         { id: otherMembership, orgId: orgB, userId: otherUser, role: "owner", status: "active" },
         { id: estimatorMembership, orgId: orgA, userId: estimatorUser, role: "estimator", status: "active" },
       ],
@@ -185,6 +192,55 @@ describe("live organization row-level security", () => {
         title: "Initial mobilization",
         status: "todo",
         priority: "medium",
+      },
+    });
+    await adminClient.job.createMany({
+      data: [
+        {
+          id: jobA,
+          orgId: orgA,
+          projectId: projectA,
+          customerId: customerA,
+          serviceAddressId: serviceAddressA,
+          jobNumber: "JOB-2026-000001",
+          title: "Org A Scheduled Job",
+          description: "Assigned technician should be able to see this job only.",
+          jobType: "HVAC Service",
+          status: "scheduled",
+          priority: "high",
+          scheduledStart: new Date("2026-07-16T13:00:00.000Z"),
+          scheduledEnd: new Date("2026-07-16T15:00:00.000Z"),
+          estimatedDurationMinutes: 120,
+          createdById: adminUser,
+        },
+        {
+          id: jobB,
+          orgId: orgB,
+          projectId: projectB,
+          customerId: customerB,
+          serviceAddressId: serviceAddressB,
+          jobNumber: "JOB-2026-000001",
+          title: "Org B Scheduled Job",
+          description: "Cross-tenant job isolation check.",
+          jobType: "Electrical Service",
+          status: "scheduled",
+          priority: "medium",
+          scheduledStart: new Date("2026-07-16T16:00:00.000Z"),
+          scheduledEnd: new Date("2026-07-16T18:00:00.000Z"),
+          estimatedDurationMinutes: 120,
+          createdById: otherUser,
+        },
+      ],
+    });
+    await adminClient.jobAssignment.create({
+      data: {
+        id: technicianAssignmentA,
+        orgId: orgA,
+        jobId: jobA,
+        userId: technicianUser,
+        assignmentRole: "lead",
+        isLead: true,
+        assignedById: adminUser,
       },
     });
     await adminClient.assembly.create({
@@ -510,6 +566,47 @@ describe("live organization row-level security", () => {
             status: "todo",
             priority: "low",
           },
+        })
+      )
+    ).rejects.toThrow();
+  });
+
+  it("limits technician job visibility to assigned jobs while preserving tenant isolation", async () => {
+    const visibleJobs = await inSession(technicianUser, orgA, "technician", async () =>
+      currentTransaction().job.findMany({ orderBy: { createdAt: "asc" } })
+    );
+    expect(visibleJobs.map((row) => row.id)).toEqual([jobA]);
+
+    const hiddenOtherOrgJob = await inSession(technicianUser, orgA, "technician", async () =>
+      currentTransaction().job.findUnique({ where: { id: jobB } })
+    );
+    expect(hiddenOtherOrgJob).toBeNull();
+
+    const hiddenUnassignedJob = await inSession(viewerUser, orgA, "viewer", async () =>
+      currentTransaction().job.findUnique({ where: { id: jobA } })
+    );
+    expect(hiddenUnassignedJob).toBeNull();
+  });
+
+  it("lets technicians read their assigned team and update only their own assignment rows", async () => {
+    const visibleAssignments = await inSession(technicianUser, orgA, "technician", async () =>
+      currentTransaction().jobAssignment.findMany({ where: { jobId: jobA }, orderBy: { createdAt: "asc" } })
+    );
+    expect(visibleAssignments.map((row) => row.id)).toEqual([technicianAssignmentA]);
+
+    const accepted = await inSession(technicianUser, orgA, "technician", async () =>
+      currentTransaction().jobAssignment.update({
+        where: { id: technicianAssignmentA },
+        data: { acceptedAt: new Date("2026-07-16T12:45:00.000Z") },
+      })
+    );
+    expect(accepted.acceptedAt?.toISOString()).toBe("2026-07-16T12:45:00.000Z");
+
+    await expect(
+      inSession(viewerUser, orgA, "viewer", async () =>
+        currentTransaction().jobAssignment.update({
+          where: { id: technicianAssignmentA },
+          data: { declinedAt: new Date("2026-07-16T12:46:00.000Z") },
         })
       )
     ).rejects.toThrow();
