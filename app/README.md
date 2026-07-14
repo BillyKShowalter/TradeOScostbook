@@ -96,7 +96,7 @@ npm run build && npm start
 
 The API listens on `http://localhost:4000` by default (see `PORT` in `.env`). Health check: `GET /health`.
 
-All `/api/v1/*` routes run through bearer-token auth (`api/middleware/auth.ts`): the middleware verifies an HS256 JWT, resolves the signed-in user, and checks that the user belongs to the requested organization. The remaining request runs in a Prisma transaction with transaction-local `app.user_id`, `app.org_id`, and `app.role` PostgreSQL settings so forced RLS can enforce the same boundary in the database. A development-only `x-org-id` fallback can be enabled with `AUTH_ALLOW_HEADER_ORG_ID=true`, but it is off by default.
+All `/api/v1/*` routes run through bearer-token auth (`api/middleware/auth.ts`): the middleware verifies an HS256 JWT, resolves the signed-in user, and checks that the user belongs to the requested organization. Request headers cannot impersonate another organization. The remaining request runs in a Prisma transaction with transaction-local `app.user_id`, `app.org_id`, and `app.role` PostgreSQL settings so forced RLS can enforce the same boundary in the database.
 
 `RLS_TRANSACTION_TIMEOUT_MS` controls request transaction lifetime and defaults to 60 seconds. Long-running or queued work should run outside HTTP request handlers with its own scoped database session.
 

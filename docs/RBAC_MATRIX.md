@@ -59,6 +59,7 @@ Shared permission keys from `app/domain/contracts.ts`:
 - all roles are tenant-scoped by organization membership
 - no role bypasses RLS
 - cross-organization reads and writes are denied by session-scoped RLS
+- request headers cannot select or impersonate a tenant
 
 ## Assigned-technician restrictions
 

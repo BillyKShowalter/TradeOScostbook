@@ -3,7 +3,6 @@ import { verifyAnyAuthToken } from "../auth/jwt";
 import { ApiError } from "./errorHandler";
 import { AuthContext } from "../auth/context";
 import { resolveAuthContext } from "../auth/session";
-import { normalizeRole } from "../../domain";
 
 // Verifies identity and resolves the active database-backed organization
 // membership before request-scoped RLS session variables are established.
@@ -26,21 +25,6 @@ export function requireAuth(req: AuthedRequest, _res: Response, next: NextFuncti
       .then(() => next())
       .catch(next);
     return;
-  }
-
-  if (process.env.AUTH_ALLOW_HEADER_ORG_ID === "true") {
-    const headerOrgId = req.header("x-org-id");
-    if (headerOrgId) {
-      req.auth = {
-        userId: "dev-header-user",
-        orgId: headerOrgId,
-        role: "owner",
-        canonicalRole: normalizeRole("owner"),
-      };
-      req.orgId = headerOrgId;
-      next();
-      return;
-    }
   }
 
   throw new ApiError(401, "Missing bearer token");

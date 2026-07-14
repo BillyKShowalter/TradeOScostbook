@@ -97,7 +97,6 @@ function writeEnv() {
       `AUTH_JWT_SECRET="local-dev-secret-not-for-production-use-only"`,
       `AUTH_ISSUER="tradeos-costbook"`,
       `AUTH_AUDIENCE="tradeos-costbook-api"`,
-      `AUTH_ALLOW_HEADER_ORG_ID=false`,
       `RLS_TRANSACTION_TIMEOUT_MS=60000`,
       `PLATFORM_PROVISIONING_SECRET="local-dev-provisioning-secret-32chars-min"`,
       "",

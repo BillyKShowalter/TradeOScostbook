@@ -31,6 +31,8 @@ Protected API routes require:
 - a resolvable organization membership
 - a request-scoped database session for forced RLS
 
+Tenant impersonation through request-controlled organization headers is not supported.
+
 Public routes are limited to:
 
 - `/api/v1/auth/*`

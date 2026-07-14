@@ -53,6 +53,8 @@ Every authenticated API request depends on three layers:
 2. organization-membership authorization
 3. forced PostgreSQL row-level security inside a scoped database session
 
+The organization context comes from the verified identity and the matching active membership, not from request-controlled tenant headers.
+
 The request-scoped database session sets:
 
 - `app.user_id`

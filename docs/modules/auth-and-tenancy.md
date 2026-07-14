@@ -21,6 +21,8 @@ related_code:
 
 Authenticate users, resolve organization membership, and establish the RLS-backed tenant session used by all protected API requests.
 
+Protected API requests must derive tenant context from a verified authenticated identity plus an active membership. Request headers are not a tenant-selection mechanism.
+
 ## Source code locations
 
 - `app/backend/middleware/auth.ts`
