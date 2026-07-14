@@ -1,0 +1,143 @@
+---
+status: current
+owner: platform
+last_verified: 2026-07-14
+source_of_truth: true
+related_code:
+  - app/prisma/schema.prisma
+  - app/domain/contracts.ts
+---
+
+# Domain Model
+
+This file defines the canonical business entities as implemented in the repository.
+
+## Organization
+
+The tenant boundary for all application data.
+
+- persistent model: `Organization`
+- owns memberships, cost-book records, customers, projects, jobs, activity, document history, settings, and branding
+
+## User
+
+An authenticated identity stored in `AppUser`.
+
+- organization access is not implied by user existence
+- organization access comes through `OrganizationMembership`
+
+## Customer
+
+A company-scoped account or homeowner record stored in `Customer`.
+
+- customers own the business relationship
+- customers can have many projects, service addresses, equipment assets, service agreements, and jobs
+
+## Service Address
+
+A serviceable location for a customer stored in `ServiceAddress`.
+
+- belongs to one customer and one organization
+- can be attached to jobs, equipment assets, and service agreements
+
+## Equipment
+
+TradeOS currently has two equipment concepts:
+
+- `CustomerEquipment` is the installed or serviced asset tied to a customer or service address
+- `Equipment` in the cost-book area is estimating-rate data used for cost calculations
+
+When product copy says "equipment" in field operations, it usually means `CustomerEquipment`.
+
+## Project
+
+The operational workspace hub stored in `Project`.
+
+- belongs to one organization
+- may be linked to one customer
+- owns estimates, proposals, contracts, invoices, site visits, files, tasks, jobs, and service agreements
+
+## Job
+
+A first-class scheduled field-execution record stored in `Job`.
+
+- belongs to one organization, project, customer, and service address
+- is separate from the project record
+- owns assignments and links to site visits, tasks, notes, and equipment
+
+## Estimate
+
+A priced commercial draft stored in `Estimate`.
+
+- belongs to one project and organization
+- owns estimate line items
+- may feed proposals and invoices
+
+## Proposal
+
+A customer-facing commercial document stored in `Proposal`.
+
+- belongs to one project
+- may reference one estimate
+- owns proposal delivery history
+- can produce contracts and support invoices
+
+## Contract
+
+A signable commercial agreement stored in `Contract`.
+
+- belongs to one project and one proposal
+- owns contract event history
+
+## Invoice
+
+A billing document stored in `Invoice`.
+
+- belongs to one project
+- may reference an estimate and proposal
+- owns invoice line items, payments, and delivery history
+
+## Payment
+
+A recorded payment event stored in `Payment`.
+
+- belongs to one invoice and organization
+- tracks amount, payment date, method, reference, notes, and status
+
+## Change Order
+
+A scoped commercial amendment stored in `ChangeOrder`.
+
+- belongs to one project
+- may reference one estimate
+- owns change-order line items
+
+## Site Visit
+
+An intake and field-observation record stored in `SiteVisit`.
+
+- belongs to one project
+- may be linked to one job
+- stores notes, transcript, intake details, measurements, missing information, and confidence metadata
+
+## Activity Event
+
+A generic tenant-scoped event record stored in `ActivityEvent`.
+
+- keyed by `entityType` and `entityId`
+- supports recent activity, notification linkage, and intelligence surfaces
+
+## Core relationships
+
+Canonical relationship flow:
+
+`Organization -> Customer -> Project -> Estimate/Proposal/Contract/Invoice/Job`
+
+Operational sub-relationships:
+
+- `Customer -> ServiceAddress -> Job`
+- `Project -> SiteVisit`
+- `Project -> ProjectTask`
+- `Invoice -> Payment`
+- `Job -> JobAssignment`
+- `ActivityEvent` may describe changes across multiple entity types

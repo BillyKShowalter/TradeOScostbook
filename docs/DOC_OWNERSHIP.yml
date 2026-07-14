@@ -1,0 +1,210 @@
+rules:
+  - paths:
+      - app/prisma/schema.prisma
+      - app/prisma/migrations/**
+    requires:
+      - docs/DOMAIN_MODEL.md
+      - docs/CURRENT_STATE.md
+    explanation: Schema changes alter canonical entities and implementation status.
+
+  - paths:
+      - app/domain/contracts.ts
+    requires:
+      - docs/DOMAIN_MODEL.md
+      - docs/RBAC_MATRIX.md
+      - docs/WORKFLOW_LIFECYCLES.md
+      - docs/CURRENT_STATE.md
+    explanation: Shared contracts define canonical roles, permissions, labels, and lifecycle vocabulary.
+
+  - paths:
+      - app/backend/middleware/auth.ts
+      - app/backend/middleware/databaseSession.ts
+      - app/db/requestSession.ts
+      - app/modules/auth/**
+      - app/backend/routes/auth.routes.ts
+      - app/backend/routes/account.routes.ts
+      - app/backend/routes/organizationProvisioning.routes.ts
+    requires:
+      - docs/modules/auth-and-tenancy.md
+      - docs/API_REFERENCE.md
+      - docs/RBAC_MATRIX.md
+      - docs/ARCHITECTURE.md
+    explanation: Auth and tenancy changes affect security, API behavior, and request-scoped RLS documentation.
+
+  - paths:
+      - app/modules/crm/**
+      - app/backend/routes/crm.routes.ts
+    requires:
+      - docs/modules/crm.md
+      - docs/API_REFERENCE.md
+      - docs/DOMAIN_MODEL.md
+      - docs/CURRENT_STATE.md
+    explanation: CRM changes affect current customer, address, and service-agreement truth.
+
+  - paths:
+      - app/modules/cost-database/**
+      - app/modules/labor-database/**
+      - app/modules/material-database/**
+      - app/modules/equipment-database/**
+      - app/modules/assemblies-database/**
+      - app/backend/routes/costDatabase.routes.ts
+      - app/backend/routes/laborDatabase.routes.ts
+      - app/backend/routes/materialDatabase.routes.ts
+      - app/backend/routes/equipmentDatabase.routes.ts
+      - app/backend/routes/assembliesDatabase.routes.ts
+    requires:
+      - docs/modules/cost-book.md
+      - docs/API_REFERENCE.md
+      - docs/CURRENT_STATE.md
+    explanation: Cost-book changes alter estimating inputs and route groups.
+
+  - paths:
+      - app/modules/estimate-engine/**
+      - app/backend/routes/estimateEngine.routes.ts
+    requires:
+      - docs/modules/estimating.md
+      - docs/API_REFERENCE.md
+      - docs/WORKFLOW_LIFECYCLES.md
+      - docs/CURRENT_STATE.md
+    explanation: Estimate lifecycle or contract changes must update estimating docs.
+
+  - paths:
+      - app/modules/ai-estimate-assist/**
+      - app/modules/knowledge-runtime/**
+      - app/backend/routes/aiEstimateAssist.routes.ts
+      - app/backend/routes/knowledgeRuntime.routes.ts
+    requires:
+      - docs/modules/ai-estimate-assist.md
+      - docs/modules/activity-and-intelligence.md
+      - docs/API_REFERENCE.md
+      - docs/CURRENT_STATE.md
+    explanation: AI-assist and knowledge-runtime changes affect advisory behavior and route documentation.
+
+  - paths:
+      - app/modules/proposals/**
+      - app/modules/proposal-generator/**
+      - app/backend/routes/proposals.routes.ts
+      - app/backend/routes/proposalGenerator.routes.ts
+    requires:
+      - docs/modules/proposals.md
+      - docs/API_REFERENCE.md
+      - docs/WORKFLOW_LIFECYCLES.md
+      - docs/CURRENT_STATE.md
+    explanation: Proposal routes and lifecycle behavior are source-of-truth concerns.
+
+  - paths:
+      - app/modules/contracts/**
+      - app/backend/routes/contracts.routes.ts
+    requires:
+      - docs/modules/contracts.md
+      - docs/API_REFERENCE.md
+      - docs/WORKFLOW_LIFECYCLES.md
+      - docs/CURRENT_STATE.md
+    explanation: Contract workflows and compatibility lifecycle behavior must stay documented.
+
+  - paths:
+      - app/modules/invoices/**
+      - app/backend/routes/invoices.routes.ts
+    requires:
+      - docs/modules/invoices-and-payments.md
+      - docs/API_REFERENCE.md
+      - docs/WORKFLOW_LIFECYCLES.md
+      - docs/CURRENT_STATE.md
+    explanation: Invoice and payment-state changes affect commercial workflow truth.
+
+  - paths:
+      - app/modules/jobs/**
+      - app/backend/routes/jobs.routes.ts
+    requires:
+      - docs/modules/jobs-and-scheduling.md
+      - docs/API_REFERENCE.md
+      - docs/RBAC_MATRIX.md
+      - docs/WORKFLOW_LIFECYCLES.md
+      - docs/CURRENT_STATE.md
+    explanation: Jobs combine lifecycle, permissions, and route behavior.
+
+  - paths:
+      - app/modules/project-intake/**
+      - app/modules/project-tasks/**
+      - app/backend/routes/projects.routes.ts
+    requires:
+      - docs/modules/projects.md
+      - docs/API_REFERENCE.md
+      - docs/CURRENT_STATE.md
+    explanation: Project workspace changes affect project-centered workflow truth.
+
+  - paths:
+      - app/modules/intelligence/**
+      - app/backend/routes/intelligence.routes.ts
+    requires:
+      - docs/modules/activity-and-intelligence.md
+      - docs/API_REFERENCE.md
+      - docs/CURRENT_STATE.md
+    explanation: Shared activity and intelligence primitives feed multiple product surfaces.
+
+  - paths:
+      - app/modules/brand-studio/**
+      - app/modules/documents/**
+      - app/backend/routes/brandStudio.routes.ts
+    requires:
+      - docs/modules/brand-studio.md
+      - docs/CURRENT_STATE.md
+    explanation: Brand Studio drives document presentation and branding surfaces.
+
+  - paths:
+      - app/modules/settings/**
+      - app/modules/admin-dashboard/**
+      - app/modules/supplier-integration/**
+      - app/modules/supplier-database/**
+      - app/backend/routes/settings.routes.ts
+      - app/backend/routes/adminDashboard.routes.ts
+      - app/backend/routes/supplierIntegration.routes.ts
+      - app/backend/routes/supplierDatabase.routes.ts
+    requires:
+      - docs/modules/settings-and-operations.md
+      - docs/API_REFERENCE.md
+      - docs/CURRENT_STATE.md
+    explanation: Settings, internal operations, and supplier review flows need dedicated operational docs.
+
+  - paths:
+      - web/src/app/(app)/portal/**
+    requires:
+      - docs/modules/customer-portal.md
+      - docs/CURRENT_STATE.md
+    explanation: Portal changes affect customer-facing implementation status.
+
+  - paths:
+      - web/src/app/**
+      - web/src/components/**
+      - web/src/lib/**
+      - web/proxy.ts
+    requires:
+      - docs/CURRENT_STATE.md
+    explanation: Frontend implementation changes may affect current-state truth; add module docs when the change is module-specific.
+
+  - paths:
+      - .github/workflows/**
+    requires:
+      - docs/README.md
+    explanation: Workflow changes that affect documentation governance must update the docs entrypoint when behavior changes.
+
+  - paths:
+      - .github/pull_request_template.md
+    requires:
+      - docs/README.md
+    explanation: PR template changes affect contributor documentation workflow and should update the docs entrypoint.
+
+  - paths:
+      - scripts/docs-check*.mjs
+      - scripts/__tests__/docs-check.test.mjs
+    requires:
+      - docs/README.md
+      - docs/DOC_OWNERSHIP.yml
+    explanation: Docs-checker script changes must stay aligned with the documented ownership format and entrypoint.
+
+exemptions:
+  - paths:
+      - app/tests/**
+      - web/public/**
+      - docs/archive/**
+    reason: Changes in these paths do not automatically imply live implementation doc impact, but contributors may still update docs when content changes behavior.

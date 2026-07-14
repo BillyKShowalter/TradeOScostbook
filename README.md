@@ -16,12 +16,12 @@ The focus is no longer feature chasing. Current work is centered on:
 - deployment confidence
 - release documentation
 
-Start here for current launch posture:
+Start here for current implementation truth:
 
-- [docs/RC1_READINESS.md](docs/RC1_READINESS.md)
+- [docs/README.md](docs/README.md)
+- [docs/CURRENT_STATE.md](docs/CURRENT_STATE.md)
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)
-- [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md)
-- [docs/SYSTEM_ARCHITECTURE.md](docs/SYSTEM_ARCHITECTURE.md)
 
 ## Applications
 
@@ -57,12 +57,21 @@ See:
 ## Repository structure
 
 ```text
-.github/workflows/                 repository verification and migration rollout workflows
-docs/                              release docs, architecture docs, planning artifacts
+.github/workflows/                 repository verification, migration rollout, and docs governance workflows
+docs/                              source-of-truth docs, module docs, ADRs, agent contracts, archive
 app/                               backend API, Prisma schema/migrations, tests, deployment scripts
 web/                               Next.js frontend
 packages/knowledge-engine/         knowledge-runtime source and archive material
+scripts/                           documentation consistency tooling
 ```
+
+## Documentation governance
+
+Implementation truth lives under [docs/README.md](docs/README.md).
+
+- Use the canonical docs in `docs/` and `docs/modules/` for current-state decisions.
+- Treat `docs/archive/` as historical context only.
+- Run `npm run docs:check` when a change affects documented behavior.
 
 ## Core workflow currently supported
 
@@ -109,6 +118,7 @@ GitHub Actions mirrors this baseline automatically:
 
 - `.github/workflows/verify-repository.yml` runs app lint, unit tests, build, integration, plus web lint and build
 - `.github/workflows/deploy-migrations.yml` handles production migration rollout
+- `.github/workflows/docs-consistency.yml` enforces required documentation updates on pull requests
 
 ## Scope guardrails
 
