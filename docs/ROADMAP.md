@@ -17,12 +17,6 @@ RC1 hardening.
 
 ## Upcoming milestones
 
-### Documentation governance
-
-- finish the source-of-truth hierarchy
-- require documentation updates in the same PR as affected code
-- keep archived plans preserved but non-authoritative
-
 ### Lifecycle normalization
 
 - reduce persisted legacy status values where compatibility shims remain
@@ -32,6 +26,7 @@ RC1 hardening.
 ### Release hardening
 
 - keep repository verification stable
+- monitor the documentation-governance checks and tune ownership rules only where they prove too noisy
 - improve customer-portal hardening
 - verify production deployment and environment approval posture outside the codebase
 

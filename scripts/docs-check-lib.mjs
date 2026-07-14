@@ -185,14 +185,22 @@ function collectPathsFromNameStatus(lines) {
   const paths = [];
   for (const line of lines) {
     const parts = line.split("\t").filter(Boolean);
-    if (parts.length < 2) continue;
+    if (parts.length < 2) {
+      throw new Error(`Malformed git diff --name-status line: ${line}`);
+    }
     const status = parts[0];
     if (status.startsWith("R") || status.startsWith("C")) {
-      if (parts[1]) paths.push(parts[1]);
-      if (parts[2]) paths.push(parts[2]);
+      if (parts.length < 3 || !parts[1] || !parts[2]) {
+        throw new Error(`Malformed rename/copy git diff --name-status line: ${line}`);
+      }
+      paths.push(parts[1]);
+      paths.push(parts[2]);
       continue;
     }
-    if (parts[1]) paths.push(parts[1]);
+    if (!parts[1]) {
+      throw new Error(`Malformed git diff --name-status line: ${line}`);
+    }
+    paths.push(parts[1]);
   }
   return paths;
 }

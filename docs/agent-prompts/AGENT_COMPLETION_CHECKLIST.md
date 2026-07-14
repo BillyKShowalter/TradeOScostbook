@@ -26,6 +26,12 @@ Every task report must include:
 - known limitations
 - deferred work
 
+Always include:
+
+- whether scope stayed inside the allowed paths
+- whether any stop condition was encountered
+- whether final branch state is ready for review without extra documentation work
+
 Required rule:
 
 “The task is incomplete when code changes require documentation updates that are not included in the same branch and PR.”

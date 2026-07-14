@@ -74,6 +74,15 @@ test("no required docs when no rules match", () => {
   assert.deepEqual(result.missingDocs, []);
 });
 
+test("docs-only module edits do not require docs README", () => {
+  const result = evaluateOwnership({
+    changedFiles: ["docs/modules/projects.md"],
+    config,
+  });
+  assert.deepEqual(result.requiredDocs, []);
+  assert.deepEqual(result.missingDocs, []);
+});
+
 test("all required docs changed passes", () => {
   const result = evaluateOwnership({
     changedFiles: ["app/domain/contracts.ts", "docs/RBAC_MATRIX.md", "docs/WORKFLOW_LIFECYCLES.md"],
@@ -207,6 +216,38 @@ test("exact rename and modified rename entries are both parsed", () => {
   ]);
   const git = (args) => responses.get(args.join(" ")) ?? "";
   assert.deepEqual(getChangedFiles("origin/main", git), [
+    "app/modules/crm/service-v2.ts",
+    "app/modules/crm/service.ts",
+    "app/modules/jobs/service-renamed.ts",
+    "app/modules/jobs/service.ts",
+  ]);
+});
+
+test("malformed rename input fails clearly", () => {
+  const responses = new Map([
+    ["diff --name-status -M origin/main...HEAD", "R100\tapp/modules/jobs/service.ts\n"],
+    ["diff --name-status -M --cached", ""],
+    ["diff --name-status -M", ""],
+    ["ls-files --others --exclude-standard", ""],
+  ]);
+  const git = (args) => responses.get(args.join(" ")) ?? "";
+  assert.throws(() => getChangedFiles("origin/main", git), /Malformed rename\/copy git diff --name-status line/);
+});
+
+test("multiple simultaneous renames include every old and new path", () => {
+  const responses = new Map([
+    [
+      "diff --name-status -M origin/main...HEAD",
+      "R100\tapp/modules/jobs/service.ts\tapp/modules/jobs/service-renamed.ts\nR091\tapp/modules/crm/service.ts\tapp/modules/crm/service-v2.ts\nR100\tapp/domain/contracts.ts\tapp/domain/contracts-renamed.ts\n",
+    ],
+    ["diff --name-status -M --cached", ""],
+    ["diff --name-status -M", ""],
+    ["ls-files --others --exclude-standard", ""],
+  ]);
+  const git = (args) => responses.get(args.join(" ")) ?? "";
+  assert.deepEqual(getChangedFiles("origin/main", git), [
+    "app/domain/contracts-renamed.ts",
+    "app/domain/contracts.ts",
     "app/modules/crm/service-v2.ts",
     "app/modules/crm/service.ts",
     "app/modules/jobs/service-renamed.ts",

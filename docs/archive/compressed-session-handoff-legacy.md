@@ -28,13 +28,13 @@ do_not_use_for_implementation: true
 - Storage rendering falls back to `fileUrl` if `storagePath` is missing or signed URL generation fails.
 
 ## Key Files
-- [Project intake action](/Users/showb/TradeOScostbook/web/src/app/actions/projects.ts)
-- [Site visit form](/Users/showb/TradeOScostbook/web/src/components/projects/site-visit-form.tsx)
-- [Shared project photo gallery](/Users/showb/TradeOScostbook/web/src/components/projects/project-photo-panel.tsx)
-- [Storage resolver](/Users/showb/TradeOScostbook/web/src/lib/storage.ts)
-- [Intake page](/Users/showb/TradeOScostbook/web/src/app/(app)/projects/[id]/intake/page.tsx)
-- [Proposal context panel](/Users/showb/TradeOScostbook/web/src/components/proposals/proposal-context-panel.tsx)
-- [Project files API](/Users/showb/TradeOScostbook/app/backend/controllers/projects.controller.ts)
+- `web/src/app/actions/projects.ts` (project intake action)
+- `web/src/components/projects/site-visit-form.tsx` (site visit form)
+- `web/src/components/projects/project-photo-panel.tsx` (shared project photo gallery)
+- `web/src/lib/storage.ts` (storage resolver)
+- `web/src/app/(app)/projects/[id]/intake/page.tsx` (intake page)
+- `web/src/components/proposals/proposal-context-panel.tsx` (proposal context panel)
+- `app/backend/controllers/projects.controller.ts` (project files API)
 
 ## Verification
 - `npm run lint` passes in `web`.

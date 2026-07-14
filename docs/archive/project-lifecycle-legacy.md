@@ -1,4 +1,14 @@
+---
+status: archived
+superseded_by: docs/WORKFLOW_LIFECYCLES.md
+do_not_use_for_implementation: true
+---
+
 # Project Lifecycle
+
+This document is preserved as a historical planning artifact.
+
+Warning: it predates the current source-of-truth hierarchy and should not be used for implementation decisions. Current lifecycle truth lives in `docs/WORKFLOW_LIFECYCLES.md`, `docs/modules/projects.md`, and `docs/CURRENT_STATE.md`.
 
 ## Goal
 

@@ -32,6 +32,8 @@ Minimum startup commands:
 - `pwd`
 - `git branch --show-current`
 - `git status --short --branch`
+- `git rev-parse --abbrev-ref --symbolic-full-name @{upstream}`
+- `git fetch origin`
 - `git worktree list`
 
 Stop immediately if:
@@ -39,4 +41,6 @@ Stop immediately if:
 - the worktree path is wrong
 - the branch is wrong
 - the working tree is dirty when the task requires a clean start
+- the upstream branch is not the expected branch for the task
 - the requested scope reaches forbidden paths
+- the source-of-truth documents needed for the task have not been identified

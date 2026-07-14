@@ -1,4 +1,14 @@
+---
+status: archived
+superseded_by: docs/CURRENT_STATE.md
+do_not_use_for_implementation: true
+---
+
 # Sprint 1 Verification
+
+This document is preserved as a historical verification checkpoint.
+
+Warning: it records an earlier environment-specific validation pass and is not current implementation truth. Use `docs/CURRENT_STATE.md`, current CI workflows, and the active test commands for present verification posture.
 
 ## Summary
 
