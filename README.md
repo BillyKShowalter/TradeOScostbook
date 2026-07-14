@@ -2,7 +2,7 @@
 
 TradeOS is a project-centered construction workflow platform for trade contractors.
 
-The current repository supports the operational path from customer and project creation through site visit intake, estimating, proposal review, contracting, invoicing, and closeout preparation.
+The current repository supports the operational path from customer and project creation through job creation, technician assignment, scheduling, dispatcher coordination, field execution, invoicing, and closeout preparation.
 
 ## RC1 status
 
@@ -36,7 +36,7 @@ Express + TypeScript backend API with:
 - organization membership checks
 - forced PostgreSQL row-level security
 - Prisma migrations and deployment scripts
-- proposal, contract, invoice, change-order, task, intake, and knowledge-runtime modules
+- proposal, contract, invoice, change-order, task, intake, jobs, scheduling, dispatcher, and knowledge-runtime modules
 
 See:
 
@@ -49,6 +49,7 @@ Next.js 16 frontend with:
 - authenticated app shell
 - customer and project workflows
 - project workspace
+- job creation, assignment, scheduling, and field-status coordination through project workspace surfaces
 - estimate builder and AI estimate assist
 - proposal, contract, and invoice screens
 - customer portal document views
@@ -83,10 +84,15 @@ TradeOS currently connects:
 
 - customer records
 - project creation
+- customer -> project -> job coordination
 - site visit intake
 - estimate creation, duplication, comparison, and AI-assisted review
 - proposal drafting and lifecycle
 - contract generation and signature flow
+- job creation and assignment
+- scheduling, rescheduling, and calendar coordination
+- dispatcher workflows for technician assignment and job-status coordination
+- field-work coordination through operational job states
 - invoice issue and payment-state workflow
 - change orders
 - project tasks
@@ -134,6 +140,8 @@ The intended direction is:
 - preserve APIs
 - preserve database compatibility
 - finish and harden what already exists
+
+The following exclusions do not remove the existing Jobs, Scheduling, and Dispatcher product surface; they limit only advanced optimization and adjacent enterprise systems.
 
 The following remain intentionally out of scope unless priorities change:
 

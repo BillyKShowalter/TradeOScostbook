@@ -38,8 +38,13 @@ Explicit exclusions:
 
 - live supplier feed ingestion
 - advanced dispatch optimization
+- automated route optimization
+- fleet-routing intelligence
+- automatic technician-routing decisions
 - public payment processing
 - broad UI redesigns or architecture rewrites
+
+These exclusions do not remove the existing jobs, scheduling, technician-assignment, or dispatcher workflow surface already in scope.
 
 ### Release hardening
 

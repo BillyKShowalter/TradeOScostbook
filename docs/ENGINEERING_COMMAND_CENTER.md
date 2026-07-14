@@ -40,10 +40,15 @@ Explicit exclusions:
 
 - live supplier-feed ingestion
 - advanced dispatch optimization
+- automated route optimization
+- fleet-routing intelligence
+- automatic technician-routing decisions
 - public payment processing
 - broad UI redesign
 - architecture rewrite
 - unrelated feature expansion
+
+These exclusions do not remove the existing jobs, scheduling, technician-assignment, dispatcher, or field-work coordination surface already implemented in TradeOS.
 
 Authoritative reference:
 
@@ -69,6 +74,15 @@ Verified implemented areas:
 - [Customer portal](modules/customer-portal.md)
 
 See [CURRENT_STATE.md](CURRENT_STATE.md) for the verified module list and implementation caveats.
+
+Current operational scope already includes:
+
+- customer -> project -> job coordination
+- job creation and assignment
+- technician assignment
+- scheduling and rescheduling
+- dispatcher-managed workload coordination within current RBAC limits
+- field-work status coordination from scheduling through completion and invoice readiness
 
 ## 5. Top Engineering Priorities
 

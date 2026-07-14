@@ -16,6 +16,17 @@ related_code:
 
 This file defines canonical display states and the current compatibility layer for persisted values.
 
+## Current operational relationship
+
+Current workflow relationship:
+
+`Customer -> Project -> Job -> Schedule/Assignment -> Field Work -> Completion -> Invoice readiness`
+
+Important scope note:
+
+- estimates, proposals, and contracts may feed project and job execution, but the current repository does not enforce one rigid automatic chain where every job must pass through the same commercial sequence before field work begins
+- scheduling, technician assignment, dispatcher coordination, and field-status progression are already part of the implemented product surface
+
 ## Projects
 
 Canonical display states:
@@ -149,6 +160,10 @@ Privileged override actions:
 - only owners and admins may override schedule conflicts
 - only owners and admins may reopen completed jobs
 - manager roles can archive jobs
+
+Operational role note:
+
+- dispatchers coordinate assignment, schedule changes, and permitted job-state progression within the current RBAC model, but current docs do not claim automated routing or optimization behavior
 
 ## Invoices
 

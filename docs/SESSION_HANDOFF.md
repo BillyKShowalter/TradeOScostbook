@@ -19,40 +19,32 @@ related_code:
 - branch: `chore/repository-governance-hardening`
 - base branch: `main`
 - latest commit: verify with `git log -1 --oneline` before resuming; this handoff should not be trusted as the source of the branch HEAD SHA
-- PR number: not opened
+- PR number: `24`
 
 ## Mission
 
-Finalize the permanent repository-governance operating system for TradeOS by adding a shared Engineering Command Center, a living session handoff, stronger startup and completion rules, and focused ownership enforcement so every future human or AI session begins from the same verified repository context.
+Correct the governance and source-of-truth documentation so it clearly distinguishes the existing Jobs, Scheduling, and Dispatcher product surface from the advanced optimization features that remain out of scope during RC1.
 
 ## Completed
 
 - verified the governance worktree path, branch, cleanliness, remote, upstream, and `origin/main` state before editing
-- verified the branch diff remains limited to governance docs, workflow policy, and docs-check tests
-- read the current source-of-truth document set, current ADRs, current module docs, live CI workflows, open draft PR metadata, and recent merged work on `main`
-- confirmed `RC1 hardening` as the current phase and `Lifecycle normalization` as the next coherent milestone
-- confirmed jobs and scheduling are already part of the merged product and corrected stale scope wording earlier on this branch
-- verified that GitHub branch protection and rulesets are still not configured on `main`
+- verified the branch remains documentation-only with no runtime code changes
+- re-read the current source-of-truth docs for product scope, RBAC, lifecycles, and jobs/scheduling module truth
+- confirmed that jobs, scheduling, technician assignment, dispatcher workflows, and field-work coordination are already implemented and in scope
+- corrected current docs so only advanced optimization and adjacent enterprise systems remain excluded
 
 ## Files Changed
 
+- `README.md`
+- `docs/ENGINEERING_COMMAND_CENTER.md`
+- `docs/CURRENT_STATE.md`
+- `docs/PRODUCT_SCOPE.md`
+- `docs/WORKFLOW_LIFECYCLES.md`
+- `docs/ROADMAP.md`
+- `docs/modules/jobs-and-scheduling.md`
+- `docs/modules/projects.md`
 - `.github/pull_request_template.md`
 - `AGENTS.md`
-- `README.md`
-- `docs/DOC_OWNERSHIP.yml`
-- `docs/README.md`
-- `docs/REPOSITORY_GOVERNANCE.md`
-- `docs/ROADMAP.md`
-- `docs/agent-prompts/AGENT_COMPLETION_CHECKLIST.md`
-- `docs/agent-prompts/AGENT_STARTUP_CHECKLIST.md`
-- `docs/agent-prompts/BACKEND_WORKTREE_CONTRACT.md`
-- `docs/agent-prompts/DOCS_WORKTREE_CONTRACT.md`
-- `docs/agent-prompts/FRONTEND_WORKTREE_CONTRACT.md`
-- `docs/agent-prompts/RECOVERY_WORKTREE_CONTRACT.md`
-- `docs/decisions/ADR-004-worktree-policy.md`
-- `scripts/__tests__/docs-check.test.mjs`
-- `docs/ENGINEERING_COMMAND_CENTER.md`
-- `docs/SESSION_HANDOFF.md`
 
 ## Verification Performed
 
@@ -99,7 +91,7 @@ None before this session’s new Command Center and handoff edits. This branch w
 
 ## Next Exact Task
 
-Open a PR from `chore/repository-governance-hardening`, then manually apply the documented `main` branch ruleset and merge-setting changes in GitHub so the documented governance policy becomes real enforcement.
+Review PR `#24` after the scope-correction commit lands, then verify that no remaining review comment or current non-archived doc still misstates the Jobs, Scheduling, and Dispatcher surface.
 
 ## Startup Instructions for Next Session
 
