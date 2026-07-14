@@ -2,6 +2,15 @@
 
 ## Scope
 
+## Worktree and branch verification
+
+- Worktree path:
+- Branch:
+- Upstream verified after `git fetch origin`:
+- Allowed paths:
+- Forbidden paths respected:
+- Exact task scope:
+
 ## Code changes
 
 ## API or schema changes
@@ -32,6 +41,8 @@ Explanation when no documentation update is required:
 - [ ] Frontend lint
 - [ ] Frontend build
 - [ ] Documentation consistency check
+
+Exact final `git status --short --branch`:
 
 ## Environment-blocked checks
 

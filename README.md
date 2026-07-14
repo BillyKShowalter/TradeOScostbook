@@ -22,6 +22,7 @@ Start here for current implementation truth:
 - [docs/CURRENT_STATE.md](docs/CURRENT_STATE.md)
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)
+- [docs/REPOSITORY_GOVERNANCE.md](docs/REPOSITORY_GOVERNANCE.md)
 
 ## Applications
 
@@ -72,6 +73,7 @@ Implementation truth lives under [docs/README.md](docs/README.md).
 - Use the canonical docs in `docs/` and `docs/modules/` for current-state decisions.
 - Treat `docs/archive/` as historical context only.
 - Run `npm run docs:check` when a change affects documented behavior.
+- Use [docs/REPOSITORY_GOVERNANCE.md](docs/REPOSITORY_GOVERNANCE.md) for protected-branch policy, required checks, and worktree lifecycle.
 
 ## Core workflow currently supported
 
