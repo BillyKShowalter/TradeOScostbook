@@ -33,10 +33,11 @@ const mockAssembliesDatabase = {
   search: jest.fn(),
   getAssemblyUnitCost: jest.fn(),
 };
+const mockRunInDatabaseTransaction = jest.fn((_client, operation: () => Promise<unknown>) => operation());
 
 jest.mock("../db/client", () => ({ basePrisma: mockPrisma, prisma: mockPrisma }));
 jest.mock("../db/requestSession", () => ({
-  runInDatabaseTransaction: jest.fn((_client, operation: () => Promise<unknown>) => operation()),
+  runInDatabaseTransaction: mockRunInDatabaseTransaction,
 }));
 jest.mock("../modules/knowledge-runtime/service", () => ({
   KnowledgeRuntimeService: jest.fn().mockImplementation(() => mockKnowledgeRuntime),
@@ -858,6 +859,64 @@ describe("StructuredAIEstimatorService", () => {
         expect.objectContaining({ draftLineItemId: "accepted-existing", reason: "Duplicate draft line item in review payload." }),
       ])
     );
+  });
+
+  it("propagates a middle-line apply failure inside the transaction boundary without recording apply success", async () => {
+    mockCostDatabase.getById.mockImplementation(async (id: string) => ({
+      id,
+      orgId: "org-1",
+      code: id.endsWith("001") ? "COST-001" : "COST-002",
+      name: id.endsWith("001") ? "First accepted line" : "Second accepted line",
+      unitOfMeasure: "EA",
+      isActive: true,
+    }));
+    mockEstimateEngine.addLineItem
+      .mockResolvedValueOnce({ id: "line-item-1" })
+      .mockRejectedValueOnce(new Error("estimate engine write failed"));
+
+    await expect(
+      new StructuredAIEstimatorService().applyReviewedDraft({
+        estimateId: "estimate-1",
+        orgId: "org-1",
+        actorUserId: "user-1",
+        lineItems: [
+          {
+            draftLineItemId: "accepted-1",
+            status: "accepted",
+            reviewToken: buildReviewToken({
+              estimateId: "estimate-1",
+              orgId: "org-1",
+              draftLineItemId: "accepted-1",
+              targetKind: "costItem",
+              targetId: "10000000-0000-0000-0000-000000000001",
+            }),
+            targetId: "10000000-0000-0000-0000-000000000001",
+            targetKind: "costItem",
+            description: "First accepted line",
+            quantity: 1,
+          },
+          {
+            draftLineItemId: "accepted-2",
+            status: "accepted",
+            reviewToken: buildReviewToken({
+              estimateId: "estimate-1",
+              orgId: "org-1",
+              draftLineItemId: "accepted-2",
+              targetKind: "costItem",
+              targetId: "10000000-0000-0000-0000-000000000002",
+            }),
+            targetId: "10000000-0000-0000-0000-000000000002",
+            targetKind: "costItem",
+            description: "Second accepted line",
+            quantity: 1,
+          },
+        ],
+      })
+    ).rejects.toThrow("estimate engine write failed");
+
+    expect(mockRunInDatabaseTransaction).toHaveBeenCalledTimes(1);
+    expect(mockEstimateEngine.addLineItem).toHaveBeenCalledTimes(2);
+    expect(mockActivityService.record).not.toHaveBeenCalledWith(expect.objectContaining({ eventType: "estimate.ai_estimator_review_applied" }));
   });
 
   it("skips accepted org-owned targets that are not backed by a matching server review token", async () => {

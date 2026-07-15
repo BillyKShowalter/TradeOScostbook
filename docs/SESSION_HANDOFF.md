@@ -47,16 +47,16 @@ Explicitly out of scope:
 - bounded parsed draft quantities to the same maximum as reviewed apply quantities
 - made pricing retrieval failures review-safe: the draft returns zero-priced unresolved-pricing warnings instead of inventing or trusting fallback prices
 - rejected inactive cost items and assemblies as valid structured estimator targets
-- expanded focused tests for review-token provenance, stale/missing/mismatched tokens, production secret failure, inactive targets, pricing-failure warnings, excessive draft quantities, controller bounds, and source-key first insert/replay behavior
+- expanded focused tests for review-token provenance, stale/missing/mismatched tokens, production secret failure, inactive targets, pricing-failure warnings, excessive draft quantities, controller bounds, partial apply failures, and source-key first insert/replay behavior
 - updated documentation ownership so AI estimator controller and rate-limit middleware changes require AI-assist/API/current-state docs
 - marked legacy document-generator scripts as not current RC1 implementation truth
 
 ## Validation Performed
 
-- `npm test -- structured-ai-estimator.service.test.ts ai-estimate-assist.controller.test.ts estimate-engine.service.test.ts --runInBand`: passed, 3 suites / 42 tests
+- `npm test -- structured-ai-estimator.service.test.ts ai-estimate-assist.controller.test.ts estimate-engine.service.test.ts --runInBand`: passed, 3 suites / 43 tests
 - `npm run docs:check`: passed
 - `npm run docs:test`: passed, 30 tests
-- `cd app && npm test`: passed, 53 suites / 357 tests
+- `cd app && npm test`: passed, 53 suites / 358 tests
 - `cd app && npm run lint`: passed
 - `cd app && npm run build`: passed
 - `git diff --check`: passed before handoff refresh
