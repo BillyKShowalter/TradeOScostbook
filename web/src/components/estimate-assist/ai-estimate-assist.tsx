@@ -350,6 +350,14 @@ export function AIEstimateAssist({
               {applyAcceptedSuggestions.isPending ? "Applying accepted suggestions…" : `Add ${reviewStats.acceptedReadyCount} accepted suggestion${reviewStats.acceptedReadyCount === 1 ? "" : "s"} to estimate`}
             </Button>
 
+            {applyAcceptedSuggestions.isError ? (
+              <p className="text-sm text-destructive" role="alert">
+                {applyAcceptedSuggestions.error instanceof Error
+                  ? applyAcceptedSuggestions.error.message
+                  : "Applying suggestions failed. Try again."}
+              </p>
+            ) : null}
+
             <p className="text-sm text-muted-foreground">
               Resolved suggestions are added as estimate line items through the existing engine. Unresolved suggestions stay review-only until you map them manually.
             </p>
