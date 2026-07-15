@@ -129,6 +129,19 @@ curl -X POST localhost:4000/api/v1/estimates/<estimateId>/proposals/generate -o 
 
 (Note: the proposal route is mounted at `/api/v1/proposals/:id/generate`, where `:id` is the estimate id — adjust the example above accordingly.)
 
+## Structured AI Estimating
+
+The backend exposes a review-first structured estimating path for contractor-language scopes:
+
+```bash
+POST /api/v1/estimates/<estimateId>/ai-estimator/draft
+POST /api/v1/estimates/<estimateId>/ai-estimator/apply
+```
+
+Draft generation parses scope text, uses the read-only Knowledge Runtime for candidate matches, resolves candidates to existing org-scoped cost items or assemblies, and retrieves pricing through the existing costbook services. Drafts require `billing.write`, are rate-limited, and record a non-sensitive activity event without storing the full prompt.
+
+Apply accepts only reviewed line items, validates accepted targets server-side, serializes concurrent apply requests per estimate, and writes line items through `EstimateEngineService.addLineItem`. Generated output never writes estimate lines directly to Prisma. AI-reviewed lines carry a server-built `sourceKey` so retries and concurrent replays can reconcile to the existing line instead of creating duplicates.
+
 ## Testing
 
 ```bash

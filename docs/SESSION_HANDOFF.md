@@ -1,112 +1,101 @@
 ---
 status: current
 owner: platform
-last_verified: 2026-07-14
+last_verified: 2026-07-15
 source_of_truth: true
 related_code:
-  - docs/ENGINEERING_COMMAND_CENTER.md
+  - app/modules/ai-estimate-assist/structuredEstimator.ts
+  - app/modules/estimate-engine/service.ts
+  - app/prisma/schema.prisma
   - docs/CURRENT_STATE.md
-  - docs/ROADMAP.md
+  - docs/REPOSITORY_GOVERNANCE.md
 ---
 
 # TradeOS Session Handoff
 
 ## Session Metadata
 
-- date: 2026-07-14
+- date: 2026-07-15
 - agent/tool: Codex
-- worktree path: `/Users/showb/TradeOS-governance`
-- branch: `chore/repository-governance-hardening`
+- worktree path: `/Users/showb/TradeOS-ai-estimator`
+- branch: `feature/ai-estimator-engine`
 - base branch: `main`
-- latest commit: verify with `git log -1 --oneline` before resuming; this handoff should not be trusted as the source of the branch HEAD SHA
-- PR number: `24`
+- upstream: none configured for this branch
+- remote: `https://github.com/404TradeOS-LLC/TradeOScostbook.git`
 
 ## Mission
 
-Correct the governance and source-of-truth documentation so it clearly distinguishes the existing Jobs, Scheduling, and Dispatcher product surface from the advanced optimization features that remain out of scope during RC1.
+Harden the backend-only structured AI estimator so it remains review-first, tenant-safe, deterministic, and ready for senior review.
+
+Explicitly out of scope:
+
+- frontend/UI, contractor experience, onboarding UX, demo screens, dispatcher UX, components, layouts, styling, navigation, and design-system presentation work
+- Claude-owned research or documentation-audit branches
+- governance edits, dependency upgrades, lockfile replacement, merges, rebases, pushes, and unrelated cleanup
+- direct LLM/database writes outside validated service-layer tools
 
 ## Completed
 
-- verified the governance worktree path, branch, cleanliness, remote, upstream, and `origin/main` state before editing
-- verified the branch remains documentation-only with no runtime code changes
-- re-read the current source-of-truth docs for product scope, RBAC, lifecycles, and jobs/scheduling module truth
-- confirmed that jobs, scheduling, technician assignment, dispatcher workflows, and field-work coordination are already implemented and in scope
-- corrected current docs so only advanced optimization and adjacent enterprise systems remain excluded
+- kept work isolated in `/Users/showb/TradeOS-ai-estimator` on `feature/ai-estimator-engine`
+- preserved the existing `ai-estimate-assist`, Knowledge Runtime, Cost Database, Assemblies Database, and Estimate Engine architecture
+- added `StructuredAIEstimatorService` under the existing AI Estimate Assist module
+- added authenticated structured estimator routes:
+  - `POST /api/v1/estimates/:id/ai-estimator/draft`
+  - `POST /api/v1/estimates/:id/ai-estimator/apply`
+- hardened controller validation with strict payloads, UUID parsing, finite bounded quantities, line-count bounds, and no trusted body `orgId`
+- added write-permission checks and route-specific AI estimator rate limiting
+- made draft generation fail safely when Knowledge Runtime is unavailable
+- kept draft output review-first and deterministic: Knowledge Runtime candidates are advisory, and pricing comes only from costbook/assembly services
+- hardened apply to validate the estimate and every accepted target server-side before writing
+- added per-estimate advisory locking for structured apply attempts
+- added `EstimateLineItem.sourceKey` plus a unique `(estimateId, sourceKey)` index for reviewed AI line replay protection
+- extended `EstimateEngineService.addLineItem` so idempotent AI-reviewed lines still write only through the existing service
+- added non-sensitive activity events for draft generation and reviewed apply actions
+- documented current limitations, including no persisted signed draft-run provenance
 
 ## Files Changed
 
-- `README.md`
-- `docs/ENGINEERING_COMMAND_CENTER.md`
+- `app/backend/controllers/aiEstimateAssist.controller.ts`
+- `app/backend/middleware/aiEstimateRateLimit.ts`
+- `app/backend/routes/aiEstimateAssist.routes.ts`
+- `app/modules/ai-estimate-assist/structuredEstimator.ts`
+- `app/modules/ai-estimate-assist/types.ts`
+- `app/modules/estimate-engine/service.ts`
+- `app/modules/estimate-engine/types.ts`
+- `app/prisma/schema.prisma`
+- `app/prisma/migrations/20260715100000_add_estimate_line_item_source_key/migration.sql`
+- `app/tests/ai-estimate-assist.controller.test.ts`
+- `app/tests/estimate-engine.service.test.ts`
+- `app/tests/structured-ai-estimator.service.test.ts`
+- `app/README.md`
+- `docs/API_REFERENCE.md`
 - `docs/CURRENT_STATE.md`
-- `docs/PRODUCT_SCOPE.md`
+- `docs/DOMAIN_MODEL.md`
+- `docs/SESSION_HANDOFF.md`
 - `docs/WORKFLOW_LIFECYCLES.md`
-- `docs/ROADMAP.md`
-- `docs/modules/jobs-and-scheduling.md`
-- `docs/modules/projects.md`
-- `.github/pull_request_template.md`
-- `AGENTS.md`
+- `docs/modules/activity-and-intelligence.md`
+- `docs/modules/ai-estimate-assist.md`
+- `docs/modules/estimating.md`
 
 ## Verification Performed
 
-- `pwd` -> `/Users/showb/TradeOS-governance`
-- `git branch --show-current` -> `chore/repository-governance-hardening`
-- `git status --short --branch` -> clean before edits
-- `git remote -v` -> `origin https://github.com/404TradeOS-LLC/TradeOScostbook.git`
-- `git fetch origin --prune` -> success
-- `git diff --stat origin/main...HEAD` -> governance/docs/test-only diff
-- `git diff --name-status origin/main...HEAD` -> no runtime product paths changed
-- `git log --oneline --decorate origin/main..HEAD` -> governance-only commit sequence
-- `gh pr list --state open` -> open PR inventory captured
-- `gh pr list --state merged` -> recent merged PR inventory captured
-- `gh api repos/404TradeOS-LLC/TradeOScostbook/branches/main/protection` -> `404 Branch not protected`
-- `gh api repos/404TradeOS-LLC/TradeOScostbook/rules/branches/main` -> `[]`
-
-## Decisions Made
-
-- the Engineering Command Center becomes the first project-status document read after environment verification
-- the session handoff becomes the required living end-of-session artifact for substantive or PR-ready work
-- source-of-truth and governance hierarchy changes should update the Command Center when they change startup order, milestone, blockers, risks, or required CI policy
-- jobs and scheduling remain documented as live product surface, consistent with [ADR-001](decisions/ADR-001-project-job-separation.md)
-- worktree lifecycle and no-`rm -rf` cleanup policy remain anchored by [ADR-004](decisions/ADR-004-worktree-policy.md)
-- documentation hierarchy and deterministic docs enforcement remain anchored by [ADR-005](decisions/ADR-005-documentation-governance.md)
+- `cd app && npm run prisma:generate`: passed
+- focused Jest: `cd app && npm test -- structured-ai-estimator.service.test.ts estimate-engine.service.test.ts ai-estimate-assist.controller.test.ts`: passed, 26 tests
+- `npm run docs:check`: passed
+- `npm run docs:test`: passed, 29 tests
+- `cd app && npm test`: passed, 53 suites / 343 tests
+- `cd app && npm run lint`: passed
+- `cd app && npm run build`: passed
+- `cd app && npm run test:integration`: passed, 20 live RLS tests
+- `git diff --check`: passed
 
 ## Known Issues or Blockers
 
-- `main` still lacks live GitHub branch protection and rulesets even though the governance target is now documented
-- lifecycle compatibility values remain a release-readiness risk until lifecycle normalization is completed
-- supplier feed ingestion is still stubbed
-- multiple open draft PRs are stale relative to current `main` and may confuse future sessions if left untriaged
-
-## Draft PR Signals
-
-- likely partially superseded: PR `#14` (`docs: git branch/merge audit and safe rollout plan`) because this governance branch now carries the live repository-governance document set and worktree lifecycle
-- likely partially superseded: PR `#15` (`docs: agent handoff, current-sprints tracker, refreshed AGENTS.md/next-steps`) because the current branch is replacing that older handoff approach with `ENGINEERING_COMMAND_CENTER.md` and `SESSION_HANDOFF.md`
-- likely based on old main but still potentially valuable as reference only: PR `#16` (`Sprint 11: Project Lifecycle & Field Operations workspace`), which is several commits behind current `main` and mixes runtime work with older docs
-- likely partially merged elsewhere: PR `#4` (`feat(knowledge-runtime): scaffold bridge module for Construction Knowledge Engine`), because knowledge-runtime work has already landed through later merged work
-- likely old-main docs branches: PRs `#5`, `#11`, `#12`, and `#13`, which have not been refreshed since 2026-07-03 and should not be treated as current truth without re-verification
-
-## Uncommitted or Unpushed Work
-
-None before this session’s new Command Center and handoff edits. This branch was clean and already pushed at session start.
+- branch `feature/ai-estimator-engine` has no upstream configured
+- changes are not pushed
+- structured apply validates accepted org-owned targets and protects replayed reviewed lines, but it does not persist a signed draft-run record proving that a target appeared in a previous generated draft
+- concurrent structured apply is serialized per estimate, but broader estimate version numbering and manual line-item sort-order races remain outside this sprint
 
 ## Next Exact Task
 
-Review PR `#24` after the scope-correction commit lands, then verify that no remaining review comment or current non-archived doc still misstates the Jobs, Scheduling, and Dispatcher surface.
-
-## Startup Instructions for Next Session
-
-- worktree: `/Users/showb/TradeOS-governance`
-- branch: `chore/repository-governance-hardening`
-- first documents to read:
-  - `docs/ENGINEERING_COMMAND_CENTER.md`
-  - `docs/CURRENT_STATE.md`
-  - `docs/SESSION_HANDOFF.md`
-  - `docs/REPOSITORY_GOVERNANCE.md`
-- first verification commands:
-  - `pwd`
-  - `git branch --show-current`
-  - `git status --short --branch`
-  - `git remote -v`
-  - `git fetch origin --prune`
-  - `git rev-parse --abbrev-ref --symbolic-full-name @{upstream}`
-  - `git diff --stat origin/main...HEAD`
+Inspect the final diff and local commits, then open a human review PR when ready. If pushing from this worktree, use `git push -u origin feature/ai-estimator-engine`.
