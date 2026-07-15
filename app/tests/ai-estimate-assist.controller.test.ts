@@ -110,6 +110,75 @@ describe("aiEstimateAssistController structured estimator endpoints", () => {
     expect(mockStructuredEstimator.applyReviewedDraft).not.toHaveBeenCalled();
   });
 
+  it.each([0, -1, "1000001", "NaN"])("rejects invalid structured apply quantity %p before service apply", async (quantity) => {
+    const res = response();
+
+    await expect(
+      aiEstimateAssistController.applyStructuredEstimate(
+        authedRequest({
+          lineItems: [
+            {
+              draftLineItemId: "line-1",
+              status: "accepted",
+              reviewToken: "v1.token.signature",
+              targetId: "10000000-0000-0000-0000-000000000002",
+              targetKind: "costItem",
+              quantity,
+            },
+          ],
+        }),
+        res as never
+      )
+    ).rejects.toThrow();
+    expect(mockStructuredEstimator.applyReviewedDraft).not.toHaveBeenCalled();
+  });
+
+  it("rejects overlong review tokens, descriptions, and review payloads before service apply", async () => {
+    const res = response();
+    const tooManyLines = Array.from({ length: 51 }, (_, index) => ({
+      draftLineItemId: `line-${index}`,
+      status: "rejected",
+      quantity: 1,
+    }));
+
+    await expect(
+      aiEstimateAssistController.applyStructuredEstimate(
+        authedRequest({
+          lineItems: [
+            {
+              draftLineItemId: "line-1",
+              status: "accepted",
+              reviewToken: "x".repeat(2_001),
+              targetId: "10000000-0000-0000-0000-000000000002",
+              targetKind: "costItem",
+              quantity: 1,
+            },
+          ],
+        }),
+        res as never
+      )
+    ).rejects.toThrow();
+    await expect(
+      aiEstimateAssistController.applyStructuredEstimate(
+        authedRequest({
+          lineItems: [
+            {
+              draftLineItemId: "line-1",
+              status: "accepted",
+              description: "x".repeat(501),
+              targetId: "10000000-0000-0000-0000-000000000002",
+              targetKind: "costItem",
+              quantity: 1,
+            },
+          ],
+        }),
+        res as never
+      )
+    ).rejects.toThrow();
+    await expect(aiEstimateAssistController.applyStructuredEstimate(authedRequest({ lineItems: tooManyLines }), res as never)).rejects.toThrow();
+    expect(mockStructuredEstimator.applyReviewedDraft).not.toHaveBeenCalled();
+  });
+
   it("requires write permission for structured apply", async () => {
     const res = response();
 
@@ -134,6 +203,18 @@ describe("aiEstimateAssistController structured estimator endpoints", () => {
       )
     ).rejects.toThrow("You do not have permission");
     expect(mockStructuredEstimator.applyReviewedDraft).not.toHaveBeenCalled();
+  });
+
+  it("requires write permission for structured draft generation", async () => {
+    const res = response();
+
+    await expect(
+      aiEstimateAssistController.draftStructuredEstimate(
+        authedRequest({ scopeOfWork: "Replace panel" }, { id: "10000000-0000-0000-0000-000000000001" }, "technician"),
+        res as never
+      )
+    ).rejects.toThrow("You do not have permission");
+    expect(mockStructuredEstimator.generateDraft).not.toHaveBeenCalled();
   });
 
   it("rejects out-of-bounds draft limits and malformed estimate IDs", async () => {

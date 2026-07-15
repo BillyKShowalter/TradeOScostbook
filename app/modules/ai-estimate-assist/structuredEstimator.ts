@@ -1,6 +1,7 @@
-import { createHash } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { Prisma } from "@prisma/client";
-import { prisma } from "../../db/client";
+import { basePrisma, prisma } from "../../db/client";
+import { runInDatabaseTransaction } from "../../db/requestSession";
 import { ApiError } from "../../backend/middleware/errorHandler";
 import { normalizeEstimateStatus } from "../../domain";
 import { round2 } from "../estimate-engine/formulas";
@@ -24,6 +25,9 @@ import {
 const DEFAULT_DRAFT_LIMIT = 6;
 const MIN_TARGET_MATCH_SCORE = 75;
 const ENGINE_VERSION = "structured-ai-estimator.v1";
+const REVIEW_TOKEN_VERSION = "v1";
+const DEFAULT_REVIEW_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+const MAX_REVIEW_QUANTITY = 1_000_000;
 
 export class StructuredAIEstimatorService {
   private readonly knowledgeRuntime = new KnowledgeRuntimeService();
@@ -77,7 +81,7 @@ export class StructuredAIEstimatorService {
 
     const lineItems: StructuredEstimateDraftLineItem[] = [];
     for (const candidate of candidateResults) {
-      const lineItem = await this.toDraftLineItem(candidate, parsedScope, input.orgId);
+      const lineItem = await this.toDraftLineItem(candidate, parsedScope, input.estimateId, input.orgId);
       lineItems.push(lineItem);
     }
 
@@ -152,6 +156,13 @@ export class StructuredAIEstimatorService {
     applied: Array<{ draftLineItemId: string; lineItemId: string; quantity: number }>;
     skipped: Array<{ draftLineItemId: string; status: string; reason: string }>;
   }> {
+    return runInDatabaseTransaction(basePrisma, () => this.applyReviewedDraftInTransaction(input));
+  }
+
+  private async applyReviewedDraftInTransaction(input: ApplyStructuredEstimateInput): Promise<{
+    applied: Array<{ draftLineItemId: string; lineItemId: string; quantity: number }>;
+    skipped: Array<{ draftLineItemId: string; status: string; reason: string }>;
+  }> {
     const estimate = await prisma.estimate.findFirst({ where: { id: input.estimateId, orgId: input.orgId } });
     if (!estimate) throw new ApiError(404, `Estimate ${input.estimateId} not found`);
     const hasAcceptedLines = input.lineItems.some((lineItem) => lineItem.status === "accepted");
@@ -200,6 +211,22 @@ export class StructuredAIEstimatorService {
           draftLineItemId: lineItem.draftLineItemId,
           status: lineItem.status,
           reason: "Accepted line item is missing a validated estimate target.",
+        });
+        continue;
+      }
+
+      const tokenStatus = validateReviewToken(lineItem.reviewToken, {
+        estimateId: input.estimateId,
+        orgId: input.orgId,
+        draftLineItemId: lineItem.draftLineItemId,
+        targetKind: lineItem.targetKind,
+        targetId: lineItem.targetId,
+      });
+      if (!tokenStatus.valid) {
+        skipped.push({
+          draftLineItemId: lineItem.draftLineItemId,
+          status: lineItem.status,
+          reason: tokenStatus.reason,
         });
         continue;
       }
@@ -339,6 +366,7 @@ export class StructuredAIEstimatorService {
       rationale: string;
     },
     parsedScope: ParsedContractorScope,
+    estimateId: string,
     orgId: string
   ): Promise<StructuredEstimateDraftLineItem> {
     const targetResolution = await this.resolveTarget(candidate.type, candidate.id, candidate.name, candidate.unitOfMeasure, orgId);
@@ -354,12 +382,25 @@ export class StructuredAIEstimatorService {
       reviewWarnings.push(`Quantity defaulted to 1 ${unitOfMeasure}; confirm measurement before applying.`);
     }
 
-    const costBreakdown = target ? await this.retrievePricing(target.kind, target.id, quantity, orgId) : null;
+    const pricing = target ? await this.safeRetrievePricing(target.kind, target.id, quantity, orgId) : { costBreakdown: null, warning: null };
+    const costBreakdown = pricing.costBreakdown;
+    if (pricing.warning) {
+      reviewWarnings.push(pricing.warning);
+    }
     const unitCost = costBreakdown?.totalUnitCost ?? 0;
 
     return {
       draftLineItemId: `${candidate.type}-${candidate.id}`,
       source: "knowledge-runtime",
+      reviewToken: target
+        ? buildReviewToken({
+            estimateId,
+            orgId,
+            draftLineItemId: `${candidate.type}-${candidate.id}`,
+            targetKind: target.kind,
+            targetId: target.id,
+          })
+        : null,
       targetKind: candidate.type,
       targetId: target?.id ?? null,
       targetCode: target?.code ?? null,
@@ -390,6 +431,17 @@ export class StructuredAIEstimatorService {
     }
 
     return this.costDatabase.getUnitCost(targetId, quantity, undefined, orgId);
+  }
+
+  private async safeRetrievePricing(kind: AIEstimateSuggestionKind, targetId: string, quantity: number, orgId: string) {
+    try {
+      return { costBreakdown: await this.retrievePricing(kind, targetId, quantity, orgId), warning: null };
+    } catch {
+      return {
+        costBreakdown: null,
+        warning: "Authoritative pricing could not be retrieved for this target; regenerate or select a different costbook item before applying.",
+      };
+    }
   }
 
   private async resolveTarget(
@@ -429,6 +481,7 @@ export class StructuredAIEstimatorService {
     try {
       if (kind === "assembly") {
         const assembly = await this.assembliesDatabase.getById(id, orgId);
+        if (!assembly.isActive) return null;
         return {
           id: assembly.id,
           kind,
@@ -441,6 +494,7 @@ export class StructuredAIEstimatorService {
       }
 
       const costItem = await this.costDatabase.getById(id, orgId);
+      if (!costItem.isActive) return null;
       return {
         id: costItem.id,
         kind,
@@ -520,17 +574,18 @@ function extractQuantities(scope: string): ParsedScopeQuantity[] {
   collectMatches(quantities, lower, /(\d+(?:\.\d+)?)\s*(?:each|ea|units?|items?)\b/g, "count", "EA");
 
   for (const match of lower.matchAll(/\b(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)\b/g)) {
-    const width = Number(match[1]);
-    const length = Number(match[2]);
-    quantities.push({ type: "dimension", value: round2(width * length), unit: "SF", sourceText: match[0] });
+    const width = parseBoundedQuantity(match[1]);
+    const length = parseBoundedQuantity(match[2]);
+    quantities.push({ type: "dimension", value: parseBoundedQuantity(round2(width * length)), unit: "SF", sourceText: match[0] });
   }
 
   const thickness = lower.match(/(\d+(?:\.\d+)?)\s*(?:inch|in|")\s*(?:thick|slab)?/);
   const area = quantities.find((quantity) => quantity.unit === "SF");
   if (area && thickness) {
+    const thicknessInches = parseBoundedQuantity(thickness[1]);
     quantities.push({
       type: "volume",
-      value: round2((area.value * (Number(thickness[1]) / 12)) / 27),
+      value: parseBoundedQuantity(round2((area.value * (thicknessInches / 12)) / 27)),
       unit: "CY",
       sourceText: `${area.sourceText} at ${thickness[0]}`,
     });
@@ -547,8 +602,16 @@ function collectMatches(
   unit: ParsedScopeQuantity["unit"]
 ) {
   for (const match of scope.matchAll(pattern)) {
-    quantities.push({ type, value: Number(match[1]), unit, sourceText: match[0] });
+    quantities.push({ type, value: parseBoundedQuantity(match[1]), unit, sourceText: match[0] });
   }
+}
+
+function parseBoundedQuantity(value: string | number) {
+  const quantity = Number(value);
+  if (!Number.isFinite(quantity) || quantity <= 0 || quantity > MAX_REVIEW_QUANTITY) {
+    throw new ApiError(400, `Parsed quantities must be finite, positive, and no greater than ${MAX_REVIEW_QUANTITY}`);
+  }
+  return quantity;
 }
 
 function deriveQuantityForUnit(quantities: ParsedScopeQuantity[], unitOfMeasure: string): number {
@@ -600,6 +663,98 @@ function buildReviewedLineSourceKey(draftLineItemId: string, kind: AIEstimateSug
     .update([draftLineItemId, kind, targetId, normalizeQuantity(quantity), normalizeText(description)].join("|"))
     .digest("hex");
   return `ai-estimator:v1:${fingerprint}`;
+}
+
+interface ReviewTokenPayload {
+  version: typeof REVIEW_TOKEN_VERSION;
+  engineVersion: typeof ENGINE_VERSION;
+  estimateId: string;
+  orgId: string;
+  draftLineItemId: string;
+  targetKind: AIEstimateSuggestionKind;
+  targetId: string;
+  issuedAt: number;
+}
+
+function buildReviewToken(input: Omit<ReviewTokenPayload, "version" | "engineVersion" | "issuedAt">) {
+  const payload: ReviewTokenPayload = {
+    ...input,
+    version: REVIEW_TOKEN_VERSION,
+    engineVersion: ENGINE_VERSION,
+    issuedAt: Date.now(),
+  };
+  const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const signature = signReviewTokenPayload(encodedPayload);
+  return `${REVIEW_TOKEN_VERSION}.${encodedPayload}.${signature}`;
+}
+
+function validateReviewToken(
+  token: string | undefined,
+  expected: Pick<ReviewTokenPayload, "estimateId" | "orgId" | "draftLineItemId" | "targetKind" | "targetId">
+): { valid: true } | { valid: false; reason: string } {
+  if (!token) {
+    return { valid: false, reason: "Accepted line item is missing a server-issued review token." };
+  }
+
+  const [version, encodedPayload, signature] = token.split(".");
+  if (version !== REVIEW_TOKEN_VERSION || !encodedPayload || !signature) {
+    return { valid: false, reason: "Accepted line item review token is invalid." };
+  }
+
+  const expectedSignature = signReviewTokenPayload(encodedPayload);
+  if (!safeEqual(signature, expectedSignature)) {
+    return { valid: false, reason: "Accepted line item review token is invalid." };
+  }
+
+  let payload: ReviewTokenPayload;
+  try {
+    payload = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8")) as ReviewTokenPayload;
+  } catch {
+    return { valid: false, reason: "Accepted line item review token is invalid." };
+  }
+
+  if (
+    payload.version !== REVIEW_TOKEN_VERSION ||
+    payload.engineVersion !== ENGINE_VERSION ||
+    payload.estimateId !== expected.estimateId ||
+    payload.orgId !== expected.orgId ||
+    payload.draftLineItemId !== expected.draftLineItemId ||
+    payload.targetKind !== expected.targetKind ||
+    payload.targetId !== expected.targetId
+  ) {
+    return { valid: false, reason: "Accepted line item review token does not match the reviewed target." };
+  }
+
+  const maxAgeMs = parseReviewTokenTtl();
+  if (!Number.isFinite(payload.issuedAt) || Date.now() - payload.issuedAt > maxAgeMs) {
+    return { valid: false, reason: "Accepted line item review token has expired; regenerate the structured estimate draft." };
+  }
+
+  return { valid: true };
+}
+
+function signReviewTokenPayload(encodedPayload: string) {
+  return createHmac("sha256", reviewTokenSecret()).update(encodedPayload).digest("base64url");
+}
+
+function reviewTokenSecret() {
+  const secret = process.env.AI_ESTIMATOR_REVIEW_TOKEN_SECRET || process.env.AUTH_JWT_SECRET;
+  if (secret) return secret;
+  if (process.env.NODE_ENV === "production") {
+    throw new ApiError(500, "AI estimator review token signing secret is not configured");
+  }
+  return "development-ai-estimator-review-token-secret";
+}
+
+function parseReviewTokenTtl() {
+  const configured = Number(process.env.AI_ESTIMATOR_REVIEW_TOKEN_TTL_MS);
+  return Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_REVIEW_TOKEN_TTL_MS;
+}
+
+function safeEqual(left: string, right: string) {
+  const leftBuffer = Buffer.from(left);
+  const rightBuffer = Buffer.from(right);
+  return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
 }
 
 async function lockEstimateApply(orgId: string, estimateId: string) {

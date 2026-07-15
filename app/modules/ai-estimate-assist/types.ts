@@ -107,6 +107,7 @@ export interface AIEstimatorCostBreakdown {
 export interface StructuredEstimateDraftLineItem {
   draftLineItemId: string;
   source: "knowledge-runtime";
+  reviewToken: string | null;
   targetKind: AIEstimateSuggestionKind;
   targetId: string | null;
   targetCode: string | null;
@@ -155,6 +156,7 @@ export interface GenerateStructuredEstimateInput {
 export interface ReviewedStructuredEstimateLineItemInput {
   draftLineItemId: string;
   status: AIEstimateSuggestionStatus;
+  reviewToken?: string;
   targetId?: string;
   targetKind?: AIEstimateSuggestionKind;
   description?: string;

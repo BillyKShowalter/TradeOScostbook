@@ -76,6 +76,7 @@ export const aiEstimateAssistController = {
         z.object({
           draftLineItemId: z.string().min(1).max(200),
           status: z.enum(["pending", "accepted", "rejected"]),
+          reviewToken: z.string().min(1).max(2_000).optional(),
           targetId: z.string().uuid().optional(),
           targetKind: z.enum(["assembly", "costItem"]).optional(),
           description: z.string().trim().max(500).optional(),

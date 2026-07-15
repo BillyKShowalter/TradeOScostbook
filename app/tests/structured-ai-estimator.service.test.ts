@@ -1,3 +1,5 @@
+import { createHmac } from "node:crypto";
+
 const mockPrisma = {
   $queryRaw: jest.fn(),
   estimate: {
@@ -32,7 +34,10 @@ const mockAssembliesDatabase = {
   getAssemblyUnitCost: jest.fn(),
 };
 
-jest.mock("../db/client", () => ({ prisma: mockPrisma }));
+jest.mock("../db/client", () => ({ basePrisma: mockPrisma, prisma: mockPrisma }));
+jest.mock("../db/requestSession", () => ({
+  runInDatabaseTransaction: jest.fn((_client, operation: () => Promise<unknown>) => operation()),
+}));
 jest.mock("../modules/knowledge-runtime/service", () => ({
   KnowledgeRuntimeService: jest.fn().mockImplementation(() => mockKnowledgeRuntime),
 }));
@@ -51,9 +56,16 @@ jest.mock("../modules/assemblies-database/service", () => ({
 
 import { StructuredAIEstimatorService } from "../modules/ai-estimate-assist/structuredEstimator";
 
+const reviewTokenSecret = "structured-estimator-test-secret";
+const originalNodeEnv = process.env.NODE_ENV;
+
 describe("StructuredAIEstimatorService", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env.NODE_ENV = originalNodeEnv;
+    process.env.AI_ESTIMATOR_REVIEW_TOKEN_SECRET = reviewTokenSecret;
+    delete process.env.AUTH_JWT_SECRET;
+    delete process.env.AI_ESTIMATOR_REVIEW_TOKEN_TTL_MS;
     mockPrisma.estimate.findFirst.mockResolvedValue({
       id: "estimate-1",
       orgId: "org-1",
@@ -76,6 +88,10 @@ describe("StructuredAIEstimatorService", () => {
       missingInputs: ["Confirm demolition thickness."],
       humanReviewWarnings: ["Confirm disposal requirements."],
     });
+  });
+
+  afterEach(() => {
+    process.env.NODE_ENV = originalNodeEnv;
   });
 
   it("converts contractor language into a priced structured draft using resolved assembly targets", async () => {
@@ -130,6 +146,7 @@ describe("StructuredAIEstimatorService", () => {
     expect(result.lineItems[0]).toEqual(
       expect.objectContaining({
         targetId: "assembly-db-1",
+        reviewToken: expect.stringMatching(/^v1\./),
         quantity: 3.09,
         unitOfMeasure: "CY",
         unitCost: 175,
@@ -207,6 +224,64 @@ describe("StructuredAIEstimatorService", () => {
       totalUnitCost: 20,
     });
     expect(result.subtotalCost).toBe(3840);
+  });
+
+  it("keeps a resolved draft review-safe when authoritative pricing retrieval fails", async () => {
+    mockKnowledgeRuntime.matchScope.mockReturnValue({
+      detectedTrade: "Electrical",
+      confidenceScore: 86,
+      assumptions: [],
+      rationale: ["Matched electrical panel."],
+      missingInformation: [],
+      reviewWarnings: [],
+      matchedAssemblies: [],
+      matchedCostItems: [
+        {
+          id: "cost-item-1",
+          type: "costItem",
+          name: "Panel Replacement",
+          category: "Electrical",
+          trade: "Electrical",
+          unitOfMeasure: "EA",
+          description: "",
+          confidence: 87,
+          matchedKeywords: ["panel"],
+          rationale: "Panel cost item matched.",
+          metadata: {},
+        },
+      ],
+      missingInputs: [],
+      humanReviewWarnings: [],
+    });
+    mockCostDatabase.getById.mockResolvedValue({
+      id: "cost-item-1",
+      orgId: "org-1",
+      code: "ELEC-001",
+      name: "Panel Replacement",
+      unitOfMeasure: "EA",
+      isActive: true,
+    });
+    mockCostDatabase.getUnitCost.mockRejectedValue(new Error("pricing unavailable"));
+
+    const result = await new StructuredAIEstimatorService().generateDraft({
+      estimateId: "estimate-1",
+      orgId: "org-1",
+      scopeOfWork: "Replace a standard electrical panel.",
+    });
+
+    expect(result.validation.status).toBe("needs_review");
+    expect(result.lineItems[0]).toEqual(
+      expect.objectContaining({
+        targetId: "cost-item-1",
+        unitCost: 0,
+        lineCost: 0,
+        costBreakdown: null,
+      })
+    );
+    expect(result.lineItems[0]?.reviewWarnings).toEqual(
+      expect.arrayContaining(["Authoritative pricing could not be retrieved for this target; regenerate or select a different costbook item before applying."])
+    );
+    expect(result.toolRuns).toEqual(expect.arrayContaining([expect.objectContaining({ name: "costbook.retrieve-pricing", status: "warning" })]));
   });
 
   it.each([
@@ -287,6 +362,7 @@ describe("StructuredAIEstimatorService", () => {
     expect(result.lineItems[0]).toEqual(
       expect.objectContaining({
         targetId: "cost-item-supported",
+        reviewToken: expect.stringMatching(/^v1\./),
         quantity: expectedQuantity,
         unitCost: 30,
         source: "knowledge-runtime",
@@ -323,6 +399,16 @@ describe("StructuredAIEstimatorService", () => {
     ).rejects.toThrow("scopeOfWork is required");
   });
 
+  it("rejects excessive parsed quantities before producing draft totals", async () => {
+    await expect(
+      new StructuredAIEstimatorService().generateDraft({
+        estimateId: "estimate-1",
+        orgId: "org-1",
+        scopeOfWork: "Install 1000000001 sq ft of roofing.",
+      })
+    ).rejects.toThrow("Parsed quantities must be finite, positive");
+  });
+
   it("does not draft against an estimate outside the authenticated organization", async () => {
     mockPrisma.estimate.findFirst.mockResolvedValueOnce(null);
 
@@ -350,6 +436,60 @@ describe("StructuredAIEstimatorService", () => {
     ).rejects.toThrow("Knowledge Runtime is unavailable");
   });
 
+  it("fails closed in production when no review-token signing secret is configured", async () => {
+    process.env.NODE_ENV = "production";
+    delete process.env.AI_ESTIMATOR_REVIEW_TOKEN_SECRET;
+    delete process.env.AUTH_JWT_SECRET;
+    mockKnowledgeRuntime.matchScope.mockReturnValue({
+      detectedTrade: "Plumbing",
+      confidenceScore: 84,
+      assumptions: [],
+      rationale: ["Matched water heater."],
+      missingInformation: [],
+      reviewWarnings: [],
+      matchedAssemblies: [],
+      matchedCostItems: [
+        {
+          id: "cost-item-1",
+          type: "costItem",
+          name: "Gas Water Heater Replacement",
+          category: "Plumbing",
+          trade: "Plumbing",
+          unitOfMeasure: "EA",
+          description: "",
+          confidence: 86,
+          matchedKeywords: ["heater"],
+          rationale: "Water heater cost item matched.",
+          metadata: {},
+        },
+      ],
+      missingInputs: [],
+      humanReviewWarnings: [],
+    });
+    mockCostDatabase.getById.mockResolvedValue({
+      id: "cost-item-1",
+      orgId: "org-1",
+      code: "PLUMB-001",
+      name: "Gas Water Heater Replacement",
+      unitOfMeasure: "EA",
+      isActive: true,
+    });
+    mockCostDatabase.getUnitCost.mockResolvedValue({
+      laborCostPerUnit: 10,
+      materialCostPerUnit: 20,
+      equipmentCostPerUnit: 0,
+      totalUnitCost: 30,
+    });
+
+    await expect(
+      new StructuredAIEstimatorService().generateDraft({
+        estimateId: "estimate-1",
+        orgId: "org-1",
+        scopeOfWork: "Replace a 50-gallon gas water heater.",
+      })
+    ).rejects.toThrow("AI estimator review token signing secret is not configured");
+  });
+
   it("applies only accepted reviewed lines through the estimate engine", async () => {
     mockEstimateEngine.addLineItem.mockResolvedValue({ id: "line-item-1" });
     mockAssembliesDatabase.getById.mockResolvedValue({
@@ -370,6 +510,13 @@ describe("StructuredAIEstimatorService", () => {
         {
           draftLineItemId: "accepted-1",
           status: "accepted",
+          reviewToken: buildReviewToken({
+            estimateId: "estimate-1",
+            orgId: "org-1",
+            draftLineItemId: "accepted-1",
+            targetKind: "assembly",
+            targetId: "10000000-0000-0000-0000-000000000001",
+          }),
           targetId: "10000000-0000-0000-0000-000000000001",
           targetKind: "assembly",
           description: "Driveway package",
@@ -411,6 +558,13 @@ describe("StructuredAIEstimatorService", () => {
         {
           draftLineItemId: "fabricated-1",
           status: "accepted",
+          reviewToken: buildReviewToken({
+            estimateId: "estimate-1",
+            orgId: "org-1",
+            draftLineItemId: "fabricated-1",
+            targetKind: "costItem",
+            targetId: "10000000-0000-0000-0000-000000000099",
+          }),
           targetId: "10000000-0000-0000-0000-000000000099",
           targetKind: "costItem",
           description: "Fake line",
@@ -424,6 +578,27 @@ describe("StructuredAIEstimatorService", () => {
     expect(result.skipped[0]?.reason).toBe("Accepted line item target does not exist in this organization.");
   });
 
+  it("skips accepted lines that are missing server review tokens", async () => {
+    const result = await new StructuredAIEstimatorService().applyReviewedDraft({
+      estimateId: "estimate-1",
+      orgId: "org-1",
+      lineItems: [
+        {
+          draftLineItemId: "accepted-no-token",
+          status: "accepted",
+          targetId: "10000000-0000-0000-0000-000000000002",
+          targetKind: "costItem",
+          description: "No token target",
+          quantity: 1,
+        },
+      ],
+    });
+
+    expect(mockCostDatabase.getById).not.toHaveBeenCalled();
+    expect(mockEstimateEngine.addLineItem).not.toHaveBeenCalled();
+    expect(result.skipped[0]?.reason).toBe("Accepted line item is missing a server-issued review token.");
+  });
+
   it("skips accepted assembly IDs that do not belong to the organization", async () => {
     mockAssembliesDatabase.getById.mockRejectedValue(new Error("not found"));
 
@@ -434,9 +609,52 @@ describe("StructuredAIEstimatorService", () => {
         {
           draftLineItemId: "foreign-assembly",
           status: "accepted",
+          reviewToken: buildReviewToken({
+            estimateId: "estimate-1",
+            orgId: "org-1",
+            draftLineItemId: "foreign-assembly",
+            targetKind: "assembly",
+            targetId: "10000000-0000-0000-0000-000000000088",
+          }),
           targetId: "10000000-0000-0000-0000-000000000088",
           targetKind: "assembly",
           description: "Foreign assembly",
+          quantity: 1,
+        },
+      ],
+    });
+
+    expect(mockEstimateEngine.addLineItem).not.toHaveBeenCalled();
+    expect(result.skipped[0]?.reason).toBe("Accepted line item target does not exist in this organization.");
+  });
+
+  it("skips inactive org-owned targets before estimate-engine writes", async () => {
+    mockCostDatabase.getById.mockResolvedValue({
+      id: "10000000-0000-0000-0000-000000000002",
+      orgId: "org-1",
+      code: "COST-INACTIVE",
+      name: "Inactive target",
+      unitOfMeasure: "EA",
+      isActive: false,
+    });
+
+    const result = await new StructuredAIEstimatorService().applyReviewedDraft({
+      estimateId: "estimate-1",
+      orgId: "org-1",
+      lineItems: [
+        {
+          draftLineItemId: "inactive-target",
+          status: "accepted",
+          reviewToken: buildReviewToken({
+            estimateId: "estimate-1",
+            orgId: "org-1",
+            draftLineItemId: "inactive-target",
+            targetKind: "costItem",
+            targetId: "10000000-0000-0000-0000-000000000002",
+          }),
+          targetId: "10000000-0000-0000-0000-000000000002",
+          targetKind: "costItem",
+          description: "Inactive target",
           quantity: 1,
         },
       ],
@@ -455,9 +673,16 @@ describe("StructuredAIEstimatorService", () => {
         orgId: "org-1",
         lineItems: [
           {
-            draftLineItemId: "accepted-1",
-            status: "accepted",
-            targetId: "10000000-0000-0000-0000-000000000001",
+              draftLineItemId: "accepted-1",
+              status: "accepted",
+              reviewToken: buildReviewToken({
+                estimateId: "foreign-estimate",
+                orgId: "org-1",
+                draftLineItemId: "accepted-1",
+                targetKind: "assembly",
+                targetId: "10000000-0000-0000-0000-000000000001",
+              }),
+              targetId: "10000000-0000-0000-0000-000000000001",
             targetKind: "assembly",
             quantity: 1,
           },
@@ -482,9 +707,16 @@ describe("StructuredAIEstimatorService", () => {
         orgId: "org-1",
         lineItems: [
           {
-            draftLineItemId: "accepted-1",
-            status: "accepted",
-            targetId: "10000000-0000-0000-0000-000000000001",
+              draftLineItemId: "accepted-1",
+              status: "accepted",
+              reviewToken: buildReviewToken({
+                estimateId: "estimate-1",
+                orgId: "org-1",
+                draftLineItemId: "accepted-1",
+                targetKind: "assembly",
+                targetId: "10000000-0000-0000-0000-000000000001",
+              }),
+              targetId: "10000000-0000-0000-0000-000000000001",
             targetKind: "assembly",
             quantity: 3,
           },
@@ -512,6 +744,13 @@ describe("StructuredAIEstimatorService", () => {
         {
           draftLineItemId: "accepted-replay",
           status: "accepted",
+          reviewToken: buildReviewToken({
+            estimateId: "estimate-1",
+            orgId: "org-1",
+            draftLineItemId: "accepted-replay",
+            targetKind: "costItem",
+            targetId: "10000000-0000-0000-0000-000000000002",
+          }),
           targetId: "10000000-0000-0000-0000-000000000002",
           targetKind: "costItem",
           description: "Panel replacement",
@@ -549,6 +788,13 @@ describe("StructuredAIEstimatorService", () => {
         {
           draftLineItemId: "accepted-1",
           status: "accepted",
+          reviewToken: buildReviewToken({
+            estimateId: "estimate-1",
+            orgId: "org-1",
+            draftLineItemId: "accepted-1",
+            targetKind: "assembly",
+            targetId: "10000000-0000-0000-0000-000000000001",
+          }),
           targetId: "10000000-0000-0000-0000-000000000001",
           targetKind: "assembly",
           description: "Driveway package",
@@ -557,6 +803,13 @@ describe("StructuredAIEstimatorService", () => {
         {
           draftLineItemId: "accepted-duplicate-payload",
           status: "accepted",
+          reviewToken: buildReviewToken({
+            estimateId: "estimate-1",
+            orgId: "org-1",
+            draftLineItemId: "accepted-duplicate-payload",
+            targetKind: "assembly",
+            targetId: "10000000-0000-0000-0000-000000000001",
+          }),
           targetId: "10000000-0000-0000-0000-000000000001",
           targetKind: "assembly",
           description: "Driveway package",
@@ -565,6 +818,13 @@ describe("StructuredAIEstimatorService", () => {
         {
           draftLineItemId: "accepted-existing",
           status: "accepted",
+          reviewToken: buildReviewToken({
+            estimateId: "estimate-1",
+            orgId: "org-1",
+            draftLineItemId: "accepted-existing",
+            targetKind: "assembly",
+            targetId: "10000000-0000-0000-0000-000000000001",
+          }),
           targetId: "10000000-0000-0000-0000-000000000001",
           targetKind: "assembly",
           description: "Driveway package with disposal",
@@ -573,6 +833,13 @@ describe("StructuredAIEstimatorService", () => {
         {
           draftLineItemId: "accepted-existing",
           status: "accepted",
+          reviewToken: buildReviewToken({
+            estimateId: "estimate-1",
+            orgId: "org-1",
+            draftLineItemId: "accepted-existing",
+            targetKind: "assembly",
+            targetId: "10000000-0000-0000-0000-000000000001",
+          }),
           targetId: "10000000-0000-0000-0000-000000000001",
           targetKind: "assembly",
           description: "Driveway package with disposal",
@@ -592,4 +859,82 @@ describe("StructuredAIEstimatorService", () => {
       ])
     );
   });
+
+  it("skips accepted org-owned targets that are not backed by a matching server review token", async () => {
+    const result = await new StructuredAIEstimatorService().applyReviewedDraft({
+      estimateId: "estimate-1",
+      orgId: "org-1",
+      lineItems: [
+        {
+          draftLineItemId: "accepted-forged",
+          status: "accepted",
+          reviewToken: buildReviewToken({
+            estimateId: "estimate-1",
+            orgId: "org-1",
+            draftLineItemId: "accepted-forged",
+            targetKind: "costItem",
+            targetId: "10000000-0000-0000-0000-000000000002",
+          }),
+          targetId: "10000000-0000-0000-0000-000000000003",
+          targetKind: "costItem",
+          description: "Attacker-selected target",
+          quantity: 1,
+        },
+      ],
+    });
+
+    expect(mockCostDatabase.getById).not.toHaveBeenCalled();
+    expect(mockEstimateEngine.addLineItem).not.toHaveBeenCalled();
+    expect(result.skipped[0]?.reason).toBe("Accepted line item review token does not match the reviewed target.");
+  });
+
+  it("skips accepted lines from expired structured drafts", async () => {
+    process.env.AI_ESTIMATOR_REVIEW_TOKEN_TTL_MS = "1000";
+
+    const result = await new StructuredAIEstimatorService().applyReviewedDraft({
+      estimateId: "estimate-1",
+      orgId: "org-1",
+      lineItems: [
+        {
+          draftLineItemId: "accepted-stale",
+          status: "accepted",
+          reviewToken: buildReviewToken({
+            estimateId: "estimate-1",
+            orgId: "org-1",
+            draftLineItemId: "accepted-stale",
+            targetKind: "costItem",
+            targetId: "10000000-0000-0000-0000-000000000002",
+            issuedAt: Date.now() - 2000,
+          }),
+          targetId: "10000000-0000-0000-0000-000000000002",
+          targetKind: "costItem",
+          description: "Stale panel replacement",
+          quantity: 1,
+        },
+      ],
+    });
+
+    expect(mockCostDatabase.getById).not.toHaveBeenCalled();
+    expect(mockEstimateEngine.addLineItem).not.toHaveBeenCalled();
+    expect(result.skipped[0]?.reason).toBe("Accepted line item review token has expired; regenerate the structured estimate draft.");
+  });
 });
+
+function buildReviewToken(input: {
+  estimateId: string;
+  orgId: string;
+  draftLineItemId: string;
+  targetKind: "assembly" | "costItem";
+  targetId: string;
+  issuedAt?: number;
+}) {
+  const payload = {
+    ...input,
+    version: "v1",
+    engineVersion: "structured-ai-estimator.v1",
+    issuedAt: input.issuedAt ?? Date.now(),
+  };
+  const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const signature = createHmac("sha256", reviewTokenSecret).update(encodedPayload).digest("base64url");
+  return `v1.${encodedPayload}.${signature}`;
+}
