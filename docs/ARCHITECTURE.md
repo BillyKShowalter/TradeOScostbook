@@ -63,6 +63,7 @@ The request-scoped database session sets:
 - `app.session_source`
 
 The backend establishes those values in `app/db/requestSession.ts` through a Prisma transaction opened by `app/backend/middleware/databaseSession.ts`.
+Service-level transactions opened through `runInDatabaseTransaction` also bind the active Prisma transaction to the same async-local routing, so nested service calls and advisory-lock flows use one transaction even outside an HTTP request.
 
 Background jobs use the same session model through `runWithBackgroundDatabaseSession`.
 

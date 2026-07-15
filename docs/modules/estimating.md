@@ -1,7 +1,7 @@
 ---
 status: current
 owner: platform
-last_verified: 2026-07-14
+last_verified: 2026-07-15
 source_of_truth: false
 related_code:
   - app/modules/estimate-engine
@@ -57,6 +57,7 @@ Current enforced rule:
 ## Implementation notes
 
 - `EstimateEngineService` now imports the shared `round2()` helper from `estimate-engine/formulas.ts` instead of defining a duplicate private copy (cleanup only; no change to pricing behavior)
+- `EstimateLineItem.sourceKey` is optional and is used for backend-generated idempotency/replay protection on reviewed structured-AI apply calls. Manual line-item creation remains unrestricted by source key.
 
 ## Known limitations
 
@@ -68,4 +69,4 @@ Current enforced rule:
 
 ## Last verified date
 
-2026-07-14
+2026-07-15

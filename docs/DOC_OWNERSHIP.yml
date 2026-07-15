@@ -71,6 +71,8 @@ rules:
   - paths:
       - app/modules/ai-estimate-assist/**
       - app/modules/knowledge-runtime/**
+      - app/backend/controllers/aiEstimateAssist.controller.ts
+      - app/backend/middleware/aiEstimateRateLimit.ts
       - app/backend/routes/aiEstimateAssist.routes.ts
       - app/backend/routes/knowledgeRuntime.routes.ts
     requires:

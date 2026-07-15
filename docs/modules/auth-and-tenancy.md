@@ -23,6 +23,8 @@ Authenticate users, resolve organization membership, and establish the RLS-backe
 
 Protected API requests must derive tenant context from a verified authenticated identity plus an active membership. Request headers are not a tenant-selection mechanism.
 
+Request-scoped and service-level database transactions use the shared async-local Prisma routing in `app/db/requestSession.ts`, keeping RLS settings, advisory locks, and nested service writes inside the same transaction boundary.
+
 ## Source code locations
 
 - `app/backend/middleware/auth.ts`

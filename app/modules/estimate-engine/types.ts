@@ -14,6 +14,7 @@ export interface AddLineItemInput {
   assemblyId?: string;
   quantity: number;
   description?: string;
+  sourceKey?: string;
 }
 
 export interface SetPricingModeInput {
@@ -48,4 +49,5 @@ export interface EstimateLineItemDTO {
   unitCost: number;
   lineCost: number;
   sortOrder: number;
+  sourceKey: string | null;
 }

@@ -163,5 +163,6 @@ A branch is review-ready only when:
 
 - work stayed inside the allowed paths for the task
 - required documentation updates are present in the same branch
+- `docs/DOC_OWNERSHIP.yml` covers module-specific controllers and middleware when they own validation, permission, rate-limit, or security behavior
 - the final `git status --short --branch` is clean except for intended staged or committed changes
 - the contributor can report exact checks run, exact checks still blocked, and the current upstream target

@@ -1,7 +1,7 @@
 ---
 status: current
 owner: platform
-last_verified: 2026-07-14
+last_verified: 2026-07-15
 source_of_truth: false
 related_code:
   - app/modules/intelligence
@@ -59,6 +59,7 @@ See [RBAC_MATRIX.md](../RBAC_MATRIX.md).
 ## Implementation notes
 
 - this module's `DOC_OWNERSHIP.yml` grouping is shared with `ai-estimate-assist`/`knowledge-runtime`; a recent internal dead-code cleanup touched `knowledge-runtime/repository.ts` (see `modules/ai-estimate-assist.md`) but did not change anything in `app/modules/intelligence/*` or this module's behavior
+- the structured AI estimator records non-sensitive activity events for draft generation and reviewed apply actions; it does not create notifications or store complete contractor prompts in activity metadata
 
 ## Known limitations
 
@@ -70,4 +71,4 @@ See [RBAC_MATRIX.md](../RBAC_MATRIX.md).
 
 ## Last verified date
 
-2026-07-14
+2026-07-15

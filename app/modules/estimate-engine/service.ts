@@ -120,17 +120,39 @@ export class EstimateEngineService {
       _max: { sortOrder: true },
     });
 
+    const data = {
+      estimateId: input.estimateId,
+      costItemId: input.costItemId,
+      assemblyId: input.assemblyId,
+      description,
+      quantity: input.quantity,
+      unitOfMeasure,
+      unitCost,
+      lineCost,
+      sortOrder: (maxSortOrder._max.sortOrder ?? 0) + 1,
+      sourceKey: input.sourceKey,
+    };
+
+    if (input.sourceKey) {
+      const created = await prisma.estimateLineItem.createMany({
+        data,
+        skipDuplicates: true,
+      });
+      const row = await prisma.estimateLineItem.findFirst({
+        where: { estimateId: input.estimateId, sourceKey: input.sourceKey },
+      });
+      if (!row) throw new ApiError(409, "Estimate line item could not be reconciled after idempotent insert");
+
+      if (created.count > 0) {
+        await this.recalculate(input.estimateId, input.orgId);
+      }
+      return toLineItemDTO(row);
+    }
+
     const row = await prisma.estimateLineItem.create({
       data: {
-        estimateId: input.estimateId,
-        costItemId: input.costItemId,
-        assemblyId: input.assemblyId,
-        description,
-        quantity: input.quantity,
-        unitOfMeasure,
-        unitCost,
-        lineCost,
-        sortOrder: (maxSortOrder._max.sortOrder ?? 0) + 1,
+        ...data,
+        sourceKey: undefined,
       },
     });
 
@@ -238,6 +260,7 @@ function toLineItemDTO(row: {
   unitCost: unknown;
   lineCost: unknown;
   sortOrder: number;
+  sourceKey?: string | null;
 }): EstimateLineItemDTO {
   return {
     id: row.id,
@@ -250,5 +273,6 @@ function toLineItemDTO(row: {
     unitCost: Number(row.unitCost),
     lineCost: Number(row.lineCost),
     sortOrder: row.sortOrder,
+    sourceKey: row.sourceKey ?? null,
   };
 }

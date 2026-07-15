@@ -72,6 +72,7 @@ A priced commercial draft stored in `Estimate`.
 - belongs to one project and organization
 - owns estimate line items
 - may feed proposals and invoices
+- line items may include an optional `sourceKey` used by reviewed AI-estimator applies to reconcile retries; ordinary manual line items do not need one
 
 ## Proposal
 

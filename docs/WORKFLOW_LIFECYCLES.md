@@ -1,7 +1,7 @@
 ---
 status: current
 owner: platform
-last_verified: 2026-07-14
+last_verified: 2026-07-15
 source_of_truth: true
 related_code:
   - app/domain/contracts.ts
@@ -73,7 +73,10 @@ Compatibility persistence:
 - persisted values such as `rejected` normalize to canonical `declined`
 - proposal-linked downstream statuses are normalized for display through `legacyEstimateStatusMap`
 
-Implementation note: `EstimateEngineService`'s cost/price rounding now imports the shared `round2()` helper from `estimate-engine/formulas.ts` instead of defining its own private copy (a duplication cleanup with no change to rounding behavior or transition rules).
+Implementation notes:
+
+- `EstimateEngineService`'s cost/price rounding now imports the shared `round2()` helper from `estimate-engine/formulas.ts` instead of defining its own private copy (a duplication cleanup with no change to rounding behavior or transition rules).
+- Structured AI estimator replay protection adds optional line-item `sourceKey` handling but does not change estimate lifecycle states or the draft-only mutation rule.
 
 ## Proposals
 

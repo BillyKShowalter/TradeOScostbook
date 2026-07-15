@@ -151,8 +151,9 @@ Authoritative references:
   - `Docs consistency`
   - `App lint, unit tests, and build`
   - `App integration tests`
-  - `Web lint and build`
+- `Web lint and build`
 - Documentation must change with implementation whenever [DOC_OWNERSHIP.yml](DOC_OWNERSHIP.yml) requires it.
+- Ownership rules include module-specific controllers and middleware when those files define validation, permission, rate-limit, or security behavior, not only service directories.
 
 See [REPOSITORY_GOVERNANCE.md](REPOSITORY_GOVERNANCE.md) for the full policy, cleanup lifecycle, and manual GitHub settings still needed.
 

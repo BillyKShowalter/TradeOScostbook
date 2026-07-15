@@ -32,7 +32,7 @@ The repository is no longer organized around MVP planning documents. The active 
 - Projects and project workspace
 - Site visit intake
 - Cost book: divisions, categories, subcategories, cost items, labor, materials, equipment, assemblies
-- Estimating: estimate creation, line items, duplication, comparison, AI estimate assist
+- Estimating: estimate creation, line items, duplication, comparison, AI estimate assist, and structured contractor-language draft generation
 - Proposals
 - Contracts
 - Invoices and payment recording
@@ -45,6 +45,7 @@ The repository is no longer organized around MVP planning documents. The active 
 - Customer portal document views
 - Supplier review queue and scheduler plumbing
 - Knowledge runtime integration
+- Backend structured AI estimator orchestration that stages contractor-language scopes into reviewable estimate drafts using existing costbook and estimate-engine services
 
 See module docs in `docs/modules/`.
 
@@ -55,6 +56,8 @@ See module docs in `docs/modules/`.
 - Contract persistence still stores `pending_signature`; global lifecycle docs treat that as compatibility storage under canonical contract states
 - Supplier integration feed ingestion is scaffolded around a stub fetcher; queue, review, audit, and scheduling plumbing are real
 - Customer portal exists for proposal, contract, invoice, and project views, but hardening is still tracked as RC work
+- Structured AI estimator drafts remain review-first; they do not autonomously write estimate line items and do not call external model APIs in the current implementation
+- Structured AI estimator apply now uses server-signed review tokens, server-side active target validation, per-estimate apply serialization, and optional estimate-line `sourceKey` duplicate protection for reviewed AI lines; Docker-backed live RLS integration verification passed locally on this branch
 
 ## Recent internal cleanup
 
