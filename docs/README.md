@@ -117,6 +117,7 @@ Rename handling:
 - code-path ownership checks apply to both the old and new path for renamed files
 - ordinary edits to living docs do not automatically require `docs/README.md`
 - `docs/README.md` is reserved for documentation-governance, hierarchy, ownership-rule, checker, PR-template, and docs-workflow changes
+- controller and middleware files should be listed when they own module-specific validation, permission, throttling, or security behavior; for example, AI estimator controller and rate-limit changes are owned by the AI Estimate Assist documentation set
 
 ## Source-of-truth files
 

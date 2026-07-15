@@ -105,6 +105,28 @@ exemptions: []
   assert.deepEqual(result.missingDocs, []);
 });
 
+test("ai estimator controller and rate-limit changes require ai-assist docs", () => {
+  const tempConfig = loadTempConfig(`
+rules:
+  - paths:
+      - app/modules/ai-estimate-assist/**
+      - app/backend/controllers/aiEstimateAssist.controller.ts
+      - app/backend/middleware/aiEstimateRateLimit.ts
+      - app/backend/routes/aiEstimateAssist.routes.ts
+    requires:
+      - docs/modules/ai-estimate-assist.md
+      - docs/API_REFERENCE.md
+      - docs/CURRENT_STATE.md
+exemptions: []
+`);
+  const result = evaluateOwnership({
+    changedFiles: ["app/backend/controllers/aiEstimateAssist.controller.ts", "app/backend/middleware/aiEstimateRateLimit.ts"],
+    config: tempConfig,
+  });
+  assert.deepEqual(result.requiredDocs, ["docs/API_REFERENCE.md", "docs/CURRENT_STATE.md", "docs/modules/ai-estimate-assist.md"]);
+  assert.deepEqual(result.missingDocs, ["docs/API_REFERENCE.md", "docs/CURRENT_STATE.md", "docs/modules/ai-estimate-assist.md"]);
+});
+
 test("multiple matching rules union required docs", () => {
   const result = evaluateOwnership({
     changedFiles: ["app/modules/jobs/service.ts", "app/domain/contracts.ts", "docs/modules/jobs-and-scheduling.md"],

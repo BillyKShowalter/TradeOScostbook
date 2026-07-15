@@ -47,8 +47,9 @@ See [RBAC_MATRIX.md](../RBAC_MATRIX.md).
 - accepted suggestions still flow through the ordinary estimate line-item paths
 - structured estimator draft generation records only a non-sensitive activity event; it does not create estimate line items
 - accepted reviewed lines call the existing Estimate Engine line-item path and never write estimate lines directly from generated output
-- structured estimator apply validates accepted targets against org-scoped cost items or assemblies before writing, skips fabricated or foreign targets with the same safe reason, serializes concurrent apply attempts per estimate, and uses server-built `sourceKey` values plus existing-line reconciliation for retry protection
-- apply validates any accepted org-owned target supplied by the reviewed payload; it does not currently persist a signed draft-run record proving the target appeared in a prior generated draft
+- structured estimator draft lines with resolved targets include server-signed review tokens binding the estimate, organization, draft line, target kind, target ID, engine version, and issue time
+- structured estimator apply validates accepted targets against org-scoped active cost items or assemblies before writing, requires accepted lines to present matching unexpired review tokens, skips fabricated or foreign targets with the same safe reason, serializes concurrent apply attempts per estimate, and uses server-built `sourceKey` values plus existing-line reconciliation for retry protection
+- apply does not currently persist a draft-run record; signed review tokens bind accepted lines to server-generated draft targets without storing the full contractor prompt
 
 ## Frontend surfaces
 
@@ -74,7 +75,7 @@ See [RBAC_MATRIX.md](../RBAC_MATRIX.md).
 - runtime is deterministic and read-only
 - all generated drafts require human review before line items are applied
 - live integration/RLS verification requires the Docker-backed `npm run test:integration` harness
-- generated-draft provenance is not persisted as a signed draft run; apply relies on server-side org target validation, human review status, and source-key replay protection
+- generated-draft provenance is tokenized per resolved line rather than persisted as a signed draft-run record; apply relies on review tokens, server-side org target validation, human review status, and source-key replay protection
 
 ## Deferred work
 

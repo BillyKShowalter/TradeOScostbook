@@ -101,7 +101,7 @@ AI estimating routes under `/api/v1/estimates`:
 - `POST /api/v1/estimates/:id/ai-estimator/draft`
 - `POST /api/v1/estimates/:id/ai-estimator/apply`
 
-The structured AI estimator endpoints are authenticated, rate-limited, and tenant-scoped like other estimate routes. Draft generation returns reviewable line items, tool-run metadata, target-resolution status, and cost breakdowns. Apply accepts reviewed line items, requires write permission, validates accepted targets against org-scoped cost items or assemblies, serializes concurrent apply attempts per estimate, skips duplicate or already-existing reviewed lines, and writes estimate lines only by calling the existing Estimate Engine line-item service.
+The structured AI estimator endpoints are authenticated, rate-limited, and tenant-scoped like other estimate routes. Draft generation returns reviewable line items, server-signed review tokens for resolved targets, tool-run metadata, target-resolution status, and cost breakdowns. Apply accepts reviewed line items, requires write permission, requires accepted lines to present a matching unexpired review token, validates accepted targets against org-scoped active cost items or assemblies, serializes concurrent apply attempts per estimate, skips duplicate or already-existing reviewed lines, and writes estimate lines only by calling the existing Estimate Engine line-item service.
 
 ## Detailed module links
 
