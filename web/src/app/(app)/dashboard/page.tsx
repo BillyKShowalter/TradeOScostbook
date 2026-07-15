@@ -6,6 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { SummaryMetricCard } from "@/components/shared/summary-metric-card";
+import {
+  NeedsAttentionCard,
+  type AttentionEstimateRow,
+  type AttentionInvoiceRow,
+  type AttentionProposalRow,
+  type AttentionStartRow,
+} from "@/components/dashboard/needs-attention-card";
 
 export default async function DashboardPage() {
   const [session, token] = await Promise.all([getSession(), getSessionToken()]);
@@ -41,6 +48,55 @@ export default async function DashboardPage() {
   const recentActivity = projectDetails.flatMap((project) => buildProjectActivity(project)).slice(0, 6);
   const aiAcceptanceRate = "Not logged";
 
+  const attentionEstimates: AttentionEstimateRow[] = projectDetails.flatMap((project) =>
+    project.estimates
+      .filter((estimate) => estimate.status === "draft" || estimate.status === "ready")
+      .map((estimate) => ({
+        projectId: project.id,
+        projectName: project.name,
+        customerName: project.customer?.name ?? "No customer linked",
+        estimateId: estimate.id,
+        version: estimate.version,
+        status: estimate.status,
+        totalPrice: estimate.totalPrice,
+      }))
+  );
+
+  const attentionProposals: AttentionProposalRow[] = projectDetails.flatMap((project) =>
+    project.proposals
+      .filter((proposal) => ["sent", "viewed"].includes(getProposalDisplayStatus(proposal)))
+      .map((proposal) => ({
+        projectId: project.id,
+        projectName: project.name,
+        customerName: project.customer?.name ?? "No customer linked",
+        proposalId: proposal.id,
+        status: getProposalDisplayStatus(proposal),
+        amount: proposal.finalPrice ?? proposal.priceHigh ?? proposal.priceLow,
+      }))
+  );
+
+  const attentionInvoices: AttentionInvoiceRow[] = projectDetails.flatMap((project) =>
+    project.invoices
+      .filter((invoice) => ["sent", "overdue"].includes(getInvoiceDisplayStatus(invoice)))
+      .map((invoice) => ({
+        projectId: project.id,
+        projectName: project.name,
+        customerName: project.customer?.name ?? "No customer linked",
+        invoiceId: invoice.id,
+        status: getInvoiceDisplayStatus(invoice),
+        amount: invoice.amount,
+        dueDate: invoice.dueDate,
+      }))
+  );
+
+  const attentionReadyToStart: AttentionStartRow[] = projectDetails
+    .filter((project) => project.estimates.length === 0)
+    .map((project) => ({
+      projectId: project.id,
+      projectName: project.name,
+      customerName: project.customer?.name ?? "No customer linked",
+    }));
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -49,6 +105,13 @@ export default async function DashboardPage() {
           Signed in as {session?.email}. Track the full project lifecycle from lead through estimating, active work, and completion.
         </p>
       </div>
+
+      <NeedsAttentionCard
+        estimates={attentionEstimates}
+        proposals={attentionProposals}
+        invoices={attentionInvoices}
+        readyToStart={attentionReadyToStart}
+      />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <SummaryMetricCard label="Active jobs" value={String(activeJobs)} />
