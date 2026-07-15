@@ -55,7 +55,7 @@ function RowHeader({ title, subtitle }: { title: string; subtitle: string }) {
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <h3 className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{children}</h3>;
+  return <h2 className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{children}</h2>;
 }
 
 export function NeedsAttentionCard({
