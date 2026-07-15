@@ -6,6 +6,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { SummaryMetricCard } from "@/components/shared/summary-metric-card";
+import {
+  NeedsAttentionCard,
+  type AttentionEstimateRow,
+  type AttentionInvoiceRow,
+  type AttentionProposalRow,
+  type AttentionStartRow,
+} from "@/components/dashboard/needs-attention-card";
+
+// Proposal money fields come off the wire as Prisma Decimal-serialized
+// strings on this endpoint (unlike estimates/invoices, which are normalized
+// server-side) - coerce before arithmetic so `sum + amount` doesn't silently
+// string-concatenate.
+function toProposalAmount(proposal: { finalPrice: number | null; priceHigh: number | null; priceLow: number | null }): number | null {
+  const raw = proposal.finalPrice ?? proposal.priceHigh ?? proposal.priceLow;
+  if (raw == null) return null;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : null;
+}
 
 export default async function DashboardPage() {
   const [session, token] = await Promise.all([getSession(), getSessionToken()]);
@@ -22,11 +40,11 @@ export default async function DashboardPage() {
   const pendingContracts = projectDetails.flatMap((project) => project.contracts).filter((contract) => ["sent", "viewed"].includes(contract.status)).length;
   const pendingInvoices = projectDetails
     .flatMap((project) => project.invoices)
-    .filter((invoice) => ["sent", "overdue", "partially paid"].includes(getInvoiceDisplayStatus(invoice))).length;
+    .filter((invoice) => ["sent", "overdue", "partially_paid"].includes(getInvoiceDisplayStatus(invoice))).length;
   const revenuePipeline = projectDetails
     .flatMap((project) => project.proposals)
     .filter((proposal) => ["sent", "viewed", "accepted"].includes(getProposalDisplayStatus(proposal)))
-    .reduce((sum, proposal) => sum + (proposal.finalPrice ?? proposal.priceHigh ?? proposal.priceLow ?? 0), 0);
+    .reduce((sum, proposal) => sum + (toProposalAmount(proposal) ?? 0), 0);
   const openChangeOrders = projectDetails.flatMap((project) => project.changeOrders).filter((changeOrder) => changeOrder.status !== "rejected").length;
   const estimateLeadTimes = projectDetails
     .filter((project) => project.estimates[0])
@@ -41,6 +59,55 @@ export default async function DashboardPage() {
   const recentActivity = projectDetails.flatMap((project) => buildProjectActivity(project)).slice(0, 6);
   const aiAcceptanceRate = "Not logged";
 
+  const attentionEstimates: AttentionEstimateRow[] = projectDetails.flatMap((project) =>
+    project.estimates
+      .filter((estimate) => estimate.status === "draft" || estimate.status === "ready")
+      .map((estimate) => ({
+        projectId: project.id,
+        projectName: project.name,
+        customerName: project.customer?.name ?? "No customer linked",
+        estimateId: estimate.id,
+        version: estimate.version,
+        status: estimate.status,
+        totalPrice: estimate.totalPrice,
+      }))
+  );
+
+  const attentionProposals: AttentionProposalRow[] = projectDetails.flatMap((project) =>
+    project.proposals
+      .filter((proposal) => ["sent", "viewed"].includes(getProposalDisplayStatus(proposal)))
+      .map((proposal) => ({
+        projectId: project.id,
+        projectName: project.name,
+        customerName: project.customer?.name ?? "No customer linked",
+        proposalId: proposal.id,
+        status: getProposalDisplayStatus(proposal),
+        amount: toProposalAmount(proposal),
+      }))
+  );
+
+  const attentionInvoices: AttentionInvoiceRow[] = projectDetails.flatMap((project) =>
+    project.invoices
+      .filter((invoice) => ["sent", "overdue", "partially_paid"].includes(getInvoiceDisplayStatus(invoice)))
+      .map((invoice) => ({
+        projectId: project.id,
+        projectName: project.name,
+        customerName: project.customer?.name ?? "No customer linked",
+        invoiceId: invoice.id,
+        status: getInvoiceDisplayStatus(invoice),
+        amount: invoice.amount,
+        dueDate: invoice.dueDate,
+      }))
+  );
+
+  const attentionReadyToStart: AttentionStartRow[] = projectDetails
+    .filter((project) => project.estimates.length === 0)
+    .map((project) => ({
+      projectId: project.id,
+      projectName: project.name,
+      customerName: project.customer?.name ?? "No customer linked",
+    }));
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -49,6 +116,13 @@ export default async function DashboardPage() {
           Signed in as {session?.email}. Track the full project lifecycle from lead through estimating, active work, and completion.
         </p>
       </div>
+
+      <NeedsAttentionCard
+        estimates={attentionEstimates}
+        proposals={attentionProposals}
+        invoices={attentionInvoices}
+        readyToStart={attentionReadyToStart}
+      />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <SummaryMetricCard label="Active jobs" value={String(activeJobs)} />
