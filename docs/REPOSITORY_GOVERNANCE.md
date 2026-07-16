@@ -1,168 +1,142 @@
 ---
 status: current
 owner: platform
-last_verified: 2026-07-14
+last_verified: 2026-07-16
 source_of_truth: true
 related_code:
   - AGENTS.md
   - .github/workflows/docs-consistency.yml
   - .github/workflows/verify-repository.yml
   - .github/pull_request_template.md
+  - docs/TRADEOS_BIBLE.md
   - docs/ENGINEERING_COMMAND_CENTER.md
+  - docs/SPRINT_BACKLOG.md
   - docs/SESSION_HANDOFF.md
-  - docs/agent-prompts/AGENT_STARTUP_CHECKLIST.md
-  - docs/agent-prompts/AGENT_COMPLETION_CHECKLIST.md
+  - docs/agent-prompts/NEXT_SPRINT_PROTOCOL.md
   - docs/decisions/ADR-004-worktree-policy.md
 ---
 
 # Repository Governance
 
-This document defines the required repository workflow for TradeOS governance, hardening, and feature delivery.
+This document defines the required repository workflow for TradeOS. The Bible defines doctrine, the Sprint Backlog defines executable work, and this file defines repository controls and merge discipline.
 
-## Current GitHub state
+## Live-state verification rule
 
-Verified from GitHub CLI and API on 2026-07-14:
+GitHub rulesets, branch protection, required checks, merge methods, and review requirements are external state. They must be verified directly in GitHub before being described as current.
 
-- default branch: `main`
-- branch protection on `main`: not configured
-- repository rulesets: none
-- merge methods allowed: merge commit, rebase, and squash
-- automatic deletion of merged head branches: disabled
-- currently required status checks: none
-- require branch to be up to date before merge: not configured
-- required conversation resolution: not configured
-- approval requirement: not configured
-- force-push blocking for `main`: not configured
-- branch deletion blocking for `main`: not configured
-
-Recent pull requests have successful runs for these safe-to-require checks:
-
-- `Docs consistency`
-- `App lint, unit tests, and build`
-- `App integration tests`
-- `Web lint and build`
+Do not preserve dated statements such as “no rulesets exist” or “one approval is required” as present truth after configuration may have changed.
 
 ## Required protection target
 
-Protect `main` with a branch ruleset, not an ad hoc convention.
+Protect `main` with a branch ruleset that:
 
-Minimum required rules:
+- requires a pull request before merging;
+- requires the branch to be current with `main`;
+- requires all configured status checks to pass;
+- requires conversation resolution;
+- blocks force pushes;
+- restricts deletion of `main`.
 
-- require a pull request before merging
-- require these status checks:
-  - `Docs consistency`
-  - `App lint, unit tests, and build`
-  - `App integration tests`
-  - `Web lint and build`
-- require the branch to be up to date before merging
-- require conversations to be resolved before merging
-- block force pushes
-- block deletions
+Expected verification jobs are:
 
-Recommended additional review guardrail:
+- `Docs consistency`;
+- `App lint, unit tests, and build`;
+- `App integration tests`;
+- `Web lint and build`.
 
-- require at least 1 approving review before merge
+The exact GitHub check names remain the source of truth and must be verified before editing the ruleset.
 
-Merge posture:
+## Solo-maintainer review posture
 
-- keep squash merge enabled
-- prefer squash merge for normal PR flow
-- if the team wants hard enforcement instead of preference, disable merge commits and rebase merges in repository merge settings after confirming that no active workflow depends on them
+TradeOS is currently operated by one repository maintainer. The intended solo-maintainer configuration is:
 
-Branch cleanup posture:
+- pull requests remain mandatory;
+- required checks remain mandatory;
+- conversation resolution remains mandatory;
+- required approving-review count is zero while there is only one maintainer;
+- self-review may be recorded as a comment or audit, but it is not treated as independent approval;
+- approval requirements may be raised when another qualified maintainer or reviewer joins.
 
-- enable automatic deletion of merged head branches
-- do not allow deletion of `main`
+Do not weaken CI, up-to-date requirements, deletion protection, force-push protection, or PR requirements to compensate for the zero-approval setting.
 
-## Manual GitHub UI steps
+## Merge posture
 
-Use manual configuration until repository-admin automation is intentionally introduced.
+- prefer squash merge for normal feature, fix, and documentation PRs;
+- do not merge a draft PR;
+- do not merge with failing required checks;
+- do not merge with unresolved review threads;
+- verify the expected head SHA immediately before merge;
+- only merged evidence may mark a sprint `DONE`.
 
-### Branch ruleset for `main`
+## Branch and worktree lifecycle
 
-1. Open `404TradeOS-LLC/TradeOScostbook` on GitHub.
-2. Go to `Settings`.
-3. In the left sidebar, open `Rules`, then `Rulesets`.
-4. Click `New ruleset`, then `New branch ruleset`.
-5. Name the ruleset `Protect main`.
-6. Set enforcement to `Active`.
-7. Target branch pattern `main`.
-8. Enable `Require a pull request before merging`.
-9. Inside the pull-request rule, enable `Require conversation resolution before merging`.
-10. Enable `Require status checks to pass`.
-11. Select these checks:
-    - `Docs consistency`
-    - `App lint, unit tests, and build`
-    - `App integration tests`
-    - `Web lint and build`
-12. Enable the strict up-to-date option so branches must be current before merge.
-13. Enable `Block force pushes`.
-14. Enable `Restrict deletions`.
-15. If the repository owner wants approval enforcement, enable `Require approvals` and set it to `1`.
-16. Save the ruleset.
-
-### Merge settings and branch cleanup
-
-1. In the same repository, go to `Settings`.
-2. Open `General`.
-3. Under `Pull Requests`, keep `Allow squash merging` enabled.
-4. If the team decides to enforce squash-only merges, disable `Allow merge commits` and `Allow rebase merging`.
-5. Enable `Automatically delete head branches`.
-
-## Engineering Command Center and session continuity
-
-After environment verification, every human or AI contributor should read:
-
-1. `docs/ENGINEERING_COMMAND_CENTER.md`
-2. `docs/CURRENT_STATE.md`
-3. `docs/SESSION_HANDOFF.md`
-
-Session policy:
-
-- `ENGINEERING_COMMAND_CENTER.md` is the shared operational overview, not a running log
-- update it only when phase, milestone, priorities, blockers, CI expectations, or operating protocol changed
-- `SESSION_HANDOFF.md` is the living current-session closeout document
-- replace `SESSION_HANDOFF.md` at the end of every substantive or PR-ready engineering session
-- do not create a chronological journal inside either document
-
-## Standard worktree lifecycle
-
-Use one clean main worktree plus one linked worktree per active concurrent worker.
+Use one clean `main` worktree plus one linked worktree per active mission.
 
 Standard flow:
 
-1. Start from a clean `main` worktree.
-2. Run `git fetch origin`.
-3. Create a short-lived branch and linked worktree for the bounded task.
-4. Verify the exact path, branch, upstream, status, and worktree list.
-5. Confirm allowed paths, forbidden paths, task scope, and stop conditions.
-6. Perform only the bounded task.
-7. Update required source-of-truth docs in the same branch.
-8. Run the required local checks.
-9. Push the branch.
-10. Open a pull request.
-11. Wait for required checks to pass.
-12. Squash merge the PR.
-13. Sync the clean `main` worktree and verify the merged content.
-14. Remove the linked worktree with `git worktree remove`.
-15. Delete the merged branch locally and remotely if it is no longer needed.
-16. Run `git worktree prune` to clear stale metadata.
+1. fetch origin;
+2. verify exact repository, path, branch, upstream, and clean state;
+3. create one short-lived branch and linked worktree for the bounded mission;
+4. state allowed paths, forbidden paths, validation, and stop conditions;
+5. inspect open PR and worktree overlap;
+6. perform only the approved mission;
+7. update required source-of-truth documents in the same branch;
+8. run required local checks;
+9. inspect the complete diff against the correct base;
+10. push normally and open or update one PR;
+11. wait for required checks;
+12. merge only after review readiness is established;
+13. sync `main` and verify the landed content;
+14. remove linked worktrees with `git worktree remove`;
+15. delete merged branches when safe;
+16. run `git worktree prune`.
 
 Required policy:
 
-- use one branch per feature or governance task
-- use one worktree per active concurrent worker
-- do not keep permanent per-module branches
-- do not develop directly on `main`
-- keep recovery worktrees temporary
-- use `git worktree remove`, never `rm -rf`, for linked-worktree cleanup
+- do not develop directly on `main`;
+- do not use permanent per-module feature branches;
+- do not use plain force push;
+- use `--force-with-lease` only when a reviewed rebase requires it and the remote head is verified unchanged;
+- do not use `rm -rf` to remove linked worktrees;
+- stop on unexpected branch movement or overlapping scope.
+
+## Documentation ownership
+
+`docs/DOC_OWNERSHIP.yml` is enforced repository policy.
+
+When a changed file triggers an ownership requirement, the owning document must be included and updated meaningfully in the same PR. Do not add an empty or cosmetic edit merely to satisfy the checker.
+
+The Bible does not replace:
+
+- `CURRENT_STATE.md` for verified implementation truth;
+- `SPRINT_BACKLOG.md` for executable work;
+- `SESSION_HANDOFF.md` for current continuity;
+- module docs for detailed implementation contracts;
+- accepted ADRs for active architectural rationale;
+- research docs for supporting evidence.
+
+## Session continuity
+
+Every contributor starts with:
+
+1. `AGENTS.md`;
+2. `docs/TRADEOS_BIBLE.md`;
+3. `docs/CURRENT_STATE.md`;
+4. `docs/SPRINT_BACKLOG.md`;
+5. `docs/SESSION_HANDOFF.md`;
+6. `docs/agent-prompts/NEXT_SPRINT_PROTOCOL.md`.
+
+`ENGINEERING_COMMAND_CENTER.md` is a concise operating overview, not a running log. `SESSION_HANDOFF.md` is replaced with current truth at the end of a substantive session.
 
 ## Pull request readiness
 
-A branch is review-ready only when:
+A PR is ready for human review only when:
 
-- work stayed inside the allowed paths for the task
-- required documentation updates are present in the same branch
-- `docs/DOC_OWNERSHIP.yml` covers module-specific controllers and middleware when they own validation, permission, rate-limit, or security behavior
-- the final `git status --short --branch` is clean except for intended staged or committed changes
-- the contributor can report exact checks run, exact checks still blocked, and the current upstream target
+- work stayed within its approved scope;
+- required owner documents are present;
+- the final diff contains no unrelated changes;
+- local validation has passed or an external blocker is explicitly documented;
+- GitHub required checks are green;
+- the branch is up to date;
+- review threads are resolved;
+- the PR description accurately states current scope, validation, limitations, and remaining risks.
