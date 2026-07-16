@@ -94,9 +94,14 @@ resolution), not new backend work.
 - **Returning user, no valid session** → login screen, then the command center.
 - **New organization, first login** → the onboarding flow defined in
   `docs/product/TRADEOS_OWNER_EXPERIENCE.md` (brand confirmation → migration path
-  choice → import or quick-start → team setup, all skippable → QuickBooks connect,
-  optional). **New work**: the brand-confirmation-from-URL step and the generic
-  import wizard do not exist yet and are the primary new-build surface of this preview.
+  choice → import or quick-start → team setup, all skippable). **New work**: the
+  brand-confirmation-from-URL step and the generic import wizard do not exist yet and
+  are the primary new-build surface of this preview. **QuickBooks connect is out of
+  scope for the first Founder Preview pass**: no QuickBooks/OAuth backend integration
+  exists today; it is planned product direction (see
+  `docs/product/TRADEOS_OWNER_EXPERIENCE.md`'s Migration and import section) that must
+  be implemented and separately approved before any onboarding build includes it — the
+  onboarding flow for this preview must not present or require it.
 - Acceptance check: a brand-new org must never land on an empty dashboard; if the
   contractor skips both import and quick-add, the workspace still shows a clear,
   single, non-blank next action (e.g. "Add your first customer"), not an empty grid.

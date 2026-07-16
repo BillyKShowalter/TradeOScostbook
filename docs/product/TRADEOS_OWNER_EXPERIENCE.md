@@ -42,7 +42,9 @@ gets surfaced plainly, with the system's reasoning attached.
    starting fresh — this single fork replaces a generic multi-step wizard.
 4. **Import or quick-start**, matched to that branch (see Migration and import).
 5. **Team setup**, deferrable.
-6. **QuickBooks connect**, offered after real data exists, never forced before it.
+6. **QuickBooks connect** — product direction only; **not implemented today** (see
+   Migration and import, below). Offered after real data exists and never forced before
+   it once built; out of scope for the Founder Preview until that integration exists.
 7. **First-success landing** on a populated workspace with one concrete next action.
 
 ## Brand confirmation
@@ -72,6 +74,9 @@ be branded.
 - **QuickBooks Online** is a genuine, buildable native integration (mature, documented
   OAuth flow) — positioned as an ongoing connection for invoices/payments, not a one-time
   migration, and typically kept running in parallel with accounting rather than replaced.
+  **Implementation status**: this is product direction, not a built capability — no
+  QuickBooks/OAuth integration exists in the codebase today. It must be implemented, and
+  separately approved, before it can be part of the Founder Preview or any release.
 - **No prior system**: minimal guided quick-add of the first few customers, framed the
   same way as an import, so the workspace is populated within minutes regardless of
   starting point.
@@ -86,10 +91,20 @@ be branded.
 
 ## Team setup
 
-A single screen: invite by email/phone into one of the roles TradeOS already models
-(owner/admin, dispatcher/office, technician), with the signing owner pre-filled.
+A single screen: invite by email into one of the roles the invite flow currently
+supports, with the signing owner shown as already part of the team.
+
+**Current implementation**: invites are limited to the dispatcher and technician roles
+(`app/modules/auth/service.ts`, `app/backend/controllers/auth.controller.ts`) — an
+owner/admin account is created through organization signup, not through this invite
+flow. Email is the only supported invite channel today; there is no phone-based invite.
+
 Entirely skippable — a solo contractor should not be blocked from entering the workspace
 by an empty team screen.
+
+**Future work, not currently implemented**: inviting additional owner/admin members and
+a phone-based invite channel are reasonable product directions but are not built today
+and are out of scope for the Founder Preview unless separately approved.
 
 ## First-success workflow
 
@@ -200,9 +215,9 @@ Mobile is a subtraction from desktop, not a shrink:
   **Failure of a background automation must fail loud and specific** (e.g. "3 of 142
   rows could not be imported: missing phone number") — never a silent partial success
   presented as complete.
-- **Errors never block entry to the workspace.** A failed brand-detect, a stalled
-  import, or a declined QuickBooks connection degrades gracefully to manual entry or a
-  retry, never a dead end.
+- **Errors never block entry to the workspace.** A failed brand-detect or a stalled
+  import degrades gracefully to manual entry or a retry, never a dead end; the same
+  principle applies to QuickBooks connect once that integration is built.
 
 ## What must never happen
 
@@ -226,9 +241,13 @@ Explicitly realistic to build now:
   confirmation step.
 - A generic CSV/Excel import wizard (customers, jobs, estimates, invoices as separate
   templates) with column mapping, validation, duplicate review, and time-bounded undo.
-- QuickBooks OAuth connect for invoices/payments.
+- QuickBooks OAuth connect for invoices/payments — **planned, not yet implemented**; no
+  QuickBooks/OAuth integration exists in the codebase today, and it must be built and
+  separately approved before it is part of the Founder Preview or any release.
 - Minimal guided quick-add for contractors with no prior data source.
-- Role-based team invite using TradeOS's existing membership/role model.
+- Email-based team invite for dispatcher/technician roles, matching the currently
+  implemented invite flow (see Team setup, above) — not a broader owner/admin or
+  phone-based invite, which are future work.
 - The Tier 1/Tier 2/Tier 3 command-center hierarchy, built from data TradeOS already
   models today (jobs/scheduling, invoices, estimates, proposals, change orders, supplier
   price-review queue).
