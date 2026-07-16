@@ -46,9 +46,15 @@ complete. None of these are new backend capability — they compose existing mod
   web session, exactly as already implemented (`docs/modules/auth-and-tenancy.md`). No
   bypass, no fake login screen.
 - **Realistic company identity and branding**: the previewed org has a real name, logo,
-  and brand colors applied through the existing Brand Studio
-  (`docs/modules/brand-studio.md`), visible in the workspace chrome and on every
-  generated document.
+  and brand colors configured in the existing Brand Studio
+  (`docs/modules/brand-studio.md`), visible in the workspace chrome. **Known gap, not
+  existing capability**: proposal, invoice, and contract PDF generation and the customer
+  portal are not currently wired to Brand Studio's data — they render a hardcoded product
+  wordmark and a fixed color regardless of org. A brand-aware document renderer already
+  exists (`modules/documents/frame.ts`, tested in isolation) but has no caller in any of
+  those three services today; wiring it in is new work for this preview, not an
+  already-implemented composition. Do not claim document/portal branding as done until
+  that wiring lands.
 - **Realistic roles**: at least one owner/admin, one dispatcher, and one technician
   membership, using the existing role model (`docs/RBAC_MATRIX.md`).
 - **Populated dashboard**: the command center (screen 3, below) reflects real records
@@ -106,12 +112,38 @@ unified daily view).
 
 ### 4. Needs-attention area
 
-The Tier 2 decision queue: callouts, unassigned jobs, job risk flags, weather-flagged
-exterior jobs, escalations, material blockers, ready-to-invoice, overdue invoices, aged
-estimates/proposals, punch-list deadlines — ranked by consequence-if-ignored, each row
-actionable in place. **New work**: the ranking/aggregation logic and the row-level
-inline actions; the underlying records (jobs, invoices, estimates, proposals) already
-exist.
+The Tier 2 decision queue, ranked by consequence-if-ignored, each row actionable in
+place. Its row types split into two genuinely different kinds of work, which an earlier
+version of this spec conflated by claiming all underlying records already exist — they do
+not, for every row type. Corrected here:
+
+**Build-ready now** — real underlying records already exist; the only new work is the
+ranking/aggregation logic and the row-level inline actions: unassigned jobs,
+ready-to-invoice work, overdue invoices, aged estimates/proposals, and punch-list
+deadlines.
+
+**Out of scope for the first Founder Preview pass unless separately approved** — no
+underlying domain model exists today; this is new schema/domain work, not assembly of
+existing capability:
+
+- **Callouts/no-shows**: no explicit callout/no-show concept exists; only generic
+  job-assignment fields do.
+- **Job risk flags**: only `status`/`priority` exist on a job; there is no "running
+  over," safety, or permit-flag concept.
+- **Customer escalations**: nothing in the customer or activity-event model represents
+  an escalation category today.
+- **Material/parts blockers**: there is no material-availability or delivery-status
+  concept anywhere in the schema — the only adjacent model is the supplier price-review
+  queue, which tracks price changes, not delivery/availability. This row was previously
+  described as needing only aggregation; it does not, and must not be built into the
+  first pass without a separate domain-model decision.
+- **Weather-flagged exterior jobs**: also new work (see Weather context, below) —
+  grouped here for scope consistency, though it's a missing integration and exterior-work
+  tag rather than a missing core entity like the four items above.
+
+The first Founder Preview build assembles the queue from only the build-ready rows
+above. Adding any deferred row requires an explicit, separately-approved scoping decision
+before implementation starts.
 
 ### 5. Today's schedule
 
@@ -146,10 +178,12 @@ drill-in.
 
 ### 9. TradeOS-prepared actions
 
-Same-row actions on each Tier 2 item (reassign, approve invoice, send follow-up, approve
-material reorder) that resolve the item without navigating away. **New work**: the
+Same-row actions on each build-ready Tier 2 item (reassign a job, approve an invoice,
+send a follow-up) that resolve the item without navigating away. **New work**: the
 inline-action layer; the underlying mutations (job reassignment, invoice send, etc.)
-already exist as API operations and should be reused, not reimplemented.
+already exist as API operations and should be reused, not reimplemented. An action tied
+to a deferred row type (e.g. approving a material reorder) is out of scope until that row
+type itself is separately approved — see Needs-attention area, above.
 
 ### 10. Approvals
 
@@ -226,17 +260,23 @@ canonical source lives in `404TradeOS-LLC/404-tradeos`,
       workspace with exactly one clear next action
 
 **3. Owner command center**
-- [ ] Tier 1 status band shows day-status, crew coverage, unassigned count, cash
-      snapshot, and escalation flag (only if one exists)
+- [ ] Tier 1 status band shows day-status, crew coverage, unassigned count, and cash
+      snapshot from build-ready data (see Needs-attention area's scope split, below);
+      the escalation flag itself is deferred with customer escalations and is not part
+      of the first pass unless separately approved
 - [ ] On a day with nothing wrong, Tier 1 renders visibly calm/near-empty, not padded
       with filler content
 - [ ] Tier 2 queue is a single ranked list, not multiple competing panels
 - [ ] No revenue/profit trend chart, leaderboard, or activity feed appears in Tier 1/2
 
 **4. Needs-attention area**
+- [ ] Queue is built only from the build-ready row types (see above); no deferred row
+      type (callouts, job risk flags, customer escalations, material/parts blockers)
+      appears unless separately approved and scoped first
 - [ ] Every row shows a suggested resolution, not just a bare fact
 - [ ] Every row is actionable in place (no forced navigation to resolve)
-- [ ] Ranking reflects consequence-if-ignored (a callout outranks a stale estimate)
+- [ ] Ranking reflects consequence-if-ignored (an overdue invoice outranks a stale
+      estimate)
 
 **5. Today's schedule**
 - [ ] Shows real technician assignments and job times for the current day
@@ -277,7 +317,17 @@ canonical source lives in `404TradeOS-LLC/404-tradeos`,
 - It does not commit to any live, automated migration from ServiceTitan, Jobber,
   Housecall Pro, or Buildertrend — only the generic CSV import wizard, per
   `docs/product/TRADEOS_OWNER_EXPERIENCE.md`'s MVP boundaries.
-- It does not commit to weather integration being trivial — it is called out above as
-  genuinely new scope, not existing-capability assembly.
-- It does not redesign any module's underlying data model; every "new work" item above
-  is a UI/aggregation layer over data TradeOS already persists.
+- It does not commit to weather integration being trivial or shipping it in the first
+  pass — it is new integration work, out of scope unless separately approved (see
+  Needs-attention area, above).
+- It does not commit to callout/no-show tracking, job risk flags, customer-escalation
+  modeling, or material/parts-blocker tracking in the first pass — each requires new
+  domain modeling that does not exist in the schema today, and is out of scope unless
+  separately approved (see Needs-attention area, above).
+- It does not commit to Brand Studio branding already reaching every generated document
+  — proposal, invoice, and contract PDFs and the customer portal are a known,
+  currently-unwired gap (see Required preview state, above), not completed capability.
+- It does not redesign any module's underlying data model. Most "new work" items in this
+  spec are a UI/aggregation layer over data TradeOS already persists; the deferred items
+  listed above are the explicit exceptions and require new domain modeling, not just
+  aggregation.
