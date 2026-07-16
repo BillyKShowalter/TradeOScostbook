@@ -30,10 +30,11 @@ Authoritative reference:
 
 ## 3. Current Milestone
 
-Current milestone: `Lifecycle normalization`
+Current milestone: `Sprint execution system and lifecycle normalization`
 
 Goal:
 
+- route new engineering work through the canonical numbered sprint queue before implementation starts
 - align project, estimate, proposal, contract, invoice, and job lifecycle states across persistence, APIs, shared contracts, workspace UI, and customer portal surfaces without redesigning the architecture
 
 Explicit exclusions:
@@ -53,6 +54,18 @@ These exclusions do not remove the existing jobs, scheduling, technician-assignm
 Authoritative reference:
 
 - [ROADMAP.md](ROADMAP.md)
+- [SPRINT_BACKLOG.md](SPRINT_BACKLOG.md)
+- [NEXT_SPRINT_PROTOCOL.md](agent-prompts/NEXT_SPRINT_PROTOCOL.md)
+
+## 3.1 Canonical Sprint Queue
+
+- [SPRINT_BACKLOG.md](SPRINT_BACKLOG.md) is the canonical executable work queue for TradeOS.
+- [NEXT_SPRINT_PROTOCOL.md](agent-prompts/NEXT_SPRINT_PROTOCOL.md) is the canonical autonomous startup procedure when the founder does not provide a custom task prompt.
+- Broad priorities in this Command Center do not override the numbered sprint queue.
+- Agents execute one sprint per branch and PR.
+- Only merged evidence can mark a sprint `DONE`.
+- The founder does not need to produce a custom task prompt when a safe `READY` sprint exists.
+- If no sprint is safely `READY`, agents must stop and report the exact blocker instead of inventing work.
 
 ## 4. Current Product Surface
 
@@ -122,8 +135,9 @@ Reference: [SESSION_HANDOFF.md](SESSION_HANDOFF.md), [REPOSITORY_GOVERNANCE.md](
 - Technical debt: supplier connector plumbing exists, but live supplier feed ingestion is still stubbed.
 - Technical debt: cost-item and assembly substring search still lacks trigram coverage for `code` columns, so mixed name-or-code queries can remain scan-heavy.
 - Environment verification gap: production deployment state, environment approvals, and migration-review posture must be verified outside the repository.
-- Governance enforcement gap: `main` still has no live GitHub branch protection or ruleset enforcement as of 2026-07-14.
-- Stale branch and PR cleanup risk: multiple open draft PRs are 10 to 12 commits behind current `main`, and some overlap already-merged governance, lifecycle, or knowledge-runtime work.
+- Operational deployment signal: a recent `Deploy database migrations` run on `main` failed while PR verification checks passed; this needs triage before production-rollout confidence.
+- Open PR overlap: PR #30 owns Settings brand-asset upload persistence and must not be duplicated by new sprint work.
+- Stale local worktree cleanup risk: multiple local worktrees and branches remain visible; cleanup must be evidence-backed and Git-native.
 
 Authoritative references:
 
@@ -133,6 +147,9 @@ Authoritative references:
 
 ## 7. Recently Landed Work
 
+- `279bdae` / PR [#27](https://github.com/404TradeOS-LLC/TradeOScostbook/pull/27): added contractor UX research and Founder Preview product specs.
+- `10ec35e` / PR [#29](https://github.com/404TradeOS-LLC/TradeOScostbook/pull/29): hardened the structured AI Estimator engine and reviewed apply flow.
+- `f032808` / PR [#28](https://github.com/404TradeOS-LLC/TradeOScostbook/pull/28): added the Founder Preview needs-attention dashboard workflow.
 - `d6942ee` / PR [#23](https://github.com/404TradeOS-LLC/TradeOScostbook/pull/23): repaired the Prisma seed workflow so root-level seeding works under forced RLS.
 - `cfe781d` / PR [#22](https://github.com/404TradeOS-LLC/TradeOScostbook/pull/22): established the current documentation source-of-truth system, ownership rules, and governance baseline.
 - `9a7760b` / PR [#21](https://github.com/404TradeOS-LLC/TradeOScostbook/pull/21): restored canonical role and lifecycle contracts that earlier branch history had orphaned.
@@ -142,7 +159,7 @@ Authoritative references:
 ## 8. Active Branch and PR Policy
 
 - Engineering policy is that `main` is merge-only and must be treated as protected.
-- Current enforcement gap: GitHub branch protection and rulesets are still not configured on `main` as of 2026-07-14.
+- Verified on 2026-07-16: a GitHub ruleset named `TradeOS Main Branch Protection` is active for the default branch, requires PRs, strict required status checks, linear history, conversation resolution, and blocks deletion and non-fast-forward updates.
 - Feature, fix, chore, and docs branches are short-lived.
 - Use one linked worktree per mission.
 - Do not do direct runtime implementation work in the shared governance worktree.
@@ -189,7 +206,7 @@ Every agent must:
 
 ## 11. Next Engineer Starts Here
 
-Read [SESSION_HANDOFF.md](SESSION_HANDOFF.md), verify whether the governance branch is already merged, inspect active PRs for overlap, continue the current `Lifecycle normalization` milestone unless the mission is explicitly governance-only, and do not start unrelated feature work.
+Read [SESSION_HANDOFF.md](SESSION_HANDOFF.md), then use [NEXT_SPRINT_PROTOCOL.md](agent-prompts/NEXT_SPRINT_PROTOCOL.md) and [SPRINT_BACKLOG.md](SPRINT_BACKLOG.md) to select the lowest-numbered safe `READY` sprint. Do not start unrelated feature work, and never begin a second sprint in the same branch.
 
 ## 12. Source-of-Truth Links
 
@@ -201,6 +218,7 @@ Read [SESSION_HANDOFF.md](SESSION_HANDOFF.md), verify whether the governance bra
 - [RBAC_MATRIX.md](RBAC_MATRIX.md)
 - [WORKFLOW_LIFECYCLES.md](WORKFLOW_LIFECYCLES.md)
 - [ROADMAP.md](ROADMAP.md)
+- [SPRINT_BACKLOG.md](SPRINT_BACKLOG.md)
 - [REPOSITORY_GOVERNANCE.md](REPOSITORY_GOVERNANCE.md)
 - [SESSION_HANDOFF.md](SESSION_HANDOFF.md)
 - [DOC_OWNERSHIP.yml](DOC_OWNERSHIP.yml)

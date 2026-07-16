@@ -15,7 +15,28 @@ related_code:
 
 RC1 hardening.
 
+The strategic roadmap is implemented through the executable numbered queue in
+`docs/SPRINT_BACKLOG.md`. The backlog is the tactical selection mechanism; this Roadmap
+remains the strategic view.
+
 ## Upcoming milestones
+
+### Sprint execution system
+
+Business goal:
+
+- make future engineering sessions self-starting, bounded, evidence-based, and safe to run without a custom founder prompt whenever a `READY` sprint exists
+
+Workflow focus:
+
+- agents fetch live state, inspect open PRs, select the lowest eligible sprint, create an isolated worktree, execute one branch/PR, update evidence, and stop
+
+Planned scope:
+
+- canonical 50-sprint backlog
+- autonomous next-sprint protocol
+- docs tests that validate backlog invariants
+- Command Center integration without duplicating the full queue
 
 ### Next coherent milestone: Lifecycle normalization
 
@@ -52,6 +73,7 @@ These exclusions do not remove the existing jobs, scheduling, technician-assignm
 - monitor the documentation-governance checks and tune ownership rules only where they prove too noisy
 - improve customer-portal hardening
 - verify production deployment and environment approval posture outside the codebase
+- use the sprint backlog as the tactical queue for RC1 correctness, brand/document consistency, portal hardening, estimating/AI hardening, scheduling stabilization, performance, security, deployment readiness, and post-RC cleanup
 
 ## Deferred capabilities
 

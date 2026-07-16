@@ -15,64 +15,51 @@ related_code:
 
 ## Session Metadata
 
-- date: 2026-07-15
+- date: 2026-07-16
 - agent/tool: Codex
-- worktree path: `/Users/showb/TradeOS-ai-estimator`
-- branch: `feature/ai-estimator-engine`
-- base branch: `main`
-- upstream: none configured for this branch
+- worktree path: `/Users/showb/TradeOS-sprint-system`
+- branch: `docs/engineering-sprint-system`
+- base branch: `origin/main`
 - remote: `https://github.com/404TradeOS-LLC/TradeOScostbook.git`
 
 ## Mission
 
-Review and harden the backend-only structured AI estimator implementation for human review.
-
-Explicitly out of scope:
-
-- frontend/UI, contractor experience, onboarding UX, demo screens, dispatcher UX, components, layouts, styling, navigation, and design-system presentation work
-- new AI architecture or autonomous database writes
-- pushes, PR creation, merges, rebases, dependency upgrades, and unrelated cleanup
+Create a docs-only sprint execution system so future Claude and Codex sessions can select the next safe TradeOS sprint without a custom founder prompt.
 
 ## Completed
 
-- kept work isolated in `/Users/showb/TradeOS-ai-estimator` on `feature/ai-estimator-engine`
-- used focused read-only sub-agents for authorization/tenancy, apply safety, draft correctness, test coverage, and architecture/docs review
-- preserved the existing `ai-estimate-assist`, Knowledge Runtime, Cost Database, Assemblies Database, and Estimate Engine architecture
-- added server-signed review tokens to resolved structured draft lines
-- required accepted apply lines to present a matching, unexpired review token bound to estimate, organization, draft line, target kind, target ID, engine version, and issue time
-- failed closed in production if no AI estimator review-token secret or `AUTH_JWT_SECRET` is configured
-- kept generated text untrusted for identity, pricing, authorization, and persistence decisions
-- kept apply writes routed through `EstimateEngineService.addLineItem(...)`
-- wrapped structured apply in the existing service-level transaction helper and updated that helper so non-HTTP transactions bind the active Prisma transaction through async-local routing
-- bounded parsed draft quantities to the same maximum as reviewed apply quantities
-- made pricing retrieval failures review-safe: the draft returns zero-priced unresolved-pricing warnings instead of inventing or trusting fallback prices
-- rejected inactive cost items and assemblies as valid structured estimator targets
-- expanded focused tests for review-token provenance, stale/missing/mismatched tokens, production secret failure, inactive targets, pricing-failure warnings, excessive draft quantities, controller bounds, partial apply failures, and source-key first insert/replay behavior
-- updated documentation ownership so AI estimator controller and rate-limit middleware changes require AI-assist/API/current-state docs
-- marked legacy document-generator scripts as not current RC1 implementation truth
+- created `docs/SPRINT_BACKLOG.md` with exactly 50 numbered sprints, S001 through S050
+- created `docs/agent-prompts/NEXT_SPRINT_PROTOCOL.md` with the autonomous selection algorithm and reusable founder prompt
+- updated the Command Center to make the sprint backlog the canonical queue and the protocol the canonical autonomous startup procedure
+- aligned the Roadmap so it remains strategic while the backlog becomes tactical
+- refreshed this handoff around the next eligible sprint
+- added docs tests for sprint ID, status, dependency, DONE-evidence, READY/open-PR-conflict, path-reference, and next-sprint determinism invariants
+- accounted for live GitHub state: PR #27, PR #28, and PR #29 are merged; PR #30 is open and owns settings brand-asset upload persistence
 
 ## Validation Performed
 
-- `npm test -- structured-ai-estimator.service.test.ts ai-estimate-assist.controller.test.ts estimate-engine.service.test.ts --runInBand`: passed, 3 suites / 43 tests
-- `npm run docs:check`: passed
-- `npm run docs:test`: passed, 30 tests
-- `cd app && npm test`: passed, 53 suites / 358 tests
-- `cd app && npm run lint`: passed
-- `cd app && npm run build`: passed
-- `cd app && npm run test:integration`: passed, 1 suite / 20 live RLS tests
-- `git diff --check`: passed before handoff refresh
-
-## Blocked Validation
-
-- none
+- `npm run docs:test`: passed, 37 tests
+- `npm run docs:check -- --base origin/main`: passed
+- `git diff --check`: passed
 
 ## Known Issues or Blockers
 
-- branch `feature/ai-estimator-engine` has no upstream configured
-- changes are not pushed
-- structured apply now has signed per-line draft provenance but still does not persist a full draft-run record or store the full contractor prompt
-- broader manual estimate line-item sort-order races remain outside this sprint
+- PR #30 remains open and must not be duplicated by settings/brand asset work
+- `Deploy database migrations` recently failed on a main push and needs a dedicated triage sprint
+- live supplier feed ingestion remains stubbed
+- production environment approvals still require live environment/admin verification
 
-## Next Exact Task
+Next eligible sprint:
+S002 — Governance truth refresh and branch hygiene triage
 
-Inspect local commits and open a human review PR when ready. If pushing from this worktree, use `git push -u origin feature/ai-estimator-engine`.
+Why it is eligible:
+It is the lowest-numbered `READY` sprint, S001 is already in review on this branch, its dependencies are already merged PRs, it does not overlap PR #30, and it requires no founder product decision.
+
+Dependencies:
+PR #27, PR #28, and PR #29 are merged. This branch must merge first so the sprint protocol and backlog exist on `main`.
+
+Overlapping PRs checked:
+PR #30 is open from `fix/brand-studio-asset-upload-persistence` and overlaps S011/S012 brand/settings work, not S002 governance truth refresh.
+
+Exact startup command/prompt:
+Read AGENTS.md, docs/ENGINEERING_COMMAND_CENTER.md, docs/CURRENT_STATE.md, docs/SPRINT_BACKLOG.md, docs/SESSION_HANDOFF.md, and docs/agent-prompts/NEXT_SPRINT_PROTOCOL.md. Inspect live GitHub PR and branch state. Select the next eligible READY sprint using the documented protocol. Do not ask the founder to choose unless the selected sprint explicitly requires a founder decision. Create an isolated worktree and branch, execute exactly one sprint, run all required validation, update the sprint evidence and handoff, push, and open a draft PR. Stop on scope conflict, stale remote state, failed required checks, unavailable infrastructure, or product ambiguity.
