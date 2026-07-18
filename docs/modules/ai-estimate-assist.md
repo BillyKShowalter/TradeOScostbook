@@ -1,7 +1,7 @@
 ---
 status: current
 owner: platform
-last_verified: 2026-07-15
+last_verified: 2026-07-18
 source_of_truth: false
 related_code:
   - app/modules/ai-estimate-assist
@@ -33,13 +33,15 @@ The backend also exposes a structured AI estimating engine path for contractor-l
 ## Routes
 
 - estimate-assist routes mounted under `/api/v1/estimates/*`
-- `POST /api/v1/estimates/:id/ai-estimator/draft`
-- `POST /api/v1/estimates/:id/ai-estimator/apply`
+- `POST /api/v1/estimates/:id/ai-suggestions` — generate advisory suggestions; requires `crm.read`
+- `POST /api/v1/estimates/:id/ai-suggestions/apply` — apply reviewed suggestions; requires `crm.write`
+- `POST /api/v1/estimates/:id/ai-estimator/draft` — structured estimator draft; requires `billing.write`
+- `POST /api/v1/estimates/:id/ai-estimator/apply` — structured estimator apply; requires `billing.write`
 - knowledge-runtime routes mounted under `/api/v1/knowledge/*`
 
 ## Permissions
 
-See [RBAC_MATRIX.md](../RBAC_MATRIX.md).
+Route-level permission checks were added in `app/backend/controllers/aiEstimateAssist.controller.ts` (previously relied on org-membership alone). See [RBAC_MATRIX.md](../RBAC_MATRIX.md) for the full role/permission mapping.
 
 ## Lifecycle and statuses
 
