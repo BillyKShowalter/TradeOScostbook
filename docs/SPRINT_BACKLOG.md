@@ -21,13 +21,13 @@ Only merged evidence may set `DONE`. Open PR overlap forces `IN_REVIEW` or `BLOC
 ## Phase 1 — Governance and Execution System
 
 ### S001 — TradeOS Bible foundation
-Status: IN_REVIEW
+Status: DONE
 Dependencies: none
 Objective: Establish the canonical Bible index, numbered sprint queue, and autonomous next-sprint protocol.
 Allowed paths: `docs/**`, `AGENTS.md` if required.
 Forbidden paths: runtime code, schema, dependencies, CI behavior.
 Acceptance: draft PR exists; docs checks pass; next sprint is mechanically selectable.
-Evidence: PR #31, branch `docs/tradeos-bible-foundation`.
+Evidence: PR #31 merged 2026-07-16 as `ac72ff235db687d9cb8619820e536aec040afc6b`, branch `docs/tradeos-bible-foundation`.
 
 ### S002 — Contractor UX research and Founder Preview specification
 Status: DONE
@@ -36,14 +36,14 @@ Objective: Land the verified contractor research and Founder Preview experience 
 Allowed paths: PR #27 documentation scope only.
 Forbidden paths: runtime code.
 Acceptance: PR #27 merged with green checks and no source-of-truth conflicts.
-Evidence: PR #27 merged as `279bdae`.
+Evidence: PR #27 merged on 2026-07-16 as `279bdae26e2fc1856c7cc28e6756529c0ec508e7`.
 
 ### S003 — Solo-maintainer governance calibration
-Status: PLANNED
-Dependencies: S001
-Objective: Document and verify a solo-maintainer ruleset that requires PRs and CI but zero approving reviews.
-Allowed paths: governance docs and live GitHub ruleset configuration.
-Forbidden paths: disabling PRs, required checks, force-push protection, or deletion protection.
+Status: READY
+Dependencies: none
+Objective: Document and verify the current solo-maintainer ruleset posture without changing GitHub settings.
+Allowed paths: governance docs and sprint evidence only.
+Forbidden paths: GitHub ruleset changes, disabling PRs, required checks, force-push protection, or deletion protection.
 Acceptance: `main` requires PRs, required checks, up-to-date branches, conversation resolution, and zero approvals.
 Founder decision required: NO.
 
@@ -278,8 +278,9 @@ Acceptance: no duplicate side effects under retry.
 
 ### S039 — Backup and recovery verification
 Status: BLOCKED
-Dependencies: production environment access
+Dependencies: none
 Objective: Verify backups, restore procedure, RPO/RTO expectations, and migration recovery.
+Blocked by: production environment access.
 Acceptance: documented restore rehearsal evidence.
 
 ## Phase 8 — Security, Tenancy, RLS, and Auditability
@@ -310,16 +311,18 @@ Acceptance: security-relevant actions are attributable and queryable.
 
 ### S044 — Secrets and environment posture
 Status: BLOCKED
-Dependencies: production environment access
+Dependencies: none
 Objective: Verify secret ownership, rotation, least privilege, and environment separation.
+Blocked by: production environment access.
 Acceptance: no tracked secrets and documented production rotation process.
 
 ## Phase 9 — Production Deployment and Operational Readiness
 
 ### S045 — Production environment inventory
 Status: BLOCKED
-Dependencies: live deployment access
+Dependencies: none
 Objective: Inventory production services, domains, environment variables, approvals, and owners.
+Blocked by: live deployment access.
 Acceptance: authoritative production topology and access map.
 
 ### S046 — Migration deployment gate
@@ -345,8 +348,9 @@ Acceptance: onboarding checklist, support path, feedback capture, and rollback p
 
 ### S049 — Stale branch, PR, and worktree retirement
 Status: PLANNED
-Dependencies: S001, S013
+Dependencies: S013
 Objective: Remove stale branches/worktrees only after verifying merge and ownership state.
+Blocked by: active RC PRs still open (PR #30 / S013, and any other open PR at execution time).
 Acceptance: no misleading active branch or obsolete draft PR remains.
 
 ### S050 — Launch stabilization and next roadmap
@@ -357,4 +361,4 @@ Acceptance: launch decision, known-risk register, and successor backlog approved
 
 ## Next Eligible Sprint
 
-No sprint is eligible while S001 remains `IN_REVIEW`. After PR #31 merges, select the lowest-numbered `READY` sprint whose dependencies are satisfied and whose paths do not overlap an open PR. S003 is expected to become the first candidate unless live governance evidence shows it is already complete.
+Selection is determined by `docs/agent-prompts/NEXT_SPRINT_PROTOCOL.md` after checking live PRs and dependencies. S001 and S002 are `DONE` (PR #31 and PR #27 both merged). S003 is the first eligible `READY` sprint: its only dependency is satisfied, and its scope (governance docs and sprint evidence only) does not overlap PR #30 (S013) or any other currently open PR.
