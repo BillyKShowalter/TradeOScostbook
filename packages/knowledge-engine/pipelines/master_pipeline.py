@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "export"))
 import json, uuid, math, difflib, re
 from collections import defaultdict
 from sync_manager import RelationalSynchronizer
+from package_root import resolve_package_root, resolve_export_root
 
 # ─────────────────────────────────────────────────────────────
 # STEP 1: GENERATE — import all agents
@@ -624,17 +625,28 @@ payload = {
     "assemblies": enforce_assembly_decimals(assemblies)
 }
 
-os.makedirs("knowledge/cost-items", exist_ok=True)
-os.makedirs("exports/json", exist_ok=True)
+# Phase B: anchored to the canonical package root (packages/knowledge-engine/), not to the
+# invoking process's cwd. This is what makes output deterministic regardless of whether this
+# script is run from the package root, from pipelines/, or from anywhere else -- see
+# packages/knowledge-engine/PATHS.md. Historical stale output already on disk under
+# pipelines/knowledge/cost-items/ and pipelines/exports/ (produced by earlier wrong-cwd runs
+# of the old relative-path logic) is intentionally left untouched by this change.
+knowledge_cost_items_dir = resolve_package_root() / "knowledge" / "cost-items"
+export_json_dir = resolve_export_root() / "json"
+os.makedirs(knowledge_cost_items_dir, exist_ok=True)
+os.makedirs(export_json_dir, exist_ok=True)
 
-with open("knowledge/cost-items/costbook.json", "w") as f:
+knowledge_cost_items_path = knowledge_cost_items_dir / "costbook.json"
+export_costbook_path = export_json_dir / "costbook.json"
+
+with open(knowledge_cost_items_path, "w") as f:
     json.dump(payload, f, indent=2)
-with open("exports/json/costbook.json", "w") as f:
+with open(export_costbook_path, "w") as f:
     json.dump(payload, f, indent=2)
 
 print(f"  ✅ Exported {len(payload['items'])} items + {len(payload['assemblies'])} assemblies")
-print("  Saved → knowledge/cost-items/costbook.json")
-print("  Saved → exports/json/costbook.json")
+print(f"  Saved → {knowledge_cost_items_path}")
+print(f"  Saved → {export_costbook_path}")
 print()
 
 # ─────────────────────────────────────────────────────────────

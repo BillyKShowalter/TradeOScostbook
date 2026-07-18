@@ -1,8 +1,16 @@
 import json
 import os
+import sys
+
+# Phase B: bootstrap access to package_root.py, which lives one directory up (pipelines/).
+# publish_to_supabase.py is invoked as a standalone subprocess (see scripts/approve-batch.py),
+# so it cannot rely on another script's sys.path setup -- see packages/knowledge-engine/PATHS.md.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from package_root import resolve_export_root
 
 def generate_sql():
-    with open("exports/json/costbook.json", "r") as f:
+    export_root = resolve_export_root()
+    with open(export_root / "json" / "costbook.json", "r") as f:
         payload = json.load(f)
     
     items = payload["items"]
@@ -79,12 +87,15 @@ VALUES {",".join(assy_item_rows)};
 """
         sql_blocks.append(sql)
 
-    # Save SQL blocks to exports/sql for the agent to execute
-    os.makedirs("exports/sql", exist_ok=True)
-    with open("exports/sql/sync.sql", "w") as f:
+    # Save SQL blocks to the canonical exports/sql root for the agent to execute.
+    # Phase B: anchored, not cwd-relative -- see packages/knowledge-engine/PATHS.md.
+    sql_dir = export_root / "sql"
+    os.makedirs(sql_dir, exist_ok=True)
+    sync_sql_path = sql_dir / "sync.sql"
+    with open(sync_sql_path, "w") as f:
         f.write("\n-- BATCH DIVIDER --\n".join(sql_blocks))
-    
-    print(f"Generated {len(sql_blocks)} SQL blocks in exports/sql/sync.sql")
+
+    print(f"Generated {len(sql_blocks)} SQL blocks in {sync_sql_path}")
 
 if __name__ == "__main__":
     generate_sql()

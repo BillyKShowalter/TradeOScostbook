@@ -11,6 +11,9 @@ related_code:
   - docs/bible/VOLUME_7_KNOWLEDGE_RUNTIME.md
   - docs/ARCHITECTURE.md
   - docs/DOC_OWNERSHIP.yml
+  - packages/knowledge-engine/PATHS.md
+  - packages/knowledge-engine/path-manifest.json
+  - packages/knowledge-engine/pipelines/package_root.py
 ---
 
 # TradeOS Knowledge Engine — Package Root
@@ -19,8 +22,15 @@ This is the canonical entry point for `packages/knowledge-engine/**`. It exists 
 2026-07-16 read-only audit found this package (9,986 files at the time of the audit) had no
 root README, no entry in `docs/DOC_OWNERSHIP.yml`, and several internal documents that describe
 paths, tooling, or an AI-authority model that no longer match reality or current TradeOS
-doctrine. This file is Phase A of a planned multi-phase cleanup: **documentation and governance
-only — nothing under this package has been moved, deleted, deduplicated, or regenerated.**
+doctrine. Phase A (documentation and governance only) added this file, corrected internal
+path documentation, and added ownership rules. Phase B (path-canonicalization and
+reference-hardening) added [`PATHS.md`](PATHS.md) as the detailed canonical path contract, a
+machine-readable [`path-manifest.json`](path-manifest.json), a marker-validated Python path
+resolver at `pipelines/package_root.py`, and fixed the specific relative-path defect that was
+producing divergent `costbook.json`/`sync_final.sql` copies under `pipelines/exports/**` —
+see §8 and [`PATHS.md`](PATHS.md) for exactly what changed. **Neither phase has moved, deleted,
+deduplicated, or regenerated anything under this package; the nested duplicate tree in §6 is
+still fully untouched.**
 
 If any other document under `packages/knowledge-engine/**` disagrees with this file about what is
 canonical, current, or safe to delete, **this file wins** until it is explicitly updated.
@@ -118,15 +128,29 @@ as aspirational, not implemented.
 `exports/`, `pipelines/exports/`, and `runtime/*.json` are pipeline-generated, not hand-authored.
 `pipelines/`, `scripts/`, and their Python entry points may still be run manually outside this
 repository's CI (no CI workflow references them, but that does not prove they are unused) —
-**no offline tooling under this package should be removed in this phase.**
+**no offline tooling under this package should be removed in this phase.** Since Phase B,
+`pipelines/master_pipeline.py`, `pipelines/export/sync_manager.py`, and
+`pipelines/export/publish_to_supabase.py` resolve their read/write paths through
+`pipelines/package_root.py` instead of bare `cwd`-relative strings — see [`PATHS.md`](PATHS.md)
+for exactly what that changed and what it deliberately did not.
 
 ## 6. Known-nested duplicate tree — `packages/knowledge-engine/knowledge-engine/`
 
-`packages/knowledge-engine/knowledge-engine/**` is a **confirmed, byte-for-byte, 4,746-tracked-file
-duplicate of this entire package**, self-nested one level inside it (verified via `sha256sum`
-across all 11 top-level subdirectories — zero differing files). It landed in the same single
-squash-merge commit as the rest of this package, with a later filesystem mtime, and has **zero
-references anywhere else in the repository**.
+`packages/knowledge-engine/knowledge-engine/**` is a **confirmed self-nested duplicate of this
+entire package**, verified two ways now: Phase A's `sha256sum` pass across all 11 top-level
+subdirectories, and a Phase B re-verification (2026-07-16) via `git ls-files` counts and a full
+recursive `diff -rq`. Current true counts: **4,746 tracked files in the duplicate vs. 4,748 in
+the canonical tree** (not the earlier "4,993" figure, which was stale). Only **7 files now
+differ** in content between the two trees — `docs/knowledge-engine-architecture.md`,
+`docs/migration-plan.md`, `runtime/README.md`, and `review/runtime/README.md` (edited by Phase A),
+plus `pipelines/master_pipeline.py`, `pipelines/export/sync_manager.py`, and
+`pipelines/export/publish_to_supabase.py` (edited by Phase B) — because each phase edited the
+canonical copies of those files only, and correctly did not propagate the edits into the
+duplicate. Every other file remains byte-for-byte identical. It landed in the same single
+squash-merge commit as the rest of this package, with a later filesystem mtime, and Phase B's
+exhaustive `git grep` sweep (see [`PATHS.md`](PATHS.md)) confirms it still has **zero functional
+references anywhere else in the repository** — only this README and `docs/DOC_OWNERSHIP.yml`
+mention it, both descriptively.
 
 **`packages/knowledge-engine/knowledge-engine/**` is not the canonical path. It is not the source
 of truth for anything. It is not documented as authoritative anywhere. It is not currently safe
@@ -162,20 +186,61 @@ canonical summary:
 
 ## 8. Known risks (read before touching anything under this package)
 
-- **Exact nested duplicate tree**: `knowledge-engine/knowledge-engine/**`, 4,746 tracked files, zero
-  references anywhere. See §6. Do not delete yet.
-- **Divergent `costbook.json` / `sync_final.sql` copies**: `exports/json/costbook.json` (canonical,
-  1,795 items / 289 assemblies) differs from `pipelines/exports/json/costbook.json` (1,795 items /
-  39 assemblies, a stale earlier pipeline run) and a third copy at
-  `pipelines/knowledge/cost-items/costbook.json` (byte-identical to the `pipelines/exports/` copy).
-  Root cause: `pipelines/export/sync_manager.py` writes to a relative output path, so the working
-  directory at invocation time determines which tree gets the output. Not yet fixed in this phase
-  — fixing it is a code change, out of scope for a docs-only pass.
-- **Near-duplicate export trees**: `pipelines/exports/**` (~836K) appears to be stale pipeline
-  output with no external references; not archived yet pending the same proof standard as §6.
-- **Unresolved offline-tooling consumers**: whether `pipelines/`, `scripts/*.py`, and
-  `runtime/*.json` are still actively run by a human operator outside this repository could not be
-  confirmed or ruled out by reference search. Treat as in-use until proven otherwise.
+- **Exact nested duplicate tree**: `knowledge-engine/knowledge-engine/**`, 4,746 tracked files
+  (see §6 for the corrected count), zero functional references anywhere. Still fully untouched
+  by Phase B. Do not delete yet.
+- **Divergent `costbook.json` / `sync_final.sql` copies — path defect fixed in Phase B, historical
+  files left untouched**: `exports/json/costbook.json` (canonical, 1,795 items / 289 assemblies)
+  still differs from `pipelines/exports/json/costbook.json` (1,795 items / 39 assemblies, a stale
+  earlier pipeline run) and a third copy at `pipelines/knowledge/cost-items/costbook.json`
+  (byte-identical to the `pipelines/exports/` copy). **Root cause, corrected from Phase A's initial
+  attribution**: the actual writer of the divergent `costbook.json` copies is
+  `pipelines/master_pipeline.py` (lines that used to read `open("knowledge/cost-items/costbook.json", "w")`
+  / `open("exports/json/costbook.json", "w")`), not `sync_manager.py` alone —
+  `sync_manager.py` only ever wrote the SQL side (`sync_final.sql`). Both, plus
+  `publish_to_supabase.py`, used bare `cwd`-relative path strings, so the working directory at
+  invocation time determined which tree got the output. **Phase B fixed the path construction**
+  in all three files (see [`PATHS.md`](PATHS.md) for the exact mechanism) so future runs always
+  target the canonical `exports/**` regardless of `cwd` — but the existing stale files under
+  `pipelines/exports/**` and `pipelines/knowledge/cost-items/costbook.json` were deliberately left
+  untouched, since deleting or migrating them is a separate, evidence-gated decision (see below),
+  not a path-construction fix.
+- **Near-duplicate export trees**: `pipelines/exports/**` (~836K) is confirmed stale pipeline
+  output with zero external references (Phase B re-verified this with a fresh repo-wide search);
+  not archived yet pending the same proof standard as §6.
+- **A separate, newly-discovered, currently-live bug — not fixed in Phase B**:
+  `scripts/assembly_pipeline_common.py`'s `KNOWLEDGE_DIR` constant points at the shallow
+  `knowledge/` path, which does not contain `assemblies/` or `trade-progress.json` in the current
+  tree (the real data is one level deeper, at `knowledge/knowledge/`). This means
+  `audit-assemblies.py` and its 5 dependent scripts (`start-assembly-run.py`,
+  `next-assembly-batch.py`, `validate-assembly-batch.py`, `approve-assembly-batch.py`,
+  `reject-assembly-batch.py`) currently, silently report **zero existing assemblies for every
+  trade** — confirmed live, not theoretical: `runtime/assembly-audit-roofing.json` is a real,
+  well-formed prior audit result that could not be reproduced by re-running the documented
+  command today. Separately, `approve-assembly-batch.py` and `validate_batch.py` disagree with
+  each other on where `Data/working/costbook_pending.json` lives, and neither location currently
+  exists. **Phase B intentionally did not fix either of these** — doing so would change those
+  scripts' observable output (from "reports zero" to "reports correctly"), which is a business-
+  behavior change, not a path-construction fix, and is explicitly out of Phase B's scope pending
+  founder review.
+- **Unresolved offline-tooling consumers**: Phase B searched exhaustively for IDE task configs,
+  Makefiles/justfiles, npm scripts, and CI workflows that might invoke
+  `packages/knowledge-engine/{pipelines,scripts}/**` — found none. Every documented invocation
+  example (`docs/how-to-run-automation.md`, `batch-runner-guide.md`, `assembly-runner-guide.md`,
+  `migration-plan.md`, `manager-handoff.md`, `review-checklist.md`, `knowledge-dashboard.md`)
+  assumes the shell's `cwd` is the package root and none reference a doubled or otherwise
+  fixed-by-Phase-B path directly — Phase B's fix is safe for every *documented* invocation
+  pattern. Several of those docs also contain dead `file:///Users/showb/TradeOS%20Costbook%20Editor/...`
+  links pointing at a different, older project directory name, which is evidence the docs (and
+  likely the `runtime/assembly-audit-roofing.json` artifact above) predate this package's
+  squash-merge into the current monorepo — not evidence of current external use, but not proof of
+  its absence either. Whether any human operator still runs these scripts manually, outside this
+  repository's CI, **could not be confirmed or ruled out**. Treat as in-use until proven otherwise.
+  If you are that operator: `approve-batch.py` and `pipelines/master_pipeline.py` must be run with
+  `cwd` = `packages/knowledge-engine/` — running them from elsewhere silently wrote to the wrong
+  tree before Phase B, and after Phase B, `master_pipeline.py`'s output location is now
+  deterministic (always canonical) regardless of `cwd`, so if you were relying on the old
+  wrong-`cwd` behavior to land output under `pipelines/`, that will stop happening.
 - **Uncertain provenance in parts of the skill corpus**: most of `agent-skills/skills/` carries an
   explicit `source: community` marker, but a smaller remainder does not, while still reading as
   generic/non-TradeOS content on inspection. Full per-directory classification is not complete.
@@ -184,8 +249,24 @@ canonical summary:
 
 ## 9. Where to look next
 
+- [`PATHS.md`](PATHS.md) for the detailed canonical path contract and exactly what Phase B
+  changed vs. deliberately left alone.
+- [`path-manifest.json`](path-manifest.json) for the machine-readable version of the same
+  contract (canonical roots, runtime-critical assets, deprecated roots, unresolved risks).
 - Full audit findings, phased migration plan (Phase A/B/C/D), and the top-25 prioritized action
   list live in the session record that produced this file (2026-07-16 multi-agent audit).
 - For anything runtime-facing, start at
   [`app/modules/knowledge-runtime/README.md`](../../app/modules/knowledge-runtime/README.md), not
   the READMEs inside this package.
+
+## 10. A note on branch coordination
+
+While researching this phase, a separate, local-only, unmerged git branch
+(`worktree-memoized-brewing-acorn`, last touched 2026-07-14, not pushed to any remote) was found
+containing commits described as relocating "tree-service authored content out of app/modules" and
+fixing "path references after authored-content relocation" — i.e., independent work touching the
+same duplicate/canonical-path confusion this document addresses. That branch was not merged into
+`main`, does not share history with this Phase B branch, and was left completely untouched by
+this phase. Flagging it here so a founder reviewing this PR can decide whether that branch's work
+should be coordinated with, superseded by, or discarded relative to this one — it was not
+investigated further since it falls outside this phase's scope.
