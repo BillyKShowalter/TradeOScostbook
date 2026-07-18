@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import { ProposalsService } from "../../modules/proposals/service";
-import { requireAuthContext, requireOrgId } from "../requestContext";
+import { requireAuthContext, requireOrgId, requirePermissions } from "../requestContext";
 
 const service = new ProposalsService();
 
@@ -40,42 +40,54 @@ const updateSchema = z.object({
 
 export const proposalsController = {
   async listByProject(req: Request, res: Response) {
+    requirePermissions(req, ["billing.read"]);
     res.json(await service.listByProject(req.params.projectId, requireOrgId(req)));
   },
   async getById(req: Request, res: Response) {
+    requirePermissions(req, ["billing.read"]);
     res.json(await service.getById(req.params.id, requireOrgId(req)));
   },
   async previewProjectDraft(req: Request, res: Response) {
+    requirePermissions(req, ["billing.read"]);
     res.json(await service.previewProjectDraft(req.params.projectId, requireOrgId(req), req.query.companyName?.toString()));
   },
   async create(req: Request, res: Response) {
+    requirePermissions(req, ["documents.manage"]);
     res.status(201).json(await service.create({ ...createSchema.parse(req.body), orgId: requireOrgId(req) }));
   },
   async update(req: Request, res: Response) {
+    requirePermissions(req, ["documents.manage"]);
     res.json(await service.update(req.params.id, updateSchema.parse(req.body), requireOrgId(req)));
   },
   async getPdf(req: Request, res: Response) {
+    requirePermissions(req, ["billing.read"]);
     const doc = await service.getPdf(req.params.id, requireOrgId(req));
     res.setHeader("Content-Type", doc.contentType);
     res.setHeader("Content-Disposition", `attachment; filename="${doc.filename}"`);
     res.send(doc.buffer);
   },
   async send(req: Request, res: Response) {
+    requirePermissions(req, ["documents.manage"]);
     res.json(await service.send(req.params.id, requireOrgId(req), requireAuthContext(req).userId));
   },
   async resend(req: Request, res: Response) {
+    requirePermissions(req, ["documents.manage"]);
     res.json(await service.resend(req.params.id, requireOrgId(req), requireAuthContext(req).userId));
   },
   async markViewed(req: Request, res: Response) {
+    requirePermissions(req, ["documents.manage"]);
     res.json(await service.markViewed(req.params.id, requireOrgId(req), requireAuthContext(req).userId));
   },
   async accept(req: Request, res: Response) {
+    requirePermissions(req, ["documents.manage"]);
     res.json(await service.accept(req.params.id, requireOrgId(req), requireAuthContext(req).userId));
   },
   async reject(req: Request, res: Response) {
+    requirePermissions(req, ["documents.manage"]);
     res.json(await service.reject(req.params.id, requireOrgId(req), requireAuthContext(req).userId));
   },
   async duplicate(req: Request, res: Response) {
+    requirePermissions(req, ["documents.manage"]);
     res.status(201).json(await service.duplicate(req.params.id, requireOrgId(req)));
   },
 };

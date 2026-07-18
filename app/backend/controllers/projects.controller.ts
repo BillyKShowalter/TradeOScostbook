@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../db/client";
 import { ApiError } from "../middleware/errorHandler";
-import { requireAuthContext, requireOrgId } from "../requestContext";
+import { requireAuthContext, requireOrgId, requirePermissions } from "../requestContext";
 import { toEstimateDTO } from "../../modules/estimate-engine/service";
 import { ActivityTimelineService } from "../../modules/intelligence/service";
 import { buildProjectIntake } from "../../modules/project-intake/service";
@@ -107,11 +107,13 @@ function toMissingInfoStrings(missingInformation: ReturnType<typeof buildProject
 
 export const customersController = {
   async list(req: Request, res: Response) {
+    requirePermissions(req, ["crm.read"]);
     res.json(
       await prisma.customer.findMany({ where: { orgId: requireOrgId(req), deletedAt: null }, orderBy: { name: "asc" } })
     );
   },
   async create(req: Request, res: Response) {
+    requirePermissions(req, ["crm.write"]);
     const auth = requireAuthContext(req);
     const customer = await prisma.customer.create({ data: { ...customerSchema.parse(req.body), orgId: requireOrgId(req) } });
     await activityService.record({
@@ -125,6 +127,7 @@ export const customersController = {
     res.status(201).json(customer);
   },
   async getById(req: Request, res: Response) {
+    requirePermissions(req, ["crm.read"]);
     const row = await prisma.customer.findFirst({
       where: { id: req.params.id, orgId: requireOrgId(req), deletedAt: null },
       include: { projects: true },
@@ -133,12 +136,14 @@ export const customersController = {
     res.json(row);
   },
   async update(req: Request, res: Response) {
+    requirePermissions(req, ["crm.write"]);
     const body = customerUpdateSchema.parse(req.body);
     const existing = await prisma.customer.findFirst({ where: { id: req.params.id, orgId: requireOrgId(req), deletedAt: null } });
     if (!existing) throw new ApiError(404, `Customer ${req.params.id} not found`);
     res.json(await prisma.customer.update({ where: { id: req.params.id }, data: body }));
   },
   async remove(req: Request, res: Response) {
+    requirePermissions(req, ["crm.write"]);
     const existing = await prisma.customer.findFirst({ where: { id: req.params.id, orgId: requireOrgId(req), deletedAt: null } });
     if (!existing) throw new ApiError(404, `Customer ${req.params.id} not found`);
     await prisma.customer.update({ where: { id: req.params.id }, data: { deletedAt: new Date() } });
@@ -148,10 +153,12 @@ export const customersController = {
 
 export const projectsController = {
   async list(req: Request, res: Response) {
+    requirePermissions(req, ["crm.read"]);
     const rows = await prisma.project.findMany({ where: { orgId: requireOrgId(req) }, orderBy: { createdAt: "desc" } });
     res.json(rows.map((row) => toProjectDTO(row)));
   },
   async create(req: Request, res: Response) {
+    requirePermissions(req, ["crm.write"]);
     const auth = requireAuthContext(req);
     const project = await prisma.project.create({ data: { ...projectSchema.parse(req.body), orgId: requireOrgId(req) } });
     await activityService.record({
@@ -165,6 +172,7 @@ export const projectsController = {
     res.status(201).json(toProjectDTO(project));
   },
   async getById(req: Request, res: Response) {
+    requirePermissions(req, ["crm.read"]);
     const row = await prisma.project.findFirst({
       where: { id: req.params.id, orgId: requireOrgId(req) },
       include: {
@@ -231,12 +239,14 @@ export const projectsController = {
     });
   },
   async update(req: Request, res: Response) {
+    requirePermissions(req, ["crm.write"]);
     const body = projectUpdateSchema.parse(req.body);
     const existing = await prisma.project.findFirst({ where: { id: req.params.id, orgId: requireOrgId(req) } });
     if (!existing) throw new ApiError(404, `Project ${req.params.id} not found`);
     res.json(await prisma.project.update({ where: { id: req.params.id }, data: body }));
   },
   async updateStatus(req: Request, res: Response) {
+    requirePermissions(req, ["crm.write"]);
     const auth = requireAuthContext(req);
     const schema = z.object({
       status: z.enum(projectStatuses),
@@ -264,6 +274,7 @@ export const projectsController = {
 
 export const siteVisitsController = {
   async listByProject(req: Request, res: Response) {
+    requirePermissions(req, ["crm.read"]);
     const project = await prisma.project.findFirst({ where: { id: req.params.id, orgId: requireOrgId(req) } });
     if (!project) throw new ApiError(404, `Project ${req.params.id} not found`);
 
@@ -275,6 +286,7 @@ export const siteVisitsController = {
   },
 
   async create(req: Request, res: Response) {
+    requirePermissions(req, ["crm.write"]);
     const auth = requireAuthContext(req);
     const project = await prisma.project.findFirst({ where: { id: req.params.id, orgId: requireOrgId(req) } });
     if (!project) throw new ApiError(404, `Project ${req.params.id} not found`);
@@ -322,6 +334,7 @@ export const siteVisitsController = {
   },
 
   async update(req: Request, res: Response) {
+    requirePermissions(req, ["crm.write"]);
     const existing = await prisma.siteVisit.findFirst({
       where: { id: req.params.siteVisitId, project: { orgId: requireOrgId(req) } },
       include: { project: true },
@@ -361,6 +374,7 @@ export const siteVisitsController = {
 
 export const projectFilesController = {
   async listByProject(req: Request, res: Response) {
+    requirePermissions(req, ["crm.read"]);
     const project = await prisma.project.findFirst({ where: { id: req.params.id, orgId: requireOrgId(req) } });
     if (!project) throw new ApiError(404, `Project ${req.params.id} not found`);
 
@@ -368,6 +382,7 @@ export const projectFilesController = {
   },
 
   async create(req: Request, res: Response) {
+    requirePermissions(req, ["crm.write"]);
     const auth = requireAuthContext(req);
     const project = await prisma.project.findFirst({ where: { id: req.params.id, orgId: requireOrgId(req) } });
     if (!project) throw new ApiError(404, `Project ${req.params.id} not found`);
@@ -391,6 +406,7 @@ export const projectFilesController = {
   },
 
   async remove(req: Request, res: Response) {
+    requirePermissions(req, ["crm.write"]);
     const project = await prisma.project.findFirst({ where: { id: req.params.id, orgId: requireOrgId(req) } });
     if (!project) throw new ApiError(404, `Project ${req.params.id} not found`);
 
