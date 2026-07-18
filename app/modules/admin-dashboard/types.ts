@@ -1,4 +1,8 @@
-export interface CreateOrganizationInput {
+import type { CanonicalRole, OrganizationMemberStatus, SupportedRole } from "../../domain";
+export type { OrganizationMemberStatus } from "../../domain";
+export { organizationMemberStatuses } from "../../domain";
+
+interface CreateOrganizationInput {
   name: string;
   regionCode?: string;
 }
@@ -16,11 +20,8 @@ export interface PricingUpdateSummary {
   staleMaterials: { id: string; name: string; lastPriceUpdate: Date | null }[];
 }
 
-export const organizationMemberRoles = ["owner", "admin", "estimator", "viewer"] as const;
+export const organizationMemberRoles = ["owner", "admin", "dispatcher", "technician"] as const;
 export type OrganizationMemberRole = (typeof organizationMemberRoles)[number];
-
-export const organizationMemberStatuses = ["active", "invited", "disabled"] as const;
-export type OrganizationMemberStatus = (typeof organizationMemberStatuses)[number];
 
 export interface OrganizationMemberDTO {
   membershipId: string;
@@ -28,7 +29,8 @@ export interface OrganizationMemberDTO {
   authSubject: string;
   email: string;
   fullName: string | null;
-  role: OrganizationMemberRole;
+  role: CanonicalRole;
+  sourceRole: SupportedRole;
   status: OrganizationMemberStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -53,7 +55,8 @@ export interface OrganizationMembershipSnapshot {
   authSubject: string;
   email: string;
   fullName: string | null;
-  role: OrganizationMemberRole;
+  role: CanonicalRole;
+  sourceRole: SupportedRole;
   status: OrganizationMemberStatus;
   createdAt: string;
   updatedAt: string;

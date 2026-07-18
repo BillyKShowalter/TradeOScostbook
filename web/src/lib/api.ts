@@ -1,6 +1,40 @@
 import "server-only";
+import type { OrganizationSettingsResponse } from "@/lib/settings";
+import type { BrandAsset, BrandDocumentSettings, BrandProfile, BrandStudioPreview } from "@/lib/brand-studio";
+import {
+  contractStatuses,
+  estimateStatuses,
+  invoiceStatuses,
+  legacyContractStatusMap,
+  legacyEstimateStatusMap,
+  legacyInvoiceStatusMap,
+  legacyProjectStatusMap,
+  legacyProposalStatusMap,
+  projectStatuses,
+  proposalStatuses,
+  type ChangeOrderStatus,
+  type ContractStatus,
+  type EstimateStatus,
+  type InvoiceStatus,
+  type JobStatus,
+  type ProjectStatus,
+  type ProposalStatus,
+  type TaskStatus,
+} from "@/domain";
 
 const BACKEND_API_URL = process.env.BACKEND_API_URL ?? "http://localhost:4000";
+
+// The backend's canonical domain model (app/domain/contracts.ts) defines the
+// target status vocabulary, but not every service has finished migrating its
+// writes to it yet (e.g. contracts still default to the legacy
+// "pending_signature" instead of "sent", proposals still write "rejected"
+// instead of "declined" — see docs/DOMAIN_MODEL_CANONICAL.md's compatibility
+// notes). Normalize defensively at the API boundary using the existing
+// legacy maps rather than trusting every raw value is already canonical.
+function normalizeStatus<T extends string>(status: string, legacyMap: Record<string, T>, canonical: readonly T[], fallback: T): T {
+  if ((canonical as readonly string[]).includes(status)) return status as T;
+  return legacyMap[status] ?? fallback;
+}
 
 export class ApiClientError extends Error {
   constructor(
@@ -41,19 +75,24 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   return body as T;
 }
 
-export interface AuthSession {
-  token: string;
-  user: { id: string; email: string; fullName: string | null };
-  organization: { id: string; name: string };
-  role: string;
+export function getOrganizationSettings(token: string) {
+  return apiFetch<OrganizationSettingsResponse>("/api/v1/settings", { token });
 }
 
-export function signup(input: { organizationName: string; regionCode?: string; email: string; password: string; fullName?: string }) {
-  return apiFetch<AuthSession>("/api/v1/auth/signup", { method: "POST", body: JSON.stringify(input) });
+export function getBrandStudioProfile(token: string) {
+  return apiFetch<BrandProfile>("/api/v1/brand-studio/profile", { token });
 }
 
-export function login(input: { email: string; password: string }) {
-  return apiFetch<AuthSession>("/api/v1/auth/login", { method: "POST", body: JSON.stringify(input) });
+export function getBrandStudioAssets(token: string) {
+  return apiFetch<BrandAsset[]>("/api/v1/brand-studio/assets", { token });
+}
+
+export function getBrandStudioDocumentSettings(token: string) {
+  return apiFetch<BrandDocumentSettings>("/api/v1/brand-studio/document-settings", { token });
+}
+
+export function getBrandStudioPreview(token: string) {
+  return apiFetch<BrandStudioPreview>("/api/v1/brand-studio/preview", { token });
 }
 
 export interface Customer {
@@ -75,22 +114,8 @@ export function getCustomer(token: string, id: string) {
   return apiFetch<Customer & { projects: Project[] }>(`/api/v1/customers/${id}`, { token });
 }
 
-export const PROJECT_STATUSES = [
-  "lead",
-  "site_visit",
-  "proposal_draft",
-  "proposal_sent",
-  "accepted",
-  "in_production",
-  "completed",
-  "lost",
-  "estimating",
-  "proposed",
-  "won",
-  "active",
-  "complete",
-] as const;
-export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
+export const PROJECT_STATUSES = projectStatuses;
+export type { ProjectStatus };
 
 export interface Project {
   id: string;
@@ -111,6 +136,16 @@ export interface SiteVisit {
   id: string;
   transcript: string | null;
   notes: string | null;
+  detailsJson: {
+    arrivalAt?: string;
+    departureAt?: string;
+    gps?: string;
+    customerNotes?: string;
+    materialsNeeded?: string[];
+    safetyNotes?: string[];
+    punchList?: string[];
+    voiceNoteStatus?: "not_recorded" | "captured_later";
+  } | null;
   measurementsJson: Record<string, unknown> | null;
   aiQuestionsJson: string[] | null;
   missingInfoJson: string[] | null;
@@ -128,19 +163,223 @@ export interface ProjectFile {
 }
 
 export function listProjects(token: string) {
-  return apiFetch<Project[]>("/api/v1/projects", { token });
+  return apiFetch<Project[]>("/api/v1/projects", { token }).then((projects) =>
+    projects.map((project) => ({ ...project, status: normalizeStatus(project.status, legacyProjectStatusMap, projectStatuses, "lead") }))
+  );
+}
+
+export interface JobSummary {
+  id: string;
+  jobNumber: string;
+  title: string;
+  jobType: string;
+  status: JobStatus;
+  priority: "low" | "medium" | "high" | "urgent";
+  scheduledStart: string | null;
+  scheduledEnd: string | null;
+  archivedAt: string | null;
+}
+
+export function listJobsByProject(token: string, projectId: string) {
+  return apiFetch<{ items: JobSummary[]; page: number; pageSize: number; total: number }>(
+    `/api/v1/jobs?projectId=${projectId}`,
+    { token }
+  );
+}
+
+export interface ScheduleConflict {
+  type: "technician_overlap";
+  technicianId: string;
+  technicianName: string | null;
+  conflictingJobId: string;
+  conflictingJobNumber: string;
+  conflictingJobTitle: string;
+  conflictingScheduledStart: string;
+  conflictingScheduledEnd: string;
+}
+
+export interface ScheduleConflictResult {
+  conflicts: ScheduleConflict[];
+  overrideAllowed: boolean;
 }
 
 export interface Estimate {
   id: string;
   projectId: string;
   version: number;
-  status: string;
+  status: EstimateStatus;
   overheadPct: number;
   profitPct: number;
   targetMarginPct: number | null;
   subtotalCost: number;
   totalPrice: number;
+  createdAt?: string;
+}
+
+export interface EstimateLineItem {
+  id: string;
+  estimateId: string;
+  costItemId: string | null;
+  assemblyId: string | null;
+  description: string;
+  quantity: number;
+  unitOfMeasure: string;
+  unitCost: number;
+  lineCost: number;
+  sortOrder: number;
+}
+
+export type EstimateDetail = Estimate & { lineItems: EstimateLineItem[] };
+
+export function listEstimatesByProject(token: string, projectId: string) {
+  return apiFetch<Estimate[]>(`/api/v1/estimates/by-project/${projectId}`, { token }).then((estimates) =>
+    estimates.map((estimate) => ({ ...estimate, status: normalizeStatus(estimate.status, legacyEstimateStatusMap, estimateStatuses, "draft") }))
+  );
+}
+
+export function getEstimate(token: string, id: string) {
+  return apiFetch<EstimateDetail>(`/api/v1/estimates/${id}`, { token }).then((estimate) => ({
+    ...estimate,
+    status: normalizeStatus(estimate.status, legacyEstimateStatusMap, estimateStatuses, "draft"),
+  }));
+}
+
+export interface AIEstimateSuggestion {
+  id: string;
+  kind: "assembly" | "costItem";
+  code: string;
+  title: string;
+  rationale: string;
+  quantity: number;
+  unit: string;
+  confidence: number;
+  resolution: {
+    status: "resolved" | "unresolved";
+    reason: string;
+    target: {
+      id: string;
+      kind: "assembly" | "costItem";
+      code: string;
+      name: string;
+      unitOfMeasure: string;
+      matchMethod: "id" | "exact-name" | "contains-name";
+      matchScore: number;
+    } | null;
+  };
+}
+
+export function getAIEstimateSuggestions(token: string, estimateId: string, scopeOfWork: string) {
+  return apiFetch<{ scopeOfWork: string; suggestions: AIEstimateSuggestion[]; knowledgeMatch: KnowledgeScopeMatch }>(
+    `/api/v1/estimates/${estimateId}/ai-suggestions`,
+    {
+      token,
+      method: "POST",
+      body: JSON.stringify({ scopeOfWork }),
+    }
+  );
+}
+
+export function applyAIEstimateSuggestions(
+  token: string,
+  estimateId: string,
+  suggestions: Array<{
+    id: string;
+    kind: "assembly" | "costItem";
+    title: string;
+    quantity: number;
+    status: "pending" | "accepted" | "rejected";
+    description?: string;
+    targetId?: string;
+    targetKind?: "assembly" | "costItem";
+  }>
+) {
+  return apiFetch<{
+    applied: Array<{ suggestionId: string; lineItemId: string; title: string; quantity: number }>;
+    skipped: Array<{ suggestionId: string; title: string; status: "pending" | "accepted" | "rejected"; reason: string }>;
+  }>(`/api/v1/estimates/${estimateId}/ai-suggestions/apply`, {
+    token,
+    method: "POST",
+    body: JSON.stringify({ suggestions }),
+  });
+}
+
+export interface KnowledgeStats {
+  readOnly: true;
+  assembliesCount: number;
+  costItemsCount: number;
+  tradesCount: number;
+  schemaCount: number;
+  indexedKeywordCount: number;
+  sourceFileCount: number;
+  loadWarnings: string[];
+  sources: {
+    exportsDir: string;
+    knowledgeDir: string;
+    schemasDir: string;
+  };
+}
+
+export interface KnowledgeTrade {
+  id: string;
+  name: string;
+  itemCount: number;
+  status: string;
+  coverage: string;
+  notes: string;
+  keywords: string[];
+}
+
+export interface KnowledgeSearchResult {
+  id: string;
+  type: "assembly" | "costItem";
+  name: string;
+  category: string;
+  trade: string | null;
+  unitOfMeasure: string | null;
+  description: string;
+  confidence: number;
+  matchedKeywords: string[];
+  rationale: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface KnowledgeScopeMatch {
+  detectedTrade: string | null;
+  confidenceScore: number;
+  assumptions: string[];
+  rationale: string[];
+  missingInformation: string[];
+  reviewWarnings: string[];
+  missingInputs: string[];
+  humanReviewWarnings: string[];
+  matchedAssemblies: KnowledgeSearchResult[];
+  matchedCostItems: KnowledgeSearchResult[];
+}
+
+export function getKnowledgeStats(token: string) {
+  return apiFetch<KnowledgeStats>("/api/v1/knowledge/stats", { token });
+}
+
+export function getKnowledgeTrades(token: string) {
+  return apiFetch<KnowledgeTrade[]>("/api/v1/knowledge/trades", { token });
+}
+
+export function getKnowledgeMatchScope(token: string, scopeText: string) {
+  return apiFetch<KnowledgeScopeMatch>("/api/v1/knowledge/match", {
+    token,
+    method: "POST",
+    body: JSON.stringify({ scopeText }),
+  });
+}
+
+export function searchKnowledge(token: string, input: { query: string; type?: "assembly" | "costItem" | "all"; trade?: string; limit?: number }) {
+  const params = new URLSearchParams();
+  params.set("q", input.query);
+  if (input.type) params.set("type", input.type);
+  if (input.trade) params.set("trade", input.trade);
+  if (input.limit) params.set("limit", String(input.limit));
+
+  return apiFetch<KnowledgeSearchResult[]>(`/api/v1/knowledge/search?${params.toString()}`, { token });
 }
 
 export function getProject(token: string, id: string) {
@@ -151,15 +390,92 @@ export function getProject(token: string, id: string) {
       siteVisits: SiteVisit[];
       projectFiles: ProjectFile[];
       proposals: Proposal[];
+      invoices: Array<Invoice & { lineItems: InvoiceLineItem[] }>;
+      contracts: Contract[];
+      changeOrders: Array<ChangeOrder & { lineItems: ChangeOrderLineItem[] }>;
+      tasks: ProjectTask[];
+      jobs: JobSummary[];
     }
-  >(`/api/v1/projects/${id}`, { token });
+  >(`/api/v1/projects/${id}`, { token }).then((project) => ({
+    ...project,
+    status: normalizeStatus(project.status, legacyProjectStatusMap, projectStatuses, "lead"),
+    estimates: project.estimates.map((estimate) => ({ ...estimate, status: normalizeStatus(estimate.status, legacyEstimateStatusMap, estimateStatuses, "draft") })),
+    proposals: project.proposals.map((proposal) => ({ ...proposal, status: normalizeStatus(proposal.status, legacyProposalStatusMap, proposalStatuses, "draft") })),
+    invoices: project.invoices.map((invoice) => ({ ...invoice, status: normalizeStatus(invoice.status, legacyInvoiceStatusMap, invoiceStatuses, "draft") })),
+    contracts: project.contracts.map((contract) => ({ ...contract, status: normalizeStatus(contract.status, legacyContractStatusMap, contractStatuses, "draft") })),
+    jobs: project.jobs ?? [],
+  }));
+}
+
+export interface ChangeOrder {
+  id: string;
+  projectId: string;
+  estimateId: string | null;
+  coNumber: number;
+  description: string;
+  status: ChangeOrderStatus;
+  amount: number;
+  scheduleImpactDays: number | null;
+  approvedAt: string | null;
+  rejectedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChangeOrderLineItem {
+  id: string;
+  changeOrderId: string;
+  costItemId: string | null;
+  description: string;
+  quantity: number;
+  unitCost: number;
+  lineCost: number;
+  sortOrder: number;
+}
+
+export function listChangeOrdersByProject(token: string, projectId: string) {
+  return apiFetch<ChangeOrder[]>(`/api/v1/change-orders/by-project/${projectId}`, { token });
+}
+
+export function getChangeOrder(token: string, id: string) {
+  return apiFetch<ChangeOrder & { lineItems: ChangeOrderLineItem[] }>(`/api/v1/change-orders/${id}`, { token });
+}
+
+export interface ProjectTask {
+  id: string;
+  projectId: string;
+  title: string;
+  status: TaskStatus;
+  assignedTo: string | null;
+  dueDate: string | null;
+  priority: "low" | "medium" | "high";
+  notes: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function listProjectTasks(token: string, projectId: string) {
+  return apiFetch<ProjectTask[]>(`/api/v1/projects/${projectId}/tasks`, { token });
+}
+
+export interface ProposalDelivery {
+  id: string;
+  proposalId: string;
+  eventType: string;
+  deliveryChannel: string;
+  recipientEmail: string | null;
+  actorUserId: string | null;
+  metadata: Record<string, unknown> | null;
+  occurredAt: string;
+  createdAt: string;
 }
 
 export interface Proposal {
   id: string;
   projectId: string;
   estimateId: string | null;
-  status: "draft" | "sent" | "viewed" | "accepted" | "rejected";
+  status: ProposalStatus;
   companyName: string | null;
   showLineItemDetail: boolean;
   scopeOfWork: string | null;
@@ -176,6 +492,7 @@ export interface Proposal {
   viewedAt: string | null;
   respondedAt: string | null;
   createdAt: string;
+  deliveries: ProposalDelivery[];
 }
 
 export interface ProposalPaymentScheduleEntry {
@@ -199,12 +516,11 @@ export interface ProposalDraftPreview {
   paymentSchedule: ProposalPaymentScheduleEntry[];
 }
 
-export function listProposalsByProject(token: string, projectId: string) {
-  return apiFetch<Proposal[]>(`/api/v1/proposals/by-project/${projectId}`, { token });
-}
-
 export function getProposal(token: string, id: string) {
-  return apiFetch<Proposal>(`/api/v1/proposals/${id}`, { token });
+  return apiFetch<Proposal>(`/api/v1/proposals/${id}`, { token }).then((proposal) => ({
+    ...proposal,
+    status: normalizeStatus(proposal.status, legacyProposalStatusMap, proposalStatuses, "draft"),
+  }));
 }
 
 export function getProjectProposalDraft(token: string, projectId: string) {
@@ -220,6 +536,17 @@ export interface InvoiceLineItem {
   lineCost: number;
 }
 
+export interface InvoiceDelivery {
+  id: string;
+  eventType: string;
+  deliveryChannel: string;
+  recipientEmail: string | null;
+  actorUserId: string | null;
+  metadata: Record<string, unknown> | null;
+  occurredAt: string;
+  createdAt: string;
+}
+
 export interface Invoice {
   id: string;
   projectId: string;
@@ -227,28 +554,38 @@ export interface Invoice {
   proposalId: string | null;
   invoiceNumber: number;
   type: "full" | "progress";
-  status: "draft" | "sent" | "paid" | "overdue" | "void";
+  status: InvoiceStatus;
   percentComplete: number | null;
   amount: number;
   dueDate: string | null;
   sentAt: string | null;
   paidAt: string | null;
   createdAt: string;
-}
-
-export function listInvoicesByProject(token: string, projectId: string) {
-  return apiFetch<Invoice[]>(`/api/v1/invoices/by-project/${projectId}`, { token });
+  deliveries: InvoiceDelivery[];
 }
 
 export function getInvoice(token: string, id: string) {
-  return apiFetch<Invoice & { lineItems: InvoiceLineItem[] }>(`/api/v1/invoices/${id}`, { token });
+  return apiFetch<Invoice & { lineItems: InvoiceLineItem[] }>(`/api/v1/invoices/${id}`, { token }).then((invoice) => ({
+    ...invoice,
+    status: normalizeStatus(invoice.status, legacyInvoiceStatusMap, invoiceStatuses, "draft"),
+  }));
+}
+
+export interface ContractEvent {
+  id: string;
+  eventType: string;
+  actorUserId: string | null;
+  recipientEmail: string | null;
+  metadata: Record<string, unknown> | null;
+  occurredAt: string;
+  createdAt: string;
 }
 
 export interface Contract {
   id: string;
   projectId: string;
   proposalId: string;
-  status: "pending_signature" | "signed" | "voided";
+  status: ContractStatus;
   termsText: string;
   signerName: string | null;
   signerEmail: string | null;
@@ -256,12 +593,18 @@ export interface Contract {
   signatureIp: string | null;
   signedAt: string | null;
   createdAt: string;
+  events: ContractEvent[];
 }
 
 export function listContractsByProject(token: string, projectId: string) {
-  return apiFetch<Contract[]>(`/api/v1/contracts/by-project/${projectId}`, { token });
+  return apiFetch<Contract[]>(`/api/v1/contracts/by-project/${projectId}`, { token }).then((contracts) =>
+    contracts.map((contract) => ({ ...contract, status: normalizeStatus(contract.status, legacyContractStatusMap, contractStatuses, "draft") }))
+  );
 }
 
 export function getContract(token: string, id: string) {
-  return apiFetch<Contract>(`/api/v1/contracts/${id}`, { token });
+  return apiFetch<Contract>(`/api/v1/contracts/${id}`, { token }).then((contract) => ({
+    ...contract,
+    status: normalizeStatus(contract.status, legacyContractStatusMap, contractStatuses, "draft"),
+  }));
 }

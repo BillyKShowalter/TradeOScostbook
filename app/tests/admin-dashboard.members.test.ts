@@ -231,7 +231,8 @@ describe("AdminDashboardService membership management", () => {
           authSubject: "subject-1",
           email: "owner@example.com",
           fullName: "Owner",
-          role: "viewer",
+          role: "technician",
+          sourceRole: "viewer",
           status: "active",
           createdAt: "2026-01-01T00:00:00.000Z",
           updatedAt: "2026-01-02T00:00:00.000Z",
@@ -362,7 +363,7 @@ describe("AdminDashboardService membership management", () => {
           authSubject: "subject-2",
           email: "new@example.com",
           fullName: "New Person",
-          role: "viewer",
+          role: "technician",
         },
         ownerActor
       )

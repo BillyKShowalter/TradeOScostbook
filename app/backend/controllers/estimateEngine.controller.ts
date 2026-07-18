@@ -52,4 +52,8 @@ export const estimateEngineController = {
   async finalize(req: Request, res: Response) {
     res.json(await service.finalize(req.params.id, requireOrgId(req)));
   },
+
+  async duplicate(req: Request, res: Response) {
+    res.status(201).json(await service.duplicateFromVersion(req.params.id, requireOrgId(req)));
+  },
 };

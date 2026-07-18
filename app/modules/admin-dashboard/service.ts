@@ -3,6 +3,7 @@ import { prisma } from "../../db/client";
 import { AuthContext } from "../../backend/auth/context";
 import { ApiError } from "../../backend/middleware/errorHandler";
 import { MaterialDatabaseService } from "../material-database/service";
+import { normalizeRole } from "../../domain";
 import {
   OrganizationDTO,
   OrganizationMembershipAuditDTO,
@@ -224,8 +225,8 @@ export class AdminDashboardService {
         },
       },
       update: {
-        role: input.role,
-        status: input.status ?? "active",
+      role: input.role,
+      status: input.status ?? "active",
       },
       create: {
         orgId,
@@ -396,7 +397,8 @@ function toMemberDTO(row: {
     authSubject: row.user.authSubject,
     email: row.user.email,
     fullName: row.user.fullName,
-    role: row.role as OrganizationMemberRole,
+    role: normalizeRole(row.role),
+    sourceRole: row.role as OrganizationMemberDTO["sourceRole"],
     status: row.status as OrganizationMemberStatus,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -422,7 +424,8 @@ function toMembershipSnapshot(row: {
     authSubject: row.user.authSubject,
     email: row.user.email,
     fullName: row.user.fullName,
-    role: row.role as OrganizationMemberRole,
+    role: normalizeRole(row.role),
+    sourceRole: row.role as OrganizationMembershipSnapshot["sourceRole"],
     status: row.status as OrganizationMemberStatus,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),

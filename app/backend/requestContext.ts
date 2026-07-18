@@ -1,6 +1,7 @@
 import { Request } from "express";
 import { AuthContext } from "./auth/context";
 import { ApiError } from "./middleware/errorHandler";
+import { DomainPermission, hasAnyPermission } from "../domain";
 
 type OrgScopedRequest = Request & {
   orgId?: string;
@@ -17,8 +18,24 @@ export function requireOrgId(req: Request): string {
 
 export function requireOrgAdmin(req: Request): AuthContext {
   const auth = requireAuthContext(req);
-  if (!["owner", "admin"].includes(auth.role)) {
+  if (!hasAnyPermission(auth.role, ["team.manage", "company.manage", "settings.manage"])) {
     throw new ApiError(403, "Admin access required");
+  }
+  return auth;
+}
+
+export function requirePermissions(req: Request, permissions: readonly DomainPermission[]): AuthContext {
+  const auth = requireAuthContext(req);
+  if (!hasAnyPermission(auth.role, permissions)) {
+    throw new ApiError(403, "You do not have permission to perform this action");
+  }
+  return auth;
+}
+
+export function requireRoles(req: Request, allowedRoles: string[]): AuthContext {
+  const auth = requireAuthContext(req);
+  if (!allowedRoles.includes(auth.role)) {
+    throw new ApiError(403, "You do not have permission to perform this action");
   }
   return auth;
 }

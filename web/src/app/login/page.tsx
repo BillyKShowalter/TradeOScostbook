@@ -16,7 +16,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Sign in</CardTitle>
-          <CardDescription>Welcome back to TradeOS Cost Book.</CardDescription>
+          <CardDescription>Welcome back to TradeOS.</CardDescription>
         </CardHeader>
         <CardContent>
           <form action={formAction} className="flex flex-col gap-4">

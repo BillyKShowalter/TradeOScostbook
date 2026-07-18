@@ -11,11 +11,11 @@ export function RecentDocumentsCard({ documents }: RecentDocumentsCardProps) {
   return (
     <Card className="border-border/70">
       <CardHeader>
-        <CardTitle>Recent documents</CardTitle>
+        <CardTitle>Quotes and documents</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
         {documents.length === 0 ? (
-          <EmptyState title="No documents yet." description="Proposal and contract documents will appear here once created." />
+          <EmptyState title="No documents yet." description="Proposals, invoices, and contracts will appear here once you create them." />
         ) : (
           documents.map((document) => (
             <ListRowLink

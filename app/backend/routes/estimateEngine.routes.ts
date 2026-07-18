@@ -11,3 +11,4 @@ estimateEngineRouter.post("/:id/line-items", asyncHandler(ctrl.addLineItem));
 estimateEngineRouter.delete("/:id/line-items/:lineItemId", asyncHandler(ctrl.removeLineItem));
 estimateEngineRouter.post("/:id/pricing-mode", asyncHandler(ctrl.setPricingMode));
 estimateEngineRouter.post("/:id/finalize", asyncHandler(ctrl.finalize));
+estimateEngineRouter.post("/:id/duplicate", asyncHandler(ctrl.duplicate));

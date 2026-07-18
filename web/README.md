@@ -21,6 +21,8 @@ If the bucket is private, set `SUPABASE_STORAGE_BUCKET_PUBLIC=false` so server-r
 - `/projects/[id]/proposals/new`, `/projects/[id]/proposals/[proposalId]` — create a proposal from an estimate; send/accept/reject; download PDF; create a contract once accepted.
 - `/projects/[id]/invoices/new`, `/projects/[id]/invoices/[invoiceId]` — create a full or progress invoice from an estimate; send/mark-paid/void; download PDF.
 - `/projects/[id]/contracts/[contractId]` — view terms, sign (name/email), void; download PDF.
+- `/projects/[id]/estimates/[estimateId]/assist` — org-scoped AI estimate drafting that returns reviewable line-item suggestions from the active cost book.
+- `/projects/[id]/estimates/compare` — side-by-side estimate version comparison with duplicate-into-draft actions.
 
 ## Auth model
 
@@ -37,3 +39,4 @@ If the bucket is private, set `SUPABASE_STORAGE_BUCKET_PUBLIC=false` so server-r
 ## Data/state
 
 - Server state goes through TanStack Query (`src/app/providers.tsx`) only where a page is genuinely interactive (the Estimate Builder). Everything else fetches directly in Server Components — no client-side query layer needed for a page that's just a list or a form.
+- AI Estimate Assist uses the same proxy pattern as other interactive client flows, but its initial suggestion draft is loaded server-side so the page can render immediately with org-scoped context.

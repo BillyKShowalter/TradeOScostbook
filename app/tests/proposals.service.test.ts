@@ -12,6 +12,9 @@ const mockPrisma = {
     findFirst: jest.fn(),
     update: jest.fn(),
   },
+  proposalDelivery: {
+    create: jest.fn(),
+  },
 };
 
 const mockProposalGenerator = {
@@ -22,6 +25,11 @@ const mockProposalGenerator = {
 jest.mock("../db/client", () => ({ prisma: mockPrisma }));
 jest.mock("../modules/proposal-generator/service", () => ({
   ProposalGeneratorService: jest.fn().mockImplementation(() => mockProposalGenerator),
+}));
+jest.mock("../modules/intelligence/service", () => ({
+  ActivityTimelineService: jest.fn().mockImplementation(() => ({
+    record: jest.fn().mockResolvedValue(undefined),
+  })),
 }));
 
 import { ProposalsService } from "../modules/proposals/service";
@@ -45,6 +53,7 @@ describe("ProposalsService", () => {
       viewedAt: null,
       respondedAt: null,
       createdAt: new Date(),
+      deliveries: [],
     });
 
     const service = new ProposalsService();
@@ -57,15 +66,54 @@ describe("ProposalsService", () => {
   });
 
   it("sends a draft proposal and stamps sentAt", async () => {
-    mockPrisma.proposal.findFirst.mockResolvedValue({
-      id: "proposal-1",
-      projectId: "project-1",
-      status: "draft",
-      paymentScheduleJson: [
-        { label: "Deposit", amountPercent: 50 },
-        { label: "Final", amountPercent: 50 },
-      ],
-    });
+    mockPrisma.proposal.findFirst
+      .mockResolvedValueOnce({
+        id: "proposal-1",
+        projectId: "project-1",
+        status: "draft",
+        paymentScheduleJson: [
+          { label: "Deposit", amountPercent: 50 },
+          { label: "Final", amountPercent: 50 },
+        ],
+        deliveries: [],
+        project: { orgId: "org-1", customer: { email: "customer@example.com" } },
+      })
+      .mockResolvedValueOnce({
+        id: "proposal-1",
+        projectId: "project-1",
+        estimateId: "estimate-1",
+        status: "sent",
+        companyName: null,
+        showLineItemDetail: false,
+        scopeOfWork: null,
+        assumptions: null,
+        exclusions: null,
+        timeline: null,
+        priceLow: null,
+        priceHigh: null,
+        finalPrice: null,
+        paymentScheduleJson: [{ label: "Deposit", amountPercent: 50 }, { label: "Final", amountPercent: 50 }],
+        pdfUrl: null,
+        termsAndConditions: null,
+        sentAt: new Date(),
+        viewedAt: null,
+        respondedAt: null,
+        createdAt: new Date(),
+        deliveries: [
+          {
+            id: "delivery-1",
+            proposalId: "proposal-1",
+            eventType: "proposal.sent",
+            deliveryChannel: "app",
+            recipientEmail: "customer@example.com",
+            actorUserId: "owner-1",
+            metadataJson: { previousStatus: "draft", newStatus: "sent" },
+            occurredAt: new Date(),
+            createdAt: new Date(),
+          },
+        ],
+        project: { orgId: "org-1", customer: { email: "customer@example.com" } },
+      });
     mockPrisma.proposal.update.mockResolvedValue({
       id: "proposal-1",
       projectId: "project-1",
@@ -78,13 +126,16 @@ describe("ProposalsService", () => {
       viewedAt: null,
       respondedAt: null,
       createdAt: new Date(),
+      deliveries: [],
     });
 
     const service = new ProposalsService();
-    const proposal = await service.send("proposal-1", "org-1");
+    const proposal = await service.send("proposal-1", "org-1", "owner-1");
 
     expect(proposal.status).toBe("sent");
     expect(proposal.sentAt).not.toBeNull();
+    expect(proposal.deliveries[0]?.eventType).toBe("proposal.sent");
+    expect(mockPrisma.proposalDelivery.create).toHaveBeenCalled();
     expect(mockPrisma.project.update).toHaveBeenCalledWith({ where: { id: "project-1" }, data: { status: "proposal_sent" } });
   });
 
@@ -96,7 +147,38 @@ describe("ProposalsService", () => {
   });
 
   it("accepts a sent proposal", async () => {
-    mockPrisma.proposal.findFirst.mockResolvedValue({ id: "proposal-1", projectId: "project-1", status: "sent" });
+    mockPrisma.proposal.findFirst
+      .mockResolvedValueOnce({
+        id: "proposal-1",
+        projectId: "project-1",
+        status: "sent",
+        deliveries: [],
+        project: { orgId: "org-1", customer: { email: "customer@example.com" } },
+      })
+      .mockResolvedValueOnce({
+        id: "proposal-1",
+        projectId: "project-1",
+        estimateId: "estimate-1",
+        status: "accepted",
+        companyName: null,
+        showLineItemDetail: false,
+        scopeOfWork: null,
+        assumptions: null,
+        exclusions: null,
+        timeline: null,
+        priceLow: null,
+        priceHigh: null,
+        finalPrice: null,
+        paymentScheduleJson: null,
+        pdfUrl: null,
+        termsAndConditions: null,
+        sentAt: new Date(),
+        viewedAt: null,
+        respondedAt: new Date(),
+        createdAt: new Date(),
+        deliveries: [],
+        project: { orgId: "org-1", customer: { email: "customer@example.com" } },
+      });
     mockPrisma.proposal.update.mockResolvedValue({
       id: "proposal-1",
       projectId: "project-1",
@@ -109,12 +191,20 @@ describe("ProposalsService", () => {
       viewedAt: null,
       respondedAt: new Date(),
       createdAt: new Date(),
+      deliveries: [],
     });
 
     const service = new ProposalsService();
-    const proposal = await service.accept("proposal-1", "org-1");
+    const proposal = await service.accept("proposal-1", "org-1", "owner-1");
 
     expect(proposal.status).toBe("accepted");
+    expect(mockPrisma.proposalDelivery.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          eventType: "proposal.accepted",
+        }),
+      })
+    );
     expect(mockPrisma.project.update).toHaveBeenCalledWith({ where: { id: "project-1" }, data: { status: "accepted" } });
   });
 
@@ -123,6 +213,126 @@ describe("ProposalsService", () => {
 
     const service = new ProposalsService();
     await expect(service.accept("proposal-1", "org-1")).rejects.toThrow("cannot be accepted");
+  });
+
+  it("resends a viewed proposal and stamps a fresh sentAt timestamp", async () => {
+    mockPrisma.proposal.findFirst
+      .mockResolvedValueOnce({
+        id: "proposal-1",
+        projectId: "project-1",
+        status: "viewed",
+        deliveries: [],
+        project: { orgId: "org-1", customer: { email: "customer@example.com" } },
+      })
+      .mockResolvedValueOnce({
+        id: "proposal-1",
+        projectId: "project-1",
+        estimateId: "estimate-1",
+        status: "sent",
+        companyName: null,
+        showLineItemDetail: false,
+        scopeOfWork: null,
+        assumptions: null,
+        exclusions: null,
+        timeline: null,
+        priceLow: null,
+        priceHigh: null,
+        finalPrice: null,
+        paymentScheduleJson: null,
+        pdfUrl: null,
+        termsAndConditions: null,
+        sentAt: new Date(),
+        viewedAt: new Date(),
+        respondedAt: null,
+        createdAt: new Date(),
+        deliveries: [],
+        project: { orgId: "org-1", customer: { email: "customer@example.com" } },
+      });
+    mockPrisma.proposal.update.mockResolvedValue({
+      id: "proposal-1",
+      projectId: "project-1",
+      estimateId: "estimate-1",
+      status: "sent",
+      companyName: null,
+      showLineItemDetail: false,
+      termsAndConditions: null,
+      sentAt: new Date(),
+      viewedAt: new Date(),
+      respondedAt: null,
+      createdAt: new Date(),
+      deliveries: [],
+    });
+
+    const service = new ProposalsService();
+    const proposal = await service.resend("proposal-1", "org-1", "owner-1");
+
+    expect(proposal.status).toBe("sent");
+    expect(mockPrisma.proposalDelivery.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          eventType: "proposal.resent",
+        }),
+      })
+    );
+    expect(mockPrisma.project.update).toHaveBeenCalledWith({ where: { id: "project-1" }, data: { status: "proposal_sent" } });
+  });
+
+  it("duplicates an existing proposal back into draft status", async () => {
+    mockPrisma.proposal.findFirst.mockResolvedValue({
+      id: "proposal-1",
+      projectId: "project-1",
+      estimateId: "estimate-1",
+      status: "sent",
+      companyName: "Acme Co",
+      showLineItemDetail: true,
+      scopeOfWork: "Scope",
+      assumptions: "Assumptions",
+      exclusions: "Exclusions",
+      timeline: "2 weeks",
+      priceLow: 1000,
+      priceHigh: 1200,
+      finalPrice: 1150,
+      paymentScheduleJson: [{ label: "Deposit", amountPercent: 50 }, { label: "Completion", amountPercent: 50 }],
+      termsAndConditions: "Terms",
+    });
+    mockPrisma.proposal.create.mockResolvedValue({
+      id: "proposal-2",
+      projectId: "project-1",
+      estimateId: "estimate-1",
+      status: "draft",
+      companyName: "Acme Co",
+      showLineItemDetail: true,
+      scopeOfWork: "Scope",
+      assumptions: "Assumptions",
+      exclusions: "Exclusions",
+      timeline: "2 weeks",
+      priceLow: 1000,
+      priceHigh: 1200,
+      finalPrice: 1150,
+      paymentScheduleJson: [{ label: "Deposit", amountPercent: 50 }, { label: "Completion", amountPercent: 50 }],
+      pdfUrl: null,
+      termsAndConditions: "Terms",
+      sentAt: null,
+      viewedAt: null,
+      respondedAt: null,
+      createdAt: new Date(),
+      deliveries: [],
+    });
+
+    const service = new ProposalsService();
+    const proposal = await service.duplicate("proposal-1", "org-1");
+
+    expect(proposal.status).toBe("draft");
+    expect(mockPrisma.proposal.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          projectId: "project-1",
+          estimateId: "estimate-1",
+          companyName: "Acme Co",
+          scopeOfWork: "Scope",
+        }),
+      })
+    );
   });
 
   it("generates a PDF using the proposal's stored options", async () => {

@@ -4,6 +4,8 @@ import {
   runWithBackgroundDatabaseSession,
   runWithDatabaseSession,
 } from "../db/requestSession";
+import { resolveAuthContext } from "../backend/auth/session";
+import type { SupportedRole } from "../domain";
 import { OrganizationProvisioningService } from "../modules/organization-provisioning/service";
 import { MaterialDatabaseService } from "../modules/material-database/service";
 import { SupplierIntegrationService } from "../modules/supplier-integration/service";
@@ -22,10 +24,12 @@ const orgA = "10000000-0000-0000-0000-000000000001";
 const orgB = "20000000-0000-0000-0000-000000000002";
 const adminUser = "10000000-0000-0000-0000-000000000011";
 const viewerUser = "10000000-0000-0000-0000-000000000012";
+const technicianUser = "10000000-0000-0000-0000-000000000014";
 const otherUser = "20000000-0000-0000-0000-000000000021";
 const estimatorUser = "10000000-0000-0000-0000-000000000013";
 const adminMembership = "10000000-0000-0000-0000-000000000031";
 const viewerMembership = "10000000-0000-0000-0000-000000000032";
+const technicianMembership = "10000000-0000-0000-0000-000000000034";
 const otherMembership = "20000000-0000-0000-0000-000000000041";
 const estimatorMembership = "10000000-0000-0000-0000-000000000033";
 const divisionA = "10000000-0000-0000-0000-000000000051";
@@ -35,8 +39,36 @@ const supplierA = "10000000-0000-0000-0000-000000000071";
 const materialForSupplierQueue = "10000000-0000-0000-0000-000000000072";
 const projectA = "10000000-0000-0000-0000-000000000081";
 const projectB = "20000000-0000-0000-0000-000000000082";
+const projectTaskA = "10000000-0000-0000-0000-000000000083";
+const customerA = "10000000-0000-0000-0000-000000000084";
+const customerB = "20000000-0000-0000-0000-000000000085";
+const serviceAddressA = "10000000-0000-0000-0000-000000000086";
+const serviceAddressB = "20000000-0000-0000-0000-000000000087";
+const equipmentAssetA = "10000000-0000-0000-0000-000000000088";
 const estimateA = "10000000-0000-0000-0000-000000000091";
 const assemblyForEstimateA = "10000000-0000-0000-0000-000000000092";
+const settingsA = "10000000-0000-0000-0000-000000000093";
+const settingsB = "20000000-0000-0000-0000-000000000094";
+const brandProfileA = "10000000-0000-0000-0000-000000000095";
+const brandProfileB = "20000000-0000-0000-0000-000000000096";
+const brandDocumentSettingsA = "10000000-0000-0000-0000-000000000097";
+const brandDocumentSettingsB = "20000000-0000-0000-0000-000000000098";
+const brandAssetA = "10000000-0000-0000-0000-000000000099";
+const activityEventA = "10000000-0000-0000-0000-000000000100";
+const notificationA = "10000000-0000-0000-0000-000000000101";
+const attachmentA = "10000000-0000-0000-0000-000000000102";
+const commentA = "10000000-0000-0000-0000-000000000103";
+const tagA = "10000000-0000-0000-0000-000000000104";
+const tagAssignmentA = "10000000-0000-0000-0000-000000000105";
+const savedViewA = "10000000-0000-0000-0000-000000000106";
+const recentItemA = "10000000-0000-0000-0000-000000000107";
+const featureFlagA = "10000000-0000-0000-0000-000000000108";
+const serviceAgreementA = "10000000-0000-0000-0000-000000000109";
+const invoiceForPaymentA = "10000000-0000-0000-0000-000000000110";
+const paymentA = "10000000-0000-0000-0000-000000000111";
+const jobA = "10000000-0000-0000-0000-000000000112";
+const jobB = "20000000-0000-0000-0000-000000000113";
+const technicianAssignmentA = "10000000-0000-0000-0000-000000000114";
 
 describe("live organization row-level security", () => {
   beforeAll(async () => {
@@ -50,6 +82,7 @@ describe("live organization row-level security", () => {
       data: [
         { id: adminUser, authSubject: "rls-admin", email: "rls-admin@example.com" },
         { id: viewerUser, authSubject: "rls-viewer", email: "rls-viewer@example.com" },
+        { id: technicianUser, authSubject: "rls-technician", email: "rls-tech@example.com", fullName: "Assigned Technician" },
         { id: otherUser, authSubject: "rls-other", email: "rls-other@example.com" },
         { id: estimatorUser, authSubject: "rls-estimator", email: "rls-estimator@example.com" },
       ],
@@ -58,6 +91,7 @@ describe("live organization row-level security", () => {
       data: [
         { id: adminMembership, orgId: orgA, userId: adminUser, role: "admin", status: "active" },
         { id: viewerMembership, orgId: orgA, userId: viewerUser, role: "viewer", status: "active" },
+        { id: technicianMembership, orgId: orgA, userId: technicianUser, role: "technician", status: "active" },
         { id: otherMembership, orgId: orgB, userId: otherUser, role: "owner", status: "active" },
         { id: estimatorMembership, orgId: orgA, userId: estimatorUser, role: "estimator", status: "active" },
       ],
@@ -103,11 +137,113 @@ describe("live organization row-level security", () => {
         afterState: { membershipId: viewerMembership, role: "viewer", status: "active" },
       },
     });
+    await adminClient.customer.createMany({
+      data: [
+        { id: customerA, orgId: orgA, name: "Org A Customer", email: "orga@example.com" },
+        { id: customerB, orgId: orgB, name: "Org B Customer", email: "orgb@example.com" },
+      ],
+    });
+    await adminClient.serviceAddress.createMany({
+      data: [
+        {
+          id: serviceAddressA,
+          orgId: orgA,
+          customerId: customerA,
+          label: "Primary",
+          addressLine1: "101 Org A Street",
+          city: "Indianapolis",
+          state: "IN",
+          postalCode: "46201",
+          isPrimary: true,
+        },
+        {
+          id: serviceAddressB,
+          orgId: orgB,
+          customerId: customerB,
+          label: "Primary",
+          addressLine1: "202 Org B Street",
+          city: "Columbus",
+          state: "OH",
+          postalCode: "43004",
+          isPrimary: true,
+        },
+      ],
+    });
+    await adminClient.customerEquipment.create({
+      data: {
+        id: equipmentAssetA,
+        orgId: orgA,
+        customerId: customerA,
+        serviceAddressId: serviceAddressA,
+        name: "Furnace",
+        manufacturer: "Carrier",
+        model: "X100",
+        status: "active",
+      },
+    });
     await adminClient.project.createMany({
       data: [
-        { id: projectA, orgId: orgA, name: "Org A Project" },
-        { id: projectB, orgId: orgB, name: "Org B Project" },
+        { id: projectA, orgId: orgA, customerId: customerA, name: "Org A Project" },
+        { id: projectB, orgId: orgB, customerId: customerB, name: "Org B Project" },
       ],
+    });
+    await adminClient.projectTask.create({
+      data: {
+        id: projectTaskA,
+        projectId: projectA,
+        title: "Initial mobilization",
+        status: "todo",
+        priority: "medium",
+      },
+    });
+    await adminClient.job.createMany({
+      data: [
+        {
+          id: jobA,
+          orgId: orgA,
+          projectId: projectA,
+          customerId: customerA,
+          serviceAddressId: serviceAddressA,
+          jobNumber: "JOB-2026-000001",
+          title: "Org A Scheduled Job",
+          description: "Assigned technician should be able to see this job only.",
+          jobType: "HVAC Service",
+          status: "scheduled",
+          priority: "high",
+          scheduledStart: new Date("2026-07-16T13:00:00.000Z"),
+          scheduledEnd: new Date("2026-07-16T15:00:00.000Z"),
+          estimatedDurationMinutes: 120,
+          createdById: adminUser,
+        },
+        {
+          id: jobB,
+          orgId: orgB,
+          projectId: projectB,
+          customerId: customerB,
+          serviceAddressId: serviceAddressB,
+          jobNumber: "JOB-2026-000001",
+          title: "Org B Scheduled Job",
+          description: "Cross-tenant job isolation check.",
+          jobType: "Electrical Service",
+          status: "scheduled",
+          priority: "medium",
+          scheduledStart: new Date("2026-07-16T16:00:00.000Z"),
+          scheduledEnd: new Date("2026-07-16T18:00:00.000Z"),
+          estimatedDurationMinutes: 120,
+          createdById: otherUser,
+        },
+      ],
+    });
+    await adminClient.jobAssignment.create({
+      data: {
+        id: technicianAssignmentA,
+        orgId: orgA,
+        jobId: jobA,
+        userId: technicianUser,
+        assignmentRole: "lead",
+        isLead: true,
+        assignedById: adminUser,
+      },
     });
     await adminClient.assembly.create({
       data: { id: assemblyForEstimateA, orgId: orgA, code: "RLS-TEST-ASM", name: "RLS Test Assembly", unitOfMeasure: "CY" },
@@ -122,6 +258,196 @@ describe("live organization row-level security", () => {
         },
         subtotalCost: 200,
         totalPrice: 200,
+      },
+    });
+    await adminClient.serviceAgreement.create({
+      data: {
+        id: serviceAgreementA,
+        orgId: orgA,
+        customerId: customerA,
+        serviceAddressId: serviceAddressA,
+        projectId: projectA,
+        name: "Preventative Maintenance",
+        status: "active",
+        billingCadence: "monthly",
+        amount: 99,
+      },
+    });
+    await adminClient.organizationSettings.createMany({
+      data: [
+        {
+          id: settingsA,
+          orgId: orgA,
+          settingsJson: { companyName: "Org A Settings", currency: "USD", emailNotifications: true },
+        },
+        {
+          id: settingsB,
+          orgId: orgB,
+          settingsJson: { companyName: "Org B Settings", currency: "CAD", emailNotifications: false },
+        },
+      ],
+    });
+    await adminClient.brandProfile.createMany({
+      data: [
+        {
+          id: brandProfileA,
+          organizationId: orgA,
+          companyDisplayName: "Org A Brand",
+          primaryColor: "#112233",
+          licenseNumber: "ORG-A-LIC",
+          serviceAreasJson: ["Indianapolis"],
+        },
+        {
+          id: brandProfileB,
+          organizationId: orgB,
+          companyDisplayName: "Org B Brand",
+          primaryColor: "#334455",
+        },
+      ],
+    });
+    await adminClient.brandDocumentSettings.createMany({
+      data: [
+        {
+          id: brandDocumentSettingsA,
+          organizationId: orgA,
+          brandProfileId: brandProfileA,
+          showPoweredByTradeOS: false,
+        },
+        {
+          id: brandDocumentSettingsB,
+          organizationId: orgB,
+          brandProfileId: brandProfileB,
+          showPoweredByTradeOS: true,
+        },
+      ],
+    });
+    await adminClient.brandAsset.create({
+      data: {
+        id: brandAssetA,
+        organizationId: orgA,
+        brandProfileId: brandProfileA,
+        type: "logo",
+        label: "Org A primary logo",
+        url: "https://cdn.example.com/org-a/logo.svg",
+      },
+    });
+    await adminClient.activityEvent.create({
+      data: {
+        id: activityEventA,
+        orgId: orgA,
+        entityType: "project",
+        entityId: projectA,
+        eventType: "project.created",
+        title: "Project created",
+        actorUserId: adminUser,
+      },
+    });
+    await adminClient.notification.create({
+      data: {
+        id: notificationA,
+        orgId: orgA,
+        entityType: "project",
+        entityId: projectA,
+        category: "ai_suggestion",
+        title: "AI suggested a change order",
+        body: "Check weather-related contingency",
+        priority: "high",
+        activityEventId: activityEventA,
+        createdByUserId: adminUser,
+      },
+    });
+    await adminClient.attachment.create({
+      data: {
+        id: attachmentA,
+        orgId: orgA,
+        entityType: "project",
+        entityId: projectA,
+        kind: "photo",
+        fileName: "front-elevation.jpg",
+        fileUrl: "https://cdn.example.com/front-elevation.jpg",
+        uploadedByUserId: adminUser,
+      },
+    });
+    await adminClient.comment.create({
+      data: {
+        id: commentA,
+        orgId: orgA,
+        entityType: "project",
+        entityId: projectA,
+        body: "Need permit confirmation before crew dispatch.",
+        authorUserId: adminUser,
+      },
+    });
+    await adminClient.tag.create({
+      data: {
+        id: tagA,
+        orgId: orgA,
+        name: "Urgent",
+        slug: "urgent",
+        color: "#f97316",
+      },
+    });
+    await adminClient.tagAssignment.create({
+      data: {
+        id: tagAssignmentA,
+        orgId: orgA,
+        tagId: tagA,
+        entityType: "project",
+        entityId: projectA,
+        assignedByUserId: adminUser,
+      },
+    });
+    await adminClient.savedView.create({
+      data: {
+        id: savedViewA,
+        orgId: orgA,
+        entityType: "project",
+        name: "High Priority Projects",
+        filterJson: { status: ["active"], tags: ["urgent"] },
+        createdByUserId: adminUser,
+      },
+    });
+    await adminClient.recentItem.create({
+      data: {
+        id: recentItemA,
+        orgId: orgA,
+        userId: adminUser,
+        entityType: "project",
+        entityId: projectA,
+        title: "Org A Project",
+        href: "/projects/" + projectA,
+      },
+    });
+    await adminClient.featureFlag.create({
+      data: {
+        id: featureFlagA,
+        orgId: orgA,
+        key: "intelligence-foundation",
+        enabled: true,
+        scopeType: "org",
+        scopeKey: orgA,
+      },
+    });
+    await adminClient.invoice.create({
+      data: {
+        id: invoiceForPaymentA,
+        projectId: projectA,
+        estimateId: estimateA,
+        invoiceNumber: 99,
+        type: "full",
+        status: "sent",
+        amount: 150,
+      },
+    });
+    await adminClient.payment.create({
+      data: {
+        id: paymentA,
+        orgId: orgA,
+        invoiceId: invoiceForPaymentA,
+        amount: 150,
+        paymentDate: new Date("2026-07-01T00:00:00.000Z"),
+        method: "card",
+        status: "recorded",
       },
     });
   });
@@ -144,6 +470,265 @@ describe("live organization row-level security", () => {
     });
 
     expect(row).toBeNull();
+  });
+
+  it("enforces organization settings visibility and admin-only writes", async () => {
+    const visibleSettings = await inSession(adminUser, orgA, "admin", async () =>
+      currentTransaction().organizationSettings.findUnique({ where: { orgId: orgA } })
+    );
+    expect(visibleSettings?.orgId).toBe(orgA);
+
+    const hiddenSettings = await inSession(otherUser, orgB, "owner", async () =>
+      currentTransaction().organizationSettings.findUnique({ where: { orgId: orgA } })
+    );
+    expect(hiddenSettings).toBeNull();
+
+    await expect(
+      inSession(viewerUser, orgA, "viewer", async () =>
+        currentTransaction().organizationSettings.update({
+          where: { orgId: orgA },
+          data: { settingsJson: { companyName: "Viewer Blocked" } },
+        })
+      )
+    ).rejects.toThrow();
+
+    const updatedSettings = await inSession(adminUser, orgA, "admin", async () =>
+      currentTransaction().organizationSettings.update({
+        where: { orgId: orgA },
+        data: { settingsJson: { companyName: "Org A Updated", currency: "USD", emailNotifications: true } },
+      })
+    );
+    expect(updatedSettings.orgId).toBe(orgA);
+  });
+
+  it("enforces brand studio visibility and admin-only writes", async () => {
+    const visibleProfile = await inSession(adminUser, orgA, "admin", async () =>
+      currentTransaction().brandProfile.findUnique({ where: { organizationId: orgA } })
+    );
+    expect(visibleProfile?.id).toBe(brandProfileA);
+
+    const hiddenProfile = await inSession(otherUser, orgB, "owner", async () =>
+      currentTransaction().brandProfile.findUnique({ where: { organizationId: orgA } })
+    );
+    expect(hiddenProfile).toBeNull();
+
+    const visibleAsset = await inSession(adminUser, orgA, "admin", async () =>
+      currentTransaction().brandAsset.findUnique({ where: { id: brandAssetA } })
+    );
+    expect(visibleAsset?.organizationId).toBe(orgA);
+
+    await expect(
+      inSession(viewerUser, orgA, "viewer", async () =>
+        currentTransaction().brandProfile.update({
+          where: { organizationId: orgA },
+          data: { companyDisplayName: "Viewer Blocked Brand" },
+        })
+      )
+    ).rejects.toThrow();
+
+    const updatedSettings = await inSession(adminUser, orgA, "admin", async () =>
+      currentTransaction().brandDocumentSettings.update({
+        where: { organizationId: orgA },
+        data: { showPoweredByTradeOS: true },
+      })
+    );
+    expect(updatedSettings.showPoweredByTradeOS).toBe(true);
+
+    await expect(
+      inSession(adminUser, orgA, "admin", async () =>
+        currentTransaction().brandAsset.create({
+          data: {
+            organizationId: orgB,
+            brandProfileId: brandProfileB,
+            type: "logo",
+            url: "https://cdn.example.com/cross-org/logo.svg",
+          },
+        })
+      )
+    ).rejects.toThrow();
+  });
+
+  it("enforces project task visibility and write permissions", async () => {
+    const visibleTasks = await inSession(adminUser, orgA, "admin", async () =>
+      currentTransaction().projectTask.findMany({ orderBy: { createdAt: "asc" } })
+    );
+    expect(visibleTasks.map((row) => row.id)).toEqual([projectTaskA]);
+
+    const hiddenTask = await inSession(otherUser, orgB, "owner", async () =>
+      currentTransaction().projectTask.findUnique({ where: { id: projectTaskA } })
+    );
+    expect(hiddenTask).toBeNull();
+
+    await expect(
+      inSession(viewerUser, orgA, "viewer", async () =>
+        currentTransaction().projectTask.create({
+          data: {
+            projectId: projectA,
+            title: "Viewer blocked task",
+            status: "todo",
+            priority: "low",
+          },
+        })
+      )
+    ).rejects.toThrow();
+  });
+
+  it("limits technician job visibility to assigned jobs while preserving tenant isolation", async () => {
+    const visibleJobs = await inSession(technicianUser, orgA, "technician", async () =>
+      currentTransaction().job.findMany({ orderBy: { createdAt: "asc" } })
+    );
+    expect(visibleJobs.map((row) => row.id)).toEqual([jobA]);
+
+    const hiddenOtherOrgJob = await inSession(technicianUser, orgA, "technician", async () =>
+      currentTransaction().job.findUnique({ where: { id: jobB } })
+    );
+    expect(hiddenOtherOrgJob).toBeNull();
+
+    const hiddenUnassignedJob = await inSession(viewerUser, orgA, "viewer", async () =>
+      currentTransaction().job.findUnique({ where: { id: jobA } })
+    );
+    expect(hiddenUnassignedJob).toBeNull();
+  });
+
+  it("lets technicians read their assigned team and update only their own assignment rows", async () => {
+    const visibleAssignments = await inSession(technicianUser, orgA, "technician", async () =>
+      currentTransaction().jobAssignment.findMany({ where: { jobId: jobA }, orderBy: { createdAt: "asc" } })
+    );
+    expect(visibleAssignments.map((row) => row.id)).toEqual([technicianAssignmentA]);
+
+    const accepted = await inSession(technicianUser, orgA, "technician", async () =>
+      currentTransaction().jobAssignment.update({
+        where: { id: technicianAssignmentA },
+        data: { acceptedAt: new Date("2026-07-16T12:45:00.000Z") },
+      })
+    );
+    expect(accepted.acceptedAt?.toISOString()).toBe("2026-07-16T12:45:00.000Z");
+
+    await expect(
+      inSession(viewerUser, orgA, "viewer", async () =>
+        currentTransaction().jobAssignment.update({
+          where: { id: technicianAssignmentA },
+          data: { declinedAt: new Date("2026-07-16T12:46:00.000Z") },
+        })
+      )
+    ).rejects.toThrow();
+  });
+
+  it("enforces crm foundation tenant boundaries for service addresses, customer equipment, agreements, payments, and notes", async () => {
+    const visibleAddress = await inSession(adminUser, orgA, "admin", async () =>
+      currentTransaction().serviceAddress.findUnique({ where: { id: serviceAddressA } })
+    );
+    expect(visibleAddress?.customerId).toBe(customerA);
+
+    const hiddenAddress = await inSession(otherUser, orgB, "owner", async () =>
+      currentTransaction().serviceAddress.findUnique({ where: { id: serviceAddressA } })
+    );
+    expect(hiddenAddress).toBeNull();
+
+    const visibleEquipment = await inSession(adminUser, orgA, "admin", async () =>
+      currentTransaction().customerEquipment.findUnique({ where: { id: equipmentAssetA } })
+    );
+    expect(visibleEquipment?.serviceAddressId).toBe(serviceAddressA);
+
+    const visibleAgreement = await inSession(adminUser, orgA, "admin", async () =>
+      currentTransaction().serviceAgreement.findUnique({ where: { id: serviceAgreementA } })
+    );
+    expect(visibleAgreement?.projectId).toBe(projectA);
+
+    const visiblePayment = await inSession(adminUser, orgA, "admin", async () =>
+      currentTransaction().payment.findUnique({ where: { id: paymentA } })
+    );
+    expect(visiblePayment?.invoiceId).toBe(invoiceForPaymentA);
+
+    const hiddenPayment = await inSession(otherUser, orgB, "owner", async () =>
+      currentTransaction().payment.findUnique({ where: { id: paymentA } })
+    );
+    expect(hiddenPayment).toBeNull();
+
+    await expect(
+      inSession(viewerUser, orgA, "viewer", async () =>
+        currentTransaction().serviceAddress.create({
+          data: {
+            orgId: orgA,
+            customerId: customerA,
+            addressLine1: "Viewer blocked",
+            city: "Indianapolis",
+            state: "IN",
+            postalCode: "46201",
+          },
+        })
+      )
+    ).rejects.toThrow();
+
+    await expect(
+      inSession(adminUser, orgA, "admin", async () =>
+        currentTransaction().payment.create({
+          data: {
+            orgId: orgB,
+            invoiceId: invoiceForPaymentA,
+            amount: 10,
+            paymentDate: new Date(),
+            method: "cash",
+          },
+        })
+      )
+    ).rejects.toThrow();
+  });
+
+  it("enforces intelligence foundation tenant boundaries", async () => {
+    const visibleActivity = await inSession(adminUser, orgA, "admin", async () =>
+      currentTransaction().activityEvent.findUnique({ where: { id: activityEventA } })
+    );
+    expect(visibleActivity?.orgId).toBe(orgA);
+
+    const hiddenNotification = await inSession(otherUser, orgB, "owner", async () =>
+      currentTransaction().notification.findUnique({ where: { id: notificationA } })
+    );
+    expect(hiddenNotification).toBeNull();
+
+    const visibleAttachment = await inSession(adminUser, orgA, "admin", async () =>
+      currentTransaction().attachment.findUnique({ where: { id: attachmentA } })
+    );
+    expect(visibleAttachment?.entityId).toBe(projectA);
+
+    const visibleComment = await inSession(adminUser, orgA, "admin", async () =>
+      currentTransaction().comment.findUnique({ where: { id: commentA } })
+    );
+    expect(visibleComment?.body).toContain("permit");
+
+    const visibleTagAssignment = await inSession(adminUser, orgA, "admin", async () =>
+      currentTransaction().tagAssignment.findUnique({ where: { id: tagAssignmentA } })
+    );
+    expect(visibleTagAssignment?.tagId).toBe(tagA);
+
+    const visibleSavedView = await inSession(adminUser, orgA, "admin", async () =>
+      currentTransaction().savedView.findUnique({ where: { id: savedViewA } })
+    );
+    expect(visibleSavedView?.entityType).toBe("project");
+
+    const visibleRecentItem = await inSession(adminUser, orgA, "admin", async () =>
+      currentTransaction().recentItem.findUnique({ where: { id: recentItemA } })
+    );
+    expect(visibleRecentItem?.userId).toBe(adminUser);
+
+    const visibleFeatureFlag = await inSession(adminUser, orgA, "admin", async () =>
+      currentTransaction().featureFlag.findUnique({ where: { id: featureFlagA } })
+    );
+    expect(visibleFeatureFlag?.enabled).toBe(true);
+
+    await expect(
+      inSession(viewerUser, orgA, "viewer", async () =>
+        currentTransaction().featureFlag.create({
+          data: {
+            orgId: orgA,
+            key: "viewer-blocked-flag",
+            enabled: true,
+            scopeType: "org",
+            scopeKey: orgA,
+          },
+        })
+      )
+    ).rejects.toThrow();
   });
 
   it("rejects cross-organization writes", async () => {
@@ -175,6 +760,22 @@ describe("live organization row-level security", () => {
 
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ orgId: orgA, action: "created", actorRole: "admin" });
+  });
+
+  it("derives tenant context only from verified active memberships", async () => {
+    const auth = await resolveAuthContext({ sub: "rls-admin", orgId: orgA });
+
+    expect(auth).toMatchObject({
+      userId: adminUser,
+      orgId: orgA,
+      role: "admin",
+      canonicalRole: "admin",
+      email: "rls-admin@example.com",
+    });
+
+    await expect(resolveAuthContext({ sub: "rls-admin", orgId: orgB })).rejects.toThrow(
+      "Authenticated user does not belong to the requested organization"
+    );
   });
 
   it("provisions a new organization and initial owner atomically", async () => {
@@ -368,6 +969,22 @@ describe("live organization row-level security", () => {
     expect(sent.status).toBe("sent");
     const accepted = await inSession(adminUser, orgA, "admin", async () => new ProposalsService().accept(proposal.id, orgA));
     expect(accepted.status).toBe("accepted");
+    expect(accepted.deliveries.map((delivery) => delivery.eventType)).toEqual(["proposal.accepted", "proposal.sent"]);
+
+    const visibleDeliveries = await inSession(adminUser, orgA, "admin", async () =>
+      currentTransaction().proposalDelivery.findMany({
+        where: { proposalId: proposal.id },
+        orderBy: { occurredAt: "desc" },
+      })
+    );
+    expect(visibleDeliveries.map((delivery) => delivery.eventType)).toEqual(["proposal.accepted", "proposal.sent"]);
+
+    const hiddenDeliveries = await inSession(otherUser, orgB, "owner", async () =>
+      currentTransaction().proposalDelivery.findMany({
+        where: { proposalId: proposal.id },
+      })
+    );
+    expect(hiddenDeliveries).toEqual([]);
 
     await expect(
       inSession(viewerUser, orgA, "viewer", async () =>
@@ -383,40 +1000,83 @@ describe("live organization row-level security", () => {
       new InvoicesService().create({
         orgId: orgA,
         projectId: projectA,
+        actorUserId: adminUser,
+        actorRole: "admin",
         proposalId: proposal.id,
         lineItems: [{ description: "Deposit", quantity: 1, unitOfMeasure: "EA", unitCost: 1000 }],
       })
     );
     expect(invoice.amount).toBe(1000);
+    expect(invoice.deliveries.map((delivery) => delivery.eventType)).toEqual(["invoice.created"]);
+
+    const sentInvoice = await inSession(adminUser, orgA, "admin", async () => new InvoicesService().send(invoice.id, orgA, adminUser, "admin"));
+    expect(sentInvoice.status).toBe("sent");
+    const paidInvoice = await inSession(adminUser, orgA, "admin", async () => new InvoicesService().markPaid(invoice.id, orgA, adminUser, "admin"));
+    expect(paidInvoice.status).toBe("paid");
+    expect(paidInvoice.deliveries.map((delivery) => delivery.eventType)).toEqual(["invoice.paid", "invoice.sent", "invoice.created"]);
 
     const invoiceCrossOrgLookup = await inSession(otherUser, orgB, "owner", async () =>
       currentTransaction().invoice.findUnique({ where: { id: invoice.id } })
     );
     expect(invoiceCrossOrgLookup).toBeNull();
 
+    const visibleInvoiceDeliveries = await inSession(adminUser, orgA, "admin", async () =>
+      currentTransaction().invoiceDelivery.findMany({
+        where: { invoiceId: invoice.id },
+        orderBy: { occurredAt: "desc" },
+      })
+    );
+    expect(visibleInvoiceDeliveries.map((delivery) => delivery.eventType)).toEqual(["invoice.paid", "invoice.sent", "invoice.created"]);
+
+    const hiddenInvoiceDeliveries = await inSession(otherUser, orgB, "owner", async () =>
+      currentTransaction().invoiceDelivery.findMany({ where: { invoiceId: invoice.id } })
+    );
+    expect(hiddenInvoiceDeliveries).toEqual([]);
+
     await expect(
       inSession(viewerUser, orgA, "viewer", async () => new ContractsService().create({ orgId: orgA, proposalId: proposal.id }))
     ).rejects.toThrow();
 
     const contract = await inSession(adminUser, orgA, "admin", async () =>
-      new ContractsService().create({ orgId: orgA, proposalId: proposal.id })
+      new ContractsService().create({ orgId: orgA, actorUserId: adminUser, actorRole: "admin", proposalId: proposal.id })
     );
     expect(contract.status).toBe("pending_signature");
+    expect(contract.events.map((event) => event.eventType)).toEqual(["contract.created"]);
 
     const signed = await inSession(adminUser, orgA, "admin", async () =>
-      new ContractsService().sign(contract.id, { orgId: orgA, signerName: "Jane Doe", signerEmail: "jane@example.com" })
+      new ContractsService().sign(contract.id, {
+        orgId: orgA,
+        actorUserId: adminUser,
+        actorRole: "admin",
+        signerName: "Jane Doe",
+        signerEmail: "jane@example.com",
+      })
     );
     expect(signed.status).toBe("signed");
     expect(signed.signerName).toBe("Jane Doe");
+    expect(signed.events.map((event) => event.eventType)).toEqual(["contract.signed", "contract.created"]);
 
     const contractCrossOrgLookup = await inSession(otherUser, orgB, "owner", async () =>
       currentTransaction().contract.findUnique({ where: { id: contract.id } })
     );
     expect(contractCrossOrgLookup).toBeNull();
+
+    const visibleContractEvents = await inSession(adminUser, orgA, "admin", async () =>
+      currentTransaction().contractEvent.findMany({
+        where: { contractId: contract.id },
+        orderBy: { occurredAt: "desc" },
+      })
+    );
+    expect(visibleContractEvents.map((event) => event.eventType)).toEqual(["contract.signed", "contract.created"]);
+
+    const hiddenContractEvents = await inSession(otherUser, orgB, "owner", async () =>
+      currentTransaction().contractEvent.findMany({ where: { contractId: contract.id } })
+    );
+    expect(hiddenContractEvents).toEqual([]);
   });
 });
 
-function inSession<T>(userId: string, orgId: string, role: string, operation: () => Promise<T>): Promise<T> {
+function inSession<T>(userId: string, orgId: string, role: SupportedRole, operation: () => Promise<T>): Promise<T> {
   return runWithDatabaseSession(appClient, { userId, orgId, role }, operation, "integration-test");
 }
 

@@ -1,4 +1,4 @@
-export class ClientApiError extends Error {
+class ClientApiError extends Error {
   constructor(message: string, public readonly status: number) {
     super(message);
     this.name = "ClientApiError";

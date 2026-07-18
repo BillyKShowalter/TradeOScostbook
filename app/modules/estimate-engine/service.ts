@@ -2,7 +2,8 @@ import { prisma } from "../../db/client";
 import { ApiError } from "../../backend/middleware/errorHandler";
 import { CostDatabaseService } from "../cost-database/service";
 import { AssembliesDatabaseService } from "../assemblies-database/service";
-import { applyOverhead, sellPrice } from "./formulas";
+import { applyOverhead, sellPrice, round2 } from "./formulas";
+import { canTransitionEstimateStatus, normalizeEstimateStatus } from "../../domain";
 import {
   AddLineItemInput,
   CreateEstimateInput,
@@ -45,6 +46,44 @@ export class EstimateEngineService {
     return rows.map(toEstimateDTO);
   }
 
+  /** Creates the next project version as a draft, copying line-item snapshots and pricing settings. */
+  async duplicateFromVersion(sourceEstimateId: string, orgId?: string): Promise<EstimateDTO & { lineItems: EstimateLineItemDTO[] }> {
+    const source = await prisma.estimate.findFirst({
+      where: { id: sourceEstimateId, orgId },
+      include: { lineItems: { orderBy: { sortOrder: "asc" } } },
+    });
+    if (!source) throw new ApiError(404, `Estimate ${sourceEstimateId} not found`);
+
+    const priorVersions = await prisma.estimate.count({ where: { projectId: source.projectId } });
+    const row = await prisma.estimate.create({
+      data: {
+        orgId: source.orgId,
+        projectId: source.projectId,
+        version: priorVersions + 1,
+        status: "draft",
+        overheadPct: source.overheadPct,
+        profitPct: source.profitPct,
+        targetMarginPct: source.targetMarginPct,
+        subtotalCost: source.subtotalCost,
+        totalPrice: source.totalPrice,
+        lineItems: {
+          create: source.lineItems.map((lineItem) => ({
+            costItemId: lineItem.costItemId,
+            assemblyId: lineItem.assemblyId,
+            description: lineItem.description,
+            quantity: lineItem.quantity,
+            unitOfMeasure: lineItem.unitOfMeasure,
+            unitCost: lineItem.unitCost,
+            lineCost: lineItem.lineCost,
+            sortOrder: lineItem.sortOrder,
+          })),
+        },
+      },
+    });
+
+    return this.getById(row.id, orgId);
+  }
+
   /** Adds a line item, snapshotting its unit cost at the moment it's added. */
   async addLineItem(input: AddLineItemInput): Promise<EstimateLineItemDTO> {
     await this.assertDraft(input.estimateId, input.orgId);
@@ -81,17 +120,39 @@ export class EstimateEngineService {
       _max: { sortOrder: true },
     });
 
+    const data = {
+      estimateId: input.estimateId,
+      costItemId: input.costItemId,
+      assemblyId: input.assemblyId,
+      description,
+      quantity: input.quantity,
+      unitOfMeasure,
+      unitCost,
+      lineCost,
+      sortOrder: (maxSortOrder._max.sortOrder ?? 0) + 1,
+      sourceKey: input.sourceKey,
+    };
+
+    if (input.sourceKey) {
+      const created = await prisma.estimateLineItem.createMany({
+        data,
+        skipDuplicates: true,
+      });
+      const row = await prisma.estimateLineItem.findFirst({
+        where: { estimateId: input.estimateId, sourceKey: input.sourceKey },
+      });
+      if (!row) throw new ApiError(409, "Estimate line item could not be reconciled after idempotent insert");
+
+      if (created.count > 0) {
+        await this.recalculate(input.estimateId, input.orgId);
+      }
+      return toLineItemDTO(row);
+    }
+
     const row = await prisma.estimateLineItem.create({
       data: {
-        estimateId: input.estimateId,
-        costItemId: input.costItemId,
-        assemblyId: input.assemblyId,
-        description,
-        quantity: input.quantity,
-        unitOfMeasure,
-        unitCost,
-        lineCost,
-        sortOrder: (maxSortOrder._max.sortOrder ?? 0) + 1,
+        ...data,
+        sourceKey: undefined,
       },
     });
 
@@ -143,21 +204,23 @@ export class EstimateEngineService {
   /** Locks the estimate so its line-item unit_cost snapshots and total never silently change again. */
   async finalize(estimateId: string, orgId?: string): Promise<EstimateDTO> {
     await this.recalculate(estimateId, orgId);
-    const row = await prisma.estimate.update({ where: { id: estimateId }, data: { status: "sent" } });
+    const estimate = await prisma.estimate.findFirst({ where: { id: estimateId, orgId } });
+    if (!estimate) throw new ApiError(404, `Estimate ${estimateId} not found`);
+    const currentStatus = normalizeEstimateStatus(estimate.status);
+    if (!canTransitionEstimateStatus(currentStatus, "ready")) {
+      throw new ApiError(409, `Estimate ${estimateId} cannot transition from ${currentStatus} to ready`);
+    }
+    const row = await prisma.estimate.update({ where: { id: estimateId }, data: { status: "ready" } });
     return toEstimateDTO(row);
   }
 
   private async assertDraft(estimateId: string, orgId?: string): Promise<void> {
     const estimate = await prisma.estimate.findFirst({ where: { id: estimateId, orgId } });
     if (!estimate) throw new ApiError(404, `Estimate ${estimateId} not found`);
-    if (estimate.status !== "draft") {
+    if (normalizeEstimateStatus(estimate.status) !== "draft") {
       throw new ApiError(409, `Estimate ${estimateId} is not in draft status and can no longer be modified`);
     }
   }
-}
-
-function round2(value: number): number {
-  return Math.round(value * 100) / 100;
 }
 
 export function toEstimateDTO(row: {
@@ -177,7 +240,7 @@ export function toEstimateDTO(row: {
     orgId: row.orgId,
     projectId: row.projectId,
     version: row.version,
-    status: row.status,
+    status: normalizeEstimateStatus(row.status),
     overheadPct: Number(row.overheadPct),
     profitPct: Number(row.profitPct),
     targetMarginPct: row.targetMarginPct != null ? Number(row.targetMarginPct) : null,
@@ -197,6 +260,7 @@ function toLineItemDTO(row: {
   unitCost: unknown;
   lineCost: unknown;
   sortOrder: number;
+  sourceKey?: string | null;
 }): EstimateLineItemDTO {
   return {
     id: row.id,
@@ -209,5 +273,6 @@ function toLineItemDTO(row: {
     unitCost: Number(row.unitCost),
     lineCost: Number(row.lineCost),
     sortOrder: row.sortOrder,
+    sourceKey: row.sourceKey ?? null,
   };
 }

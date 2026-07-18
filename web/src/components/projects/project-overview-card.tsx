@@ -13,9 +13,12 @@ export function ProjectOverviewCard({ project }: ProjectOverviewCardProps) {
         <CardTitle>Overview</CardTitle>
       </CardHeader>
       <CardContent>
-        {project.simpleScope ? <p className="text-sm text-muted-foreground">{project.simpleScope}</p> : <EmptyState title="No scope saved yet." description="Add a simple scope to keep the project clear." />}
+        {project.simpleScope ? (
+          <p className="text-sm text-muted-foreground">{project.simpleScope}</p>
+        ) : (
+          <EmptyState title="No short scope saved yet." description="Add a one-line summary so everyone can see what work the job includes." />
+        )}
       </CardContent>
     </Card>
   );
 }
-

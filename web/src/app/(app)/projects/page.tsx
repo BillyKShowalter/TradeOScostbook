@@ -12,20 +12,23 @@ export default async function ProjectsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Projects</h1>
-        <Link href="/projects/new" className={buttonVariants()}>
-          New project
-        </Link>
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-2xl font-semibold">Projects</h1>
+          <Link href="/projects/new" className={buttonVariants()}>
+            Add project
+          </Link>
+        </div>
+        <p className="text-sm text-muted-foreground">Each project keeps the site visit, estimate, proposal, contract, and invoice work tied to one job.</p>
       </div>
 
       {projects.length === 0 ? (
         <EmptyState
-          title="No projects yet."
-          description="Create a project to start intake, build an estimate, and generate a proposal."
+          title="No projects yet"
+          description="Create the first job so TradeOS can carry the work from field intake through estimating, proposal, contract, invoicing, and closeout."
           action={
-            <Link href="/projects/new" className={buttonVariants({ variant: "outline" })}>
-              New project
+            <Link href="/projects/new" className={buttonVariants()}>
+              Add first project
             </Link>
           }
         />

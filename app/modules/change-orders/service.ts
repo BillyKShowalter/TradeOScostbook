@@ -1,6 +1,8 @@
 import { prisma } from "../../db/client";
 import { ApiError } from "../../backend/middleware/errorHandler";
 import { CostDatabaseService } from "../cost-database/service";
+import { canTransitionChangeOrderStatus } from "../../domain";
+import { round2 } from "../estimate-engine/formulas";
 import {
   AddChangeOrderLineItemInput,
   ChangeOrderDTO,
@@ -46,6 +48,7 @@ export class ChangeOrdersService {
         estimateId: input.estimateId,
         coNumber: nextNumber + 1,
         description: input.description,
+        scheduleImpactDays: input.scheduleImpactDays,
       },
     });
     return toDTO(row);
@@ -55,7 +58,10 @@ export class ChangeOrdersService {
     const changeOrder = await this.assertDraft(changeOrderId, input.orgId);
     const row = await prisma.changeOrder.update({
       where: { id: changeOrder.id },
-      data: { description: input.description ?? changeOrder.description },
+      data: {
+        description: input.description ?? changeOrder.description,
+        scheduleImpactDays: input.scheduleImpactDays !== undefined ? input.scheduleImpactDays : undefined,
+      },
     });
     return toDTO(row);
   }
@@ -122,15 +128,27 @@ export class ChangeOrdersService {
   }
 
   async approve(changeOrderId: string, orgId?: string): Promise<ChangeOrderDTO> {
-    await this.assertExists(changeOrderId, orgId);
+    const changeOrder = await this.assertExists(changeOrderId, orgId);
+    if (!canTransitionChangeOrderStatus(changeOrder.status, "approved")) {
+      throw new ApiError(409, `ChangeOrder ${changeOrderId} cannot be approved from status ${changeOrder.status}`);
+    }
     await this.recalculate(changeOrderId, orgId);
-    const row = await prisma.changeOrder.update({ where: { id: changeOrderId }, data: { status: "approved" } });
+    const row = await prisma.changeOrder.update({
+      where: { id: changeOrderId },
+      data: { status: "approved", approvedAt: new Date(), rejectedAt: null },
+    });
     return toDTO(row);
   }
 
   async reject(changeOrderId: string, orgId?: string): Promise<ChangeOrderDTO> {
-    await this.assertExists(changeOrderId, orgId);
-    const row = await prisma.changeOrder.update({ where: { id: changeOrderId }, data: { status: "rejected" } });
+    const changeOrder = await this.assertExists(changeOrderId, orgId);
+    if (!canTransitionChangeOrderStatus(changeOrder.status, "rejected")) {
+      throw new ApiError(409, `ChangeOrder ${changeOrderId} cannot be rejected from status ${changeOrder.status}`);
+    }
+    const row = await prisma.changeOrder.update({
+      where: { id: changeOrderId },
+      data: { status: "rejected", rejectedAt: new Date(), approvedAt: null },
+    });
     return toDTO(row);
   }
 
@@ -142,9 +160,10 @@ export class ChangeOrdersService {
     return toDTO(updated);
   }
 
-  private async assertExists(id: string, orgId?: string): Promise<void> {
+  private async assertExists(id: string, orgId?: string): Promise<{ status: "draft" | "approved" | "rejected" }> {
     const row = await prisma.changeOrder.findFirst({ where: { id, project: orgId ? { orgId } : undefined } });
     if (!row) throw new ApiError(404, `ChangeOrder ${id} not found`);
+    return { status: row.status as "draft" | "approved" | "rejected" };
   }
 
   private async assertDraft(id: string, orgId?: string): Promise<{ id: string; description: string }> {
@@ -155,10 +174,6 @@ export class ChangeOrdersService {
   }
 }
 
-function round2(value: number): number {
-  return Math.round(value * 100) / 100;
-}
-
 function toDTO(row: {
   id: string;
   projectId: string;
@@ -167,6 +182,11 @@ function toDTO(row: {
   description: string;
   status: string;
   amount: unknown;
+  scheduleImpactDays?: number | null;
+  approvedAt?: Date | null;
+  rejectedAt?: Date | null;
+  createdAt?: Date;
+  updatedAt?: Date;
 }): ChangeOrderDTO {
   return {
     id: row.id,
@@ -176,6 +196,11 @@ function toDTO(row: {
     description: row.description,
     status: row.status,
     amount: Number(row.amount),
+    scheduleImpactDays: row.scheduleImpactDays ?? null,
+    approvedAt: row.approvedAt?.toISOString() ?? null,
+    rejectedAt: row.rejectedAt?.toISOString() ?? null,
+    createdAt: row.createdAt?.toISOString() ?? new Date(0).toISOString(),
+    updatedAt: row.updatedAt?.toISOString() ?? new Date(0).toISOString(),
   };
 }
 

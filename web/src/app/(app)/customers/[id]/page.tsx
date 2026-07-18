@@ -19,7 +19,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
 
       <Card className="max-w-md">
         <CardHeader>
-          <CardTitle>Edit customer</CardTitle>
+        <CardTitle>Customer details</CardTitle>
         </CardHeader>
         <CardContent>
           <EditCustomerForm customer={customer} />
@@ -56,7 +56,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
       <form action={deleteCustomerAction} className="max-w-md">
         <input type="hidden" name="customerId" value={customer.id} />
         <Button type="submit" variant="destructive">
-          Delete customer
+          Remove customer
         </Button>
       </form>
     </div>

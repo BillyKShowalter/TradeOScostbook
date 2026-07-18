@@ -3,13 +3,24 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../db/client";
 import { ApiError } from "../middleware/errorHandler";
-import { requireOrgId } from "../requestContext";
+import { requireAuthContext, requireOrgId } from "../requestContext";
 import { toEstimateDTO } from "../../modules/estimate-engine/service";
+import { ActivityTimelineService } from "../../modules/intelligence/service";
 import { buildProjectIntake } from "../../modules/project-intake/service";
+import { canTransitionProjectStatus, normalizeProjectStatus, projectStatuses, siteVisitVoiceNoteStatuses } from "../../domain";
 
 // Lightweight CRUD for customers/projects. Not one of the 8 specified core
 // modules — this is plumbing required so the Estimate Engine has a projectId
 // to attach to, since estimates.project_id is not-null in the schema.
+
+const activityService = new ActivityTimelineService();
+
+function toProjectDTO<T extends { status: string }>(project: T): T & { status: ReturnType<typeof normalizeProjectStatus> } {
+  return {
+    ...project,
+    status: normalizeProjectStatus(project.status),
+  };
+}
 
 const customerSchema = z.object({
   orgId: z.string().uuid().optional(),
@@ -49,9 +60,22 @@ const projectUpdateSchema = z.object({
   customerId: z.string().uuid().optional(),
 });
 
+const siteVisitDetailsSchema = z.object({
+  arrivalAt: z.string().datetime().optional(),
+  departureAt: z.string().datetime().optional(),
+  gps: z.string().trim().optional(),
+  customerNotes: z.string().trim().optional(),
+  materialsNeeded: z.array(z.string().trim().min(1)).optional(),
+  safetyNotes: z.array(z.string().trim().min(1)).optional(),
+  punchList: z.array(z.string().trim().min(1)).optional(),
+  voiceNoteStatus: z.enum(siteVisitVoiceNoteStatuses).optional(),
+});
+
 const siteVisitSchema = z.object({
+  jobId: z.string().uuid().optional(),
   transcript: z.string().optional(),
   notes: z.string().optional(),
+  detailsJson: siteVisitDetailsSchema.optional(),
   measurementsJson: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -88,7 +112,17 @@ export const customersController = {
     );
   },
   async create(req: Request, res: Response) {
-    res.status(201).json(await prisma.customer.create({ data: { ...customerSchema.parse(req.body), orgId: requireOrgId(req) } }));
+    const auth = requireAuthContext(req);
+    const customer = await prisma.customer.create({ data: { ...customerSchema.parse(req.body), orgId: requireOrgId(req) } });
+    await activityService.record({
+      orgId: requireOrgId(req),
+      entityType: "customer",
+      entityId: customer.id,
+      eventType: "customer.created",
+      title: `Customer created: ${customer.name}`,
+      actorUserId: auth.userId,
+    });
+    res.status(201).json(customer);
   },
   async getById(req: Request, res: Response) {
     const row = await prisma.customer.findFirst({
@@ -114,10 +148,21 @@ export const customersController = {
 
 export const projectsController = {
   async list(req: Request, res: Response) {
-    res.json(await prisma.project.findMany({ where: { orgId: requireOrgId(req) }, orderBy: { createdAt: "desc" } }));
+    const rows = await prisma.project.findMany({ where: { orgId: requireOrgId(req) }, orderBy: { createdAt: "desc" } });
+    res.json(rows.map((row) => toProjectDTO(row)));
   },
   async create(req: Request, res: Response) {
-    res.status(201).json(await prisma.project.create({ data: { ...projectSchema.parse(req.body), orgId: requireOrgId(req) } }));
+    const auth = requireAuthContext(req);
+    const project = await prisma.project.create({ data: { ...projectSchema.parse(req.body), orgId: requireOrgId(req) } });
+    await activityService.record({
+      orgId: requireOrgId(req),
+      entityType: "project",
+      entityId: project.id,
+      eventType: "project.created",
+      title: `Project created: ${project.name}`,
+      actorUserId: auth.userId,
+    });
+    res.status(201).json(toProjectDTO(project));
   },
   async getById(req: Request, res: Response) {
     const row = await prisma.project.findFirst({
@@ -127,7 +172,18 @@ export const projectsController = {
         estimates: { orderBy: { version: "desc" } },
         siteVisits: { orderBy: { createdAt: "desc" } },
         projectFiles: { orderBy: { createdAt: "desc" } },
-        proposals: { orderBy: { createdAt: "desc" } },
+        proposals: { orderBy: { createdAt: "desc" }, include: { deliveries: { orderBy: { occurredAt: "desc" } } } },
+        invoices: {
+          orderBy: { createdAt: "desc" },
+          include: {
+            lineItems: { orderBy: { sortOrder: "asc" } },
+            deliveries: { orderBy: { occurredAt: "desc" } },
+          },
+        },
+        contracts: { orderBy: { createdAt: "desc" }, include: { events: { orderBy: { occurredAt: "desc" } } } },
+        changeOrders: { orderBy: { createdAt: "desc" }, include: { lineItems: { orderBy: { sortOrder: "asc" } } } },
+        tasks: { orderBy: [{ status: "asc" }, { dueDate: "asc" }, { createdAt: "desc" }] },
+        jobs: { orderBy: [{ archivedAt: "asc" }, { scheduledStart: "asc" }, { createdAt: "desc" }] },
       },
     });
     if (!row) throw new ApiError(404, `Project ${req.params.id} not found`);
@@ -135,11 +191,43 @@ export const projectsController = {
     // normalize through the same DTO mapper the estimate-engine module uses so
     // every consumer of "an estimate" sees the same numeric shape.
     res.json({
-      ...row,
+      ...toProjectDTO(row),
       title: row.name,
       projectAddress: row.siteAddress,
       estimates: row.estimates.map(toEstimateDTO),
       siteVisits: (row.siteVisits ?? []).map((visit) => ({ ...visit, confidenceScore: toNullableNumber(visit.confidenceScore) })),
+      changeOrders: (row.changeOrders ?? []).map((changeOrder) => ({
+        ...changeOrder,
+        amount: toNullableNumber(changeOrder.amount) ?? 0,
+        lineItems: (changeOrder.lineItems ?? []).map((lineItem) => ({
+          ...lineItem,
+          quantity: toNullableNumber(lineItem.quantity) ?? 0,
+          unitCost: toNullableNumber(lineItem.unitCost) ?? 0,
+          lineCost: toNullableNumber(lineItem.lineCost) ?? 0,
+        })),
+      })),
+      invoices: (row.invoices ?? []).map((invoice) => ({
+        ...invoice,
+        amount: toNullableNumber(invoice.amount) ?? 0,
+        percentComplete: toNullableNumber(invoice.percentComplete),
+        lineItems: (invoice.lineItems ?? []).map((lineItem) => ({
+          ...lineItem,
+          quantity: toNullableNumber(lineItem.quantity) ?? 0,
+          unitCost: toNullableNumber(lineItem.unitCost) ?? 0,
+          lineCost: toNullableNumber(lineItem.lineCost) ?? 0,
+        })),
+      })),
+      jobs: (row.jobs ?? []).map((job) => ({
+        id: job.id,
+        jobNumber: job.jobNumber,
+        title: job.title,
+        jobType: job.jobType,
+        status: job.status,
+        priority: job.priority,
+        scheduledStart: job.scheduledStart?.toISOString() ?? null,
+        scheduledEnd: job.scheduledEnd?.toISOString() ?? null,
+        archivedAt: job.archivedAt?.toISOString() ?? null,
+      })),
     });
   },
   async update(req: Request, res: Response) {
@@ -149,27 +237,28 @@ export const projectsController = {
     res.json(await prisma.project.update({ where: { id: req.params.id }, data: body }));
   },
   async updateStatus(req: Request, res: Response) {
+    const auth = requireAuthContext(req);
     const schema = z.object({
-      status: z.enum([
-        "lead",
-        "site_visit",
-        "proposal_draft",
-        "proposal_sent",
-        "accepted",
-        "in_production",
-        "completed",
-        "lost",
-        "estimating",
-        "proposed",
-        "won",
-        "active",
-        "complete",
-      ]),
+      status: z.enum(projectStatuses),
     });
     const { status } = schema.parse(req.body);
     const existing = await prisma.project.findFirst({ where: { id: req.params.id, orgId: requireOrgId(req) } });
     if (!existing) throw new ApiError(404, `Project ${req.params.id} not found`);
-    res.json(await prisma.project.update({ where: { id: req.params.id }, data: { status } }));
+    const currentStatus = normalizeProjectStatus(existing.status);
+    if (!canTransitionProjectStatus(currentStatus, status)) {
+      throw new ApiError(409, `Project ${req.params.id} cannot transition from ${currentStatus} to ${status}`);
+    }
+    const project = await prisma.project.update({ where: { id: req.params.id }, data: { status } });
+    await activityService.record({
+      orgId: requireOrgId(req),
+      entityType: "project",
+      entityId: project.id,
+      eventType: "project.status_changed",
+      title: `Project status changed to ${status}`,
+      actorUserId: auth.userId,
+      metadata: { previousStatus: existing.status, nextStatus: status },
+    });
+    res.json(toProjectDTO(project));
   },
 };
 
@@ -186,17 +275,24 @@ export const siteVisitsController = {
   },
 
   async create(req: Request, res: Response) {
+    const auth = requireAuthContext(req);
     const project = await prisma.project.findFirst({ where: { id: req.params.id, orgId: requireOrgId(req) } });
     if (!project) throw new ApiError(404, `Project ${req.params.id} not found`);
 
     const input = siteVisitSchema.parse(req.body);
+    if (input.jobId) {
+      const job = await prisma.job.findFirst({ where: { id: input.jobId, orgId: requireOrgId(req), projectId: project.id, archivedAt: null } });
+      if (!job) throw new ApiError(404, `Job ${input.jobId} not found`);
+    }
     const intakeResult = buildProjectIntake(buildIntakeScopeText(project.simpleScope, input.notes, input.transcript));
 
     const visit = await prisma.siteVisit.create({
       data: {
         projectId: project.id,
+        jobId: input.jobId,
         transcript: input.transcript,
         notes: input.notes,
+        detailsJson: toInputJson(input.detailsJson),
         measurementsJson: toInputJson(input.measurementsJson),
         aiQuestionsJson: toInputJson(intakeResult.followUpQuestions),
         missingInfoJson: toInputJson(toMissingInfoStrings(intakeResult.missingInformation)),
@@ -206,10 +302,21 @@ export const siteVisitsController = {
     });
 
     if (!project.jobType && intakeResult.trade) {
-      await prisma.project.update({ where: { id: project.id }, data: { jobType: intakeResult.trade, status: "site_visit" } });
-    } else if (project.status === "lead") {
-      await prisma.project.update({ where: { id: project.id }, data: { status: "site_visit" } });
+      await prisma.project.update({ where: { id: project.id }, data: { jobType: intakeResult.trade, status: "estimating" } });
+    } else if (normalizeProjectStatus(project.status) === "lead") {
+      await prisma.project.update({ where: { id: project.id }, data: { status: "estimating" } });
     }
+
+    await activityService.record({
+      orgId: requireOrgId(req),
+      entityType: "project",
+      entityId: project.id,
+      eventType: "site_visit.created",
+      title: "Site visit captured",
+      description: input.notes ?? input.transcript ?? undefined,
+      actorUserId: auth.userId,
+      metadata: { siteVisitId: visit.id, confidenceScore: toNullableNumber(visit.confidenceScore) },
+    });
 
     res.status(201).json({ ...visit, confidenceScore: toNullableNumber(visit.confidenceScore) });
   },
@@ -222,6 +329,12 @@ export const siteVisitsController = {
     if (!existing) throw new ApiError(404, `Site visit ${req.params.siteVisitId} not found`);
 
     const input = siteVisitUpdateSchema.parse(req.body);
+    if (input.jobId) {
+      const job = await prisma.job.findFirst({
+        where: { id: input.jobId, orgId: requireOrgId(req), projectId: existing.projectId, archivedAt: null },
+      });
+      if (!job) throw new ApiError(404, `Job ${input.jobId} not found`);
+    }
     const mergedMeasurements = (input.measurementsJson ?? asRecord(existing.measurementsJson) ?? undefined) as Record<string, unknown> | undefined;
     const mergedNotes = input.notes ?? existing.notes;
     const mergedTranscript = input.transcript ?? existing.transcript;
@@ -230,8 +343,10 @@ export const siteVisitsController = {
     const updated = await prisma.siteVisit.update({
       where: { id: existing.id },
       data: {
+        jobId: input.jobId ?? existing.jobId,
         transcript: mergedTranscript,
         notes: mergedNotes,
+        detailsJson: toInputJson(input.detailsJson ?? asRecord(existing.detailsJson) ?? undefined),
         measurementsJson: toInputJson(mergedMeasurements),
         aiQuestionsJson: toInputJson(intakeResult.followUpQuestions),
         missingInfoJson: toInputJson(toMissingInfoStrings(intakeResult.missingInformation)),
@@ -253,6 +368,7 @@ export const projectFilesController = {
   },
 
   async create(req: Request, res: Response) {
+    const auth = requireAuthContext(req);
     const project = await prisma.project.findFirst({ where: { id: req.params.id, orgId: requireOrgId(req) } });
     if (!project) throw new ApiError(404, `Project ${req.params.id} not found`);
 
@@ -261,6 +377,15 @@ export const projectFilesController = {
         projectId: project.id,
         ...projectFileSchema.parse(req.body),
       },
+    });
+    await activityService.record({
+      orgId: requireOrgId(req),
+      entityType: file.fileType.startsWith("image") ? "photo" : "document",
+      entityId: file.id,
+      eventType: "project_file.uploaded",
+      title: `File uploaded: ${file.fileName}`,
+      actorUserId: auth.userId,
+      metadata: { projectId: project.id, storagePath: file.storagePath, fileType: file.fileType },
     });
     res.status(201).json(file);
   },

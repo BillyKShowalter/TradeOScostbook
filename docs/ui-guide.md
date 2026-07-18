@@ -40,15 +40,17 @@ exists today; update it whenever a new reusable component or pattern is added.
   guard against that. Prefer this over writing a new `<Link className="flex items-center
   justify-between rounded-lg border …">` by hand.
 - **`LineItemRow`** (`line-item-row.tsx`) — a priced row (`description` + optional `meta` +
-  `amount` + optional trailing `action`), used for estimate and invoice line items. Same
-  truncation guarantee as `ListRowLink`, so a long line-item description can't shove the price
-  off-screen.
+  `amount` + optional trailing `action`). Same truncation guarantee as `ListRowLink`, so a long
+  line-item description can't shove the price off-screen. Currently used on the invoice detail
+  page; the Estimate Builder's line-item list has its own richer inline row (metric tiles,
+  assembly/cost-item picker, sticky pricing rail) that doesn't fit this simpler shape — don't
+  force `LineItemRow` in there.
 - **`StatusBadge`** (`status-badge.tsx`) — wraps `Badge` with `capitalize` and turns
   `snake_case` statuses into readable text (`in_progress` → `In progress`). Use this instead of
   a raw `Badge` whenever you're rendering a backend status enum.
-- **`NavLinks`** (`nav-links.tsx`) — client component (`usePathname`) for the top app nav.
-  Highlights the active section and lets the link row scroll horizontally instead of
-  overflowing the viewport if the nav ever grows past what fits on a phone-width screen.
+- **`AppNav`** (`app-nav.tsx`) — the top app nav: active-section highlighting, a responsive
+  mobile menu, and the command-palette trigger. This is the only nav component — don't add a
+  second one.
 - `MetricCard` / `SummaryMetricCard` — two intentionally distinct metric-tile styles (compact
   numeric stat vs. a labeled text summary). Don't merge them without checking both call sites;
   they read differently in context (`ProjectMetricsCard` vs. the proposal preview summary).

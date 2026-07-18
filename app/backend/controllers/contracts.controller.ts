@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import { ContractsService } from "../../modules/contracts/service";
-import { requireOrgId } from "../requestContext";
+import { requireAuthContext, requireOrgId } from "../requestContext";
 
 const service = new ContractsService();
 
@@ -24,7 +24,10 @@ export const contractsController = {
     res.json(await service.getById(req.params.id, requireOrgId(req)));
   },
   async create(req: Request, res: Response) {
-    res.status(201).json(await service.create({ ...createSchema.parse(req.body), orgId: requireOrgId(req) }));
+    const auth = requireAuthContext(req);
+    res
+      .status(201)
+      .json(await service.create({ ...createSchema.parse(req.body), orgId: requireOrgId(req), actorUserId: auth.userId, actorRole: auth.role }));
   },
   async getPdf(req: Request, res: Response) {
     const doc = await service.getPdf(req.params.id, requireOrgId(req));
@@ -34,9 +37,19 @@ export const contractsController = {
   },
   async sign(req: Request, res: Response) {
     const body = signSchema.parse(req.body);
-    res.json(await service.sign(req.params.id, { ...body, orgId: requireOrgId(req), signatureIp: req.ip }));
+    const auth = requireAuthContext(req);
+    res.json(
+      await service.sign(req.params.id, {
+        ...body,
+        orgId: requireOrgId(req),
+        actorUserId: auth.userId,
+        actorRole: auth.role,
+        signatureIp: req.ip,
+      })
+    );
   },
   async void(req: Request, res: Response) {
-    res.json(await service.void(req.params.id, requireOrgId(req)));
+    const auth = requireAuthContext(req);
+    res.json(await service.void(req.params.id, requireOrgId(req), auth.userId, auth.role));
   },
 };

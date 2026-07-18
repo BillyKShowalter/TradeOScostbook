@@ -136,10 +136,60 @@ export async function sendProposalAction(_prev: FormActionState, formData: FormD
   redirect(`/projects/${projectId}/proposals/${id}`);
 }
 
+export async function resendProposalAction(_prev: FormActionState, formData: FormData): Promise<FormActionState> {
+  const token = await getSessionToken();
+  const id = String(formData.get("proposalId") ?? "");
+  const projectId = String(formData.get("projectId") ?? "");
+
+  try {
+    await apiFetch(`/api/v1/proposals/${id}/resend`, { method: "POST", token: token ?? undefined });
+  } catch (err) {
+    return { error: err instanceof ApiClientError ? err.message : "Something went wrong." };
+  }
+
+  revalidatePath(`/projects/${projectId}/proposals/${id}`);
+  redirect(`/projects/${projectId}/proposals/${id}`);
+}
+
+export async function markProposalViewedAction(_prev: FormActionState, formData: FormData): Promise<FormActionState> {
+  const token = await getSessionToken();
+  const id = String(formData.get("proposalId") ?? "");
+  const projectId = String(formData.get("projectId") ?? "");
+  const portal = String(formData.get("portal") ?? "") === "true";
+
+  try {
+    await apiFetch(`/api/v1/proposals/${id}/mark-viewed`, { method: "POST", token: token ?? undefined });
+  } catch (err) {
+    return { error: err instanceof ApiClientError ? err.message : "Something went wrong." };
+  }
+
+  revalidatePath(`/projects/${projectId}/proposals/${id}`);
+  if (portal) {
+    redirect(`/portal/proposals/${id}`);
+  }
+  redirect(`/projects/${projectId}/proposals/${id}`);
+}
+
+export async function markProposalViewedSubmit(formData: FormData): Promise<void> {
+  const token = await getSessionToken();
+  const id = String(formData.get("proposalId") ?? "");
+  const projectId = String(formData.get("projectId") ?? "");
+  const portal = String(formData.get("portal") ?? "") === "true";
+
+  await apiFetch(`/api/v1/proposals/${id}/mark-viewed`, { method: "POST", token: token ?? undefined });
+
+  revalidatePath(`/projects/${projectId}/proposals/${id}`);
+  if (portal) {
+    redirect(`/portal/proposals/${id}`);
+  }
+  redirect(`/projects/${projectId}/proposals/${id}`);
+}
+
 export async function acceptProposalAction(_prev: FormActionState, formData: FormData): Promise<FormActionState> {
   const token = await getSessionToken();
   const id = String(formData.get("proposalId") ?? "");
   const projectId = String(formData.get("projectId") ?? "");
+  const portal = String(formData.get("portal") ?? "") === "true";
 
   try {
     await apiFetch(`/api/v1/proposals/${id}/accept`, { method: "POST", token: token ?? undefined });
@@ -148,6 +198,24 @@ export async function acceptProposalAction(_prev: FormActionState, formData: For
   }
 
   revalidatePath(`/projects/${projectId}/proposals/${id}`);
+  if (portal) {
+    redirect(`/portal/projects/${projectId}`);
+  }
+  redirect(`/projects/${projectId}/proposals/${id}`);
+}
+
+export async function acceptProposalSubmit(formData: FormData): Promise<void> {
+  const token = await getSessionToken();
+  const id = String(formData.get("proposalId") ?? "");
+  const projectId = String(formData.get("projectId") ?? "");
+  const portal = String(formData.get("portal") ?? "") === "true";
+
+  await apiFetch(`/api/v1/proposals/${id}/accept`, { method: "POST", token: token ?? undefined });
+
+  revalidatePath(`/projects/${projectId}/proposals/${id}`);
+  if (portal) {
+    redirect(`/portal/projects/${projectId}`);
+  }
   redirect(`/projects/${projectId}/proposals/${id}`);
 }
 
@@ -164,4 +232,23 @@ export async function rejectProposalAction(_prev: FormActionState, formData: For
 
   revalidatePath(`/projects/${projectId}/proposals/${id}`);
   redirect(`/projects/${projectId}/proposals/${id}`);
+}
+
+export async function duplicateProposalAction(_prev: FormActionState, formData: FormData): Promise<FormActionState> {
+  const token = await getSessionToken();
+  const id = String(formData.get("proposalId") ?? "");
+  const projectId = String(formData.get("projectId") ?? "");
+
+  let proposal: Proposal;
+  try {
+    proposal = await apiFetch<Proposal>(`/api/v1/proposals/${id}/duplicate`, {
+      method: "POST",
+      token: token ?? undefined,
+    });
+  } catch (err) {
+    return { error: err instanceof ApiClientError ? err.message : "Something went wrong." };
+  }
+
+  revalidatePath(`/projects/${projectId}`);
+  redirect(`/projects/${projectId}/proposals/${proposal.id}`);
 }

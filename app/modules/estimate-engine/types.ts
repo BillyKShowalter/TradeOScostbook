@@ -1,4 +1,5 @@
 import { PricingMode } from "./formulas";
+import type { EstimateStatus } from "../../domain";
 
 export interface CreateEstimateInput {
   orgId?: string;
@@ -13,6 +14,7 @@ export interface AddLineItemInput {
   assemblyId?: string;
   quantity: number;
   description?: string;
+  sourceKey?: string;
 }
 
 export interface SetPricingModeInput {
@@ -28,7 +30,7 @@ export interface EstimateDTO {
   orgId: string | null;
   projectId: string;
   version: number;
-  status: string;
+  status: EstimateStatus;
   overheadPct: number;
   profitPct: number;
   targetMarginPct: number | null;
@@ -47,4 +49,5 @@ export interface EstimateLineItemDTO {
   unitCost: number;
   lineCost: number;
   sortOrder: number;
+  sourceKey: string | null;
 }

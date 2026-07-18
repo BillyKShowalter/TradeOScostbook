@@ -1,3 +1,5 @@
+// Legacy one-off document generator. It predates the RC1 source-of-truth docs
+// under docs/*.md and should not be used for current implementation claims.
 const fs = require("fs");
 const {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,

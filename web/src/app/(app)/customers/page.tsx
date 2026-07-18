@@ -11,20 +11,23 @@ export default async function CustomersPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Customers</h1>
-        <Link href="/customers/new" className={buttonVariants()}>
-          New customer
-        </Link>
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-2xl font-semibold">Customers</h1>
+          <Link href="/customers/new" className={buttonVariants()}>
+            Add customer
+          </Link>
+        </div>
+        <p className="text-sm text-muted-foreground">Keep the people and companies you work for in one place so estimates and invoices stay tied to the right job.</p>
       </div>
 
       {customers.length === 0 ? (
         <EmptyState
-          title="No customers yet."
-          description="Add your first customer to start tracking projects and estimates for them."
+          title="No customers yet"
+          description="Add the first homeowner, builder, or property manager so future projects, proposals, and invoices stay tied to the right account."
           action={
-            <Link href="/customers/new" className={buttonVariants({ variant: "outline" })}>
-              New customer
+            <Link href="/customers/new" className={buttonVariants()}>
+              Add first customer
             </Link>
           }
         />

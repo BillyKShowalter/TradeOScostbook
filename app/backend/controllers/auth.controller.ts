@@ -3,6 +3,7 @@ import { z } from "zod";
 import { AuthService } from "../../modules/auth/service";
 import { verifyAnyAuthToken } from "../auth/jwt";
 import { ApiError } from "../middleware/errorHandler";
+import { requireAuthContext, requireOrgId, requireRoles } from "../requestContext";
 
 const service = new AuthService();
 
@@ -31,6 +32,40 @@ const bootstrapSchema = z
   })
   .strict();
 
+const refreshSchema = z
+  .object({
+    refreshToken: z.string().min(1).max(512),
+  })
+  .strict();
+
+const requestResetSchema = z
+  .object({
+    email: z.string().trim().email().max(320),
+  })
+  .strict();
+
+const resetPasswordSchema = z
+  .object({
+    token: z.string().min(1).max(512),
+    password: z.string().min(8).max(200),
+  })
+  .strict();
+
+const inviteSchema = z
+  .object({
+    email: z.string().trim().email().max(320),
+    role: z.enum(["dispatcher", "technician"]),
+  })
+  .strict();
+
+const acceptInviteSchema = z
+  .object({
+    token: z.string().min(1).max(512),
+    password: z.string().min(8).max(200),
+    fullName: z.string().trim().min(1).max(160).optional(),
+  })
+  .strict();
+
 export const authController = {
   async signup(req: Request, res: Response) {
     const input = signupSchema.parse(req.body);
@@ -39,6 +74,9 @@ export const authController = {
   async login(req: Request, res: Response) {
     const input = loginSchema.parse(req.body);
     res.json(await service.login(input));
+  },
+  async refresh(req: Request, res: Response) {
+    res.json(await service.refresh(refreshSchema.parse(req.body)));
   },
   async bootstrap(req: Request, res: Response) {
     const input = bootstrapSchema.parse(req.body);
@@ -57,5 +95,30 @@ export const authController = {
         email: claims.email,
       })
     );
+  },
+  async requestPasswordReset(req: Request, res: Response) {
+    res.json(await service.requestPasswordReset(requestResetSchema.parse(req.body)));
+  },
+  async resetPassword(req: Request, res: Response) {
+    res.json(await service.resetPassword(resetPasswordSchema.parse(req.body)));
+  },
+  async invite(req: Request, res: Response) {
+    const auth = requireRoles(req, ["owner"]);
+    const input = inviteSchema.parse(req.body);
+    res.status(201).json(
+      await service.inviteTeamMember({
+        orgId: requireOrgId(req),
+        invitedByUserId: auth.userId,
+        email: input.email,
+        role: input.role,
+      })
+    );
+  },
+  async acceptInvite(req: Request, res: Response) {
+    res.status(201).json(await service.acceptInvite(acceptInviteSchema.parse(req.body)));
+  },
+  async totpStatus(req: Request, res: Response) {
+    const auth = requireAuthContext(req);
+    res.json(await service.getTotpSetupStatus(auth.userId));
   },
 };

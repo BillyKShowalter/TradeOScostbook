@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { createServer } from "./server";
 import { startSupplierPriceSyncScheduler } from "../modules/supplier-integration/scheduler";
+import { logError, logInfo } from "./logging";
 
 // Process entrypoint for running this as a long-lived server (npm start /
 // npm run dev / the run skill's driver.mjs). Deliberately separate from
@@ -11,8 +12,11 @@ import { startSupplierPriceSyncScheduler } from "../modules/supplier-integration
 const app = createServer();
 const port = process.env.PORT ? Number(process.env.PORT) : 4000;
 app.listen(port, () => {
-  // eslint-disable-next-line no-console
-  console.log(`TradeOS Cost Book API listening on port ${port}`);
+  logInfo("server.started", {
+    port,
+    environment: process.env.NODE_ENV ?? "development",
+    trustProxy: process.env.TRUST_PROXY ?? "false",
+  });
 });
 
 // No-ops unless SUPPLIER_PRICE_SYNC_CRON_SCHEDULE and SUPPLIER_PRICE_SYNC_JOBS
@@ -22,15 +26,21 @@ app.listen(port, () => {
 const supplierPriceSyncTask = startSupplierPriceSyncScheduler({
   onTick: (outcomes) => {
     const failed = outcomes.filter((outcome) => outcome.error);
-    // eslint-disable-next-line no-console
-    console.log(`[supplier-price-sync] ran ${outcomes.length} job(s), ${failed.length} failed`);
+    logInfo("supplier-price-sync.completed", {
+      jobsRun: outcomes.length,
+      failedJobs: failed.length,
+    });
     for (const outcome of failed) {
-      // eslint-disable-next-line no-console
-      console.error(`[supplier-price-sync] ${outcome.spec.label ?? outcome.spec.supplierId} failed: ${outcome.error}`);
+      logError("supplier-price-sync.job-failed", {
+        supplierId: outcome.spec.supplierId,
+        label: outcome.spec.label ?? null,
+        error: outcome.error,
+      });
     }
   },
 });
 if (supplierPriceSyncTask) {
-  // eslint-disable-next-line no-console
-  console.log(`[supplier-price-sync] scheduler started (${process.env.SUPPLIER_PRICE_SYNC_CRON_SCHEDULE})`);
+  logInfo("supplier-price-sync.scheduler-started", {
+    schedule: process.env.SUPPLIER_PRICE_SYNC_CRON_SCHEDULE,
+  });
 }

@@ -14,11 +14,15 @@
     "prisma:deploy": "prisma migrate deploy",
     "db:deploy": "bash scripts/deploy-migrations.sh",
     "db:provision-role": "bash scripts/provision-app-role.sh",
-    "db:seed": "ts-node db/seed/seed.ts",
+    "db:seed": "prisma db seed",
     "jobs:supplier-price-sync": "ts-node scripts/run-supplier-price-sync.ts",
+    "demo:trainingless-estimate": "ts-node modules/trainingless-estimate-demo/demo.ts",
     "test": "jest --runInBand",
     "test:integration": "bash scripts/test-integration-db.sh",
     "lint": "tsc --noEmit"
+  },
+  "prisma": {
+    "seed": "ts-node db/seed/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",

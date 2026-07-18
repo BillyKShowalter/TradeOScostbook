@@ -27,19 +27,5 @@ export function requireAuth(req: AuthedRequest, _res: Response, next: NextFuncti
     return;
   }
 
-  if (process.env.AUTH_ALLOW_HEADER_ORG_ID === "true") {
-    const headerOrgId = req.header("x-org-id");
-    if (headerOrgId) {
-      req.auth = {
-        userId: "dev-header-user",
-        orgId: headerOrgId,
-        role: "owner",
-      };
-      req.orgId = headerOrgId;
-      next();
-      return;
-    }
-  }
-
   throw new ApiError(401, "Missing bearer token");
 }

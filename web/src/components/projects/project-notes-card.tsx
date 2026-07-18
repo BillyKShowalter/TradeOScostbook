@@ -12,8 +12,7 @@ export function ProjectNotesCard({ title, notes }: ProjectNotesCardProps) {
       <CardHeader>
         <CardTitle>{title}</CardTitle>
       </CardHeader>
-      <CardContent>{notes ? <p className="whitespace-pre-wrap text-sm text-muted-foreground">{notes}</p> : <EmptyState title="No notes saved." description="Add notes to keep the project workspace complete." />}</CardContent>
+      <CardContent>{notes ? <p className="whitespace-pre-wrap text-sm text-muted-foreground">{notes}</p> : <EmptyState title="No notes saved yet." description="Add a short job summary so the project stays easy to scan." />}</CardContent>
     </Card>
   );
 }
-

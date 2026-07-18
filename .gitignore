@@ -11,3 +11,4 @@ app/.claude/skills/run-tradeos-costbook-api/screenshots/
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
 .idea/
+.codex/

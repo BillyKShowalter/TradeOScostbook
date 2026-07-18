@@ -14,7 +14,7 @@ export function AIMissingInformationPanel({ items }: AIMissingInformationPanelPr
       </CardHeader>
       <CardContent className="space-y-3">
         {items.length === 0 ? (
-          <EmptyState title="Nothing critical missing." description="The latest intake pass is complete enough for the current MVP workflow." />
+          <EmptyState title="Nothing critical missing." description="The latest intake pass is complete enough to prepare reviewed estimate suggestions." />
         ) : (
           items.map((item, index) => <AIQuestionCard key={item} question={item} index={index + 1} />)
         )}
@@ -22,4 +22,3 @@ export function AIMissingInformationPanel({ items }: AIMissingInformationPanelPr
     </Card>
   );
 }
-

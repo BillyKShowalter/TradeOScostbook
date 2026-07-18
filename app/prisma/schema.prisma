@@ -39,10 +39,135 @@ model Organization {
   costItems      CostItem[]
   assemblies     Assembly[]
   customers      Customer[]
+  serviceAddresses ServiceAddress[]
+  customerEquipment CustomerEquipment[]
   projects       Project[]
+  jobs           Job[]
+  jobAssignments JobAssignment[]
   estimates      Estimate[]
+  serviceAgreements ServiceAgreement[]
+  payments       Payment[]
+  settings       OrganizationSettings?
+  brandProfile   BrandProfile?
+  brandAssets    BrandAsset[]
+  brandDocumentSettings BrandDocumentSettings?
+  activityEvents ActivityEvent[]
+  proposalDeliveries ProposalDelivery[]
+  invoiceDeliveries InvoiceDelivery[]
+  contractEvents  ContractEvent[]
+  notifications  Notification[]
+  attachments    Attachment[]
+  comments       Comment[]
+  tags           Tag[]
+  tagAssignments TagAssignment[]
+  savedViews     SavedView[]
+  recentItems    RecentItem[]
+  featureFlags   FeatureFlag[]
+  invites        OrganizationInvite[]
+  refreshTokens  AuthRefreshToken[]
 
   @@map("organizations")
+}
+
+model OrganizationSettings {
+  id           String   @id @default(uuid())
+  orgId        String   @unique @map("org_id")
+  settingsJson Json     @map("settings_json")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@map("organization_settings")
+}
+
+model BrandProfile {
+  id                   String   @id @default(uuid())
+  organizationId       String   @unique @map("organization_id")
+  companyDisplayName   String?  @map("company_display_name")
+  tagline              String?
+  primaryColor         String?  @map("primary_color")
+  secondaryColor       String?  @map("secondary_color")
+  accentColor          String?  @map("accent_color")
+  logoUrl              String?  @map("logo_url")
+  logoDarkUrl          String?  @map("logo_dark_url")
+  logoLightUrl         String?  @map("logo_light_url")
+  iconUrl              String?  @map("icon_url")
+  watermarkUrl         String?  @map("watermark_url")
+  coverImageUrl        String?  @map("cover_image_url")
+  typographyStyle      String?  @map("typography_style")
+  defaultDocumentTheme String?  @map("default_document_theme")
+  proposalStyle        String?  @map("proposal_style")
+  invoiceStyle         String?  @map("invoice_style")
+  contractStyle        String?  @map("contract_style")
+  emailSignature       String?  @map("email_signature")
+  websiteUrl           String?  @map("website_url")
+  phone                String?
+  email                String?
+  addressLine1         String?  @map("address_line_1")
+  addressLine2         String?  @map("address_line_2")
+  city                 String?
+  state                String?
+  postalCode           String?  @map("postal_code")
+  licenseNumber        String?  @map("license_number")
+  insuranceSummary     String?  @map("insurance_summary")
+  bondingSummary       String?  @map("bonding_summary")
+  yearsInBusiness      Int?     @map("years_in_business")
+  serviceAreasJson     Json?    @map("service_areas_json")
+  certificationsJson   Json?    @map("certifications_json")
+  socialLinksJson      Json?    @map("social_links_json")
+  reviewLinksJson      Json?    @map("review_links_json")
+  financingLinksJson   Json?    @map("financing_links_json")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @default(now()) @updatedAt @map("updated_at")
+
+  organization     Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assets           BrandAsset[]
+  documentSettings BrandDocumentSettings?
+
+  @@map("brand_profiles")
+}
+
+model BrandAsset {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  brandProfileId String   @map("brand_profile_id")
+  type           String
+  label          String?
+  url            String
+  mimeType       String?  @map("mime_type")
+  sizeBytes      Int?     @map("size_bytes")
+  width          Int?
+  height         Int?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  brandProfile BrandProfile @relation(fields: [brandProfileId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, type])
+  @@index([brandProfileId])
+  @@map("brand_assets")
+}
+
+model BrandDocumentSettings {
+  id                  String   @id @default(uuid())
+  organizationId      String   @unique @map("organization_id")
+  brandProfileId      String   @unique @map("brand_profile_id")
+  showPoweredByTradeOS Boolean @default(false) @map("show_powered_by_tradeos")
+  showLicenseNumber   Boolean  @default(true) @map("show_license_number")
+  showInsuranceSummary Boolean @default(true) @map("show_insurance_summary")
+  showGoogleRating    Boolean  @default(false) @map("show_google_rating")
+  showSocialLinks     Boolean  @default(true) @map("show_social_links")
+  defaultCoverMode    String?  @map("default_cover_mode")
+  defaultHeaderStyle  String?  @map("default_header_style")
+  defaultFooterStyle  String?  @map("default_footer_style")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  brandProfile BrandProfile @relation(fields: [brandProfileId], references: [id], onDelete: Cascade)
+
+  @@map("brand_document_settings")
 }
 
 model AppUser {
@@ -57,6 +182,24 @@ model AppUser {
 
   memberships  OrganizationMembership[]
   reviewedSupplierPriceUpdates SupplierPriceUpdate[]
+  activityEvents ActivityEvent[]
+  proposalDeliveries ProposalDelivery[]
+  invoiceDeliveries InvoiceDelivery[]
+  contractEvents  ContractEvent[]
+  notifications Notification[]
+  attachments   Attachment[]
+  comments      Comment[]
+  savedViews    SavedView[]
+  recentItems   RecentItem[]
+  tagAssignments TagAssignment[]
+  passwordResetTokens PasswordResetToken[]
+  refreshTokens AuthRefreshToken[]
+  totpCredential UserTotpCredential?
+  sentInvites   OrganizationInvite[] @relation("InviteSender")
+  createdJobs   Job[]                @relation("JobCreatedBy")
+  completedJobs Job[]                @relation("JobCompletedBy")
+  assignedJobs  JobAssignment[]      @relation("JobAssignmentUser")
+  assignedJobActions JobAssignment[] @relation("JobAssignedBy")
 
   @@map("users")
 }
@@ -395,8 +538,64 @@ model Customer {
 
   organization Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
   projects     Project[]
+  serviceAddresses ServiceAddress[]
+  equipmentAssets CustomerEquipment[]
+  serviceAgreements ServiceAgreement[]
+  jobs          Job[]
 
   @@map("customers")
+}
+
+model ServiceAddress {
+  id           String    @id @default(uuid())
+  orgId        String    @map("org_id")
+  customerId   String    @map("customer_id")
+  label        String?
+  addressLine1 String    @map("address_line_1")
+  addressLine2 String?   @map("address_line_2")
+  city         String
+  state        String
+  postalCode   String    @map("postal_code")
+  country      String?   @default("US")
+  isPrimary    Boolean   @default(false) @map("is_primary")
+  deletedAt    DateTime? @map("deleted_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  organization Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  customer     Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  equipmentAssets CustomerEquipment[]
+  serviceAgreements ServiceAgreement[]
+  jobs         Job[]
+
+  @@index([orgId, customerId])
+  @@map("service_addresses")
+}
+
+model CustomerEquipment {
+  id               String    @id @default(uuid())
+  orgId            String    @map("org_id")
+  customerId       String    @map("customer_id")
+  serviceAddressId String?   @map("service_address_id")
+  name             String
+  manufacturer     String?
+  model            String?
+  serialNumber     String?   @map("serial_number")
+  installedAt      DateTime? @map("installed_at")
+  status           String    @default("active")
+  notes            String?
+  deletedAt        DateTime? @map("deleted_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  organization   Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  customer       Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  serviceAddress ServiceAddress? @relation(fields: [serviceAddressId], references: [id], onDelete: SetNull)
+  jobs           JobEquipment[]
+
+  @@index([orgId, customerId])
+  @@index([serviceAddressId])
+  @@map("customer_equipment")
 }
 
 model Project {
@@ -422,6 +621,9 @@ model Project {
   contracts    Contract[]
   siteVisits   SiteVisit[]
   projectFiles ProjectFile[]
+  tasks        ProjectTask[]
+  jobs         Job[]
+  serviceAgreements ServiceAgreement[]
 
   @@index([orgId])
   @@index([customerId])
@@ -464,12 +666,14 @@ model EstimateLineItem {
   unitCost      Decimal  @map("unit_cost") @db.Decimal(12, 4)
   lineCost      Decimal  @map("line_cost") @db.Decimal(14, 2)
   sortOrder     Int      @default(0) @map("sort_order")
+  sourceKey     String?  @map("source_key")
   createdAt     DateTime @default(now()) @map("created_at")
 
   estimate Estimate  @relation(fields: [estimateId], references: [id], onDelete: Cascade)
   costItem CostItem? @relation(fields: [costItemId], references: [id], onDelete: SetNull)
   assembly Assembly? @relation(fields: [assemblyId], references: [id], onDelete: SetNull)
 
+  @@unique([estimateId, sourceKey])
   @@index([estimateId])
   @@map("estimate_line_items")
 }
@@ -482,6 +686,9 @@ model ChangeOrder {
   description  String
   status       String   @default("draft")
   amount       Decimal  @default(0) @db.Decimal(14, 2)
+  scheduleImpactDays Int? @map("schedule_impact_days")
+  approvedAt   DateTime? @map("approved_at")
+  rejectedAt   DateTime? @map("rejected_at")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
 
@@ -537,6 +744,7 @@ model Proposal {
   estimate  Estimate?  @relation(fields: [estimateId], references: [id], onDelete: SetNull)
   invoices  Invoice[]
   contracts Contract[]
+  deliveries ProposalDelivery[]
 
   @@index([projectId])
   @@index([estimateId])
@@ -546,8 +754,10 @@ model Proposal {
 model SiteVisit {
   id               String   @id @default(uuid())
   projectId        String   @map("project_id")
+  jobId            String?  @map("job_id")
   transcript       String?
   notes            String?
+  detailsJson      Json?    @map("details_json")
   measurementsJson Json?    @map("measurements_json")
   aiQuestionsJson  Json?    @map("ai_questions_json")
   missingInfoJson  Json?    @map("missing_info_json")
@@ -557,9 +767,120 @@ model SiteVisit {
   updatedAt        DateTime @default(now()) @updatedAt @map("updated_at")
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  job     Job?    @relation(fields: [jobId], references: [id], onDelete: SetNull)
 
   @@index([projectId, createdAt])
+  @@index([jobId, createdAt])
   @@map("site_visits")
+}
+
+model ProjectTask {
+  id          String    @id @default(uuid())
+  projectId   String    @map("project_id")
+  jobId       String?   @map("job_id")
+  title       String
+  status      String    @default("todo")
+  assignedTo  String?   @map("assigned_to")
+  dueDate     DateTime? @map("due_date")
+  priority    String    @default("medium")
+  notes       String?
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  job     Job?    @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, status])
+  @@index([projectId, dueDate])
+  @@index([jobId, status])
+  @@map("project_tasks")
+}
+
+model Job {
+  id                       String   @id @default(uuid())
+  orgId                    String   @map("org_id")
+  projectId                String   @map("project_id")
+  customerId               String   @map("customer_id")
+  serviceAddressId         String   @map("service_address_id")
+  jobNumber                String   @map("job_number")
+  title                    String
+  description              String   @default("")
+  jobType                  String   @map("job_type")
+  status                   String   @default("unscheduled")
+  priority                 String   @default("medium")
+  scheduledStart           DateTime? @map("scheduled_start")
+  scheduledEnd             DateTime? @map("scheduled_end")
+  arrivalWindowStart       DateTime? @map("arrival_window_start")
+  arrivalWindowEnd         DateTime? @map("arrival_window_end")
+  estimatedDurationMinutes Int?     @map("estimated_duration_minutes")
+  actualStart              DateTime? @map("actual_start")
+  actualEnd                DateTime? @map("actual_end")
+  completedAt              DateTime? @map("completed_at")
+  completedById            String?   @map("completed_by_id")
+  readyForInvoiceAt        DateTime? @map("ready_for_invoice_at")
+  createdById              String    @map("created_by_id")
+  createdAt                DateTime  @default(now()) @map("created_at")
+  updatedAt                DateTime  @default(now()) @updatedAt @map("updated_at")
+  archivedAt               DateTime? @map("archived_at")
+
+  organization   Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  project        Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  customer       Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  serviceAddress ServiceAddress @relation(fields: [serviceAddressId], references: [id], onDelete: Cascade)
+  createdBy      AppUser        @relation("JobCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  completedBy    AppUser?       @relation("JobCompletedBy", fields: [completedById], references: [id], onDelete: SetNull)
+  assignments    JobAssignment[]
+  equipmentLinks JobEquipment[]
+  tasks          ProjectTask[]
+  siteVisits     SiteVisit[]
+
+  @@unique([orgId, jobNumber])
+  @@index([orgId, status])
+  @@index([projectId])
+  @@index([customerId])
+  @@index([serviceAddressId])
+  @@index([scheduledStart])
+  @@index([orgId, archivedAt])
+  @@map("jobs")
+}
+
+model JobAssignment {
+  id             String   @id @default(uuid())
+  orgId          String   @map("org_id")
+  jobId          String   @map("job_id")
+  userId         String   @map("user_id")
+  assignmentRole String   @map("assignment_role")
+  isLead         Boolean  @default(false) @map("is_lead")
+  assignedAt     DateTime @default(now()) @map("assigned_at")
+  assignedById   String   @map("assigned_by_id")
+  acceptedAt     DateTime? @map("accepted_at")
+  declinedAt     DateTime? @map("declined_at")
+  removedAt      DateTime? @map("removed_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  job          Job          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user         AppUser      @relation("JobAssignmentUser", fields: [userId], references: [id], onDelete: Restrict)
+  assignedBy   AppUser      @relation("JobAssignedBy", fields: [assignedById], references: [id], onDelete: Restrict)
+
+  @@index([orgId, jobId])
+  @@index([orgId, userId, removedAt])
+  @@map("job_assignments")
+}
+
+model JobEquipment {
+  jobId       String   @map("job_id")
+  equipmentId String   @map("equipment_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  job       Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  equipment CustomerEquipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  @@id([jobId, equipmentId])
+  @@index([equipmentId])
+  @@map("job_equipment")
 }
 
 model ProjectFile {
@@ -597,11 +918,126 @@ model Invoice {
   estimate  Estimate?         @relation(fields: [estimateId], references: [id], onDelete: SetNull)
   proposal  Proposal?         @relation(fields: [proposalId], references: [id], onDelete: SetNull)
   lineItems InvoiceLineItem[]
+  payments  Payment[]
+  deliveries InvoiceDelivery[]
 
   @@unique([projectId, invoiceNumber])
   @@index([estimateId])
   @@index([proposalId])
   @@map("invoices")
+}
+
+model Payment {
+  id             String    @id @default(uuid())
+  orgId          String    @map("org_id")
+  invoiceId      String    @map("invoice_id")
+  amount         Decimal   @db.Decimal(14, 2)
+  paymentDate    DateTime  @map("payment_date")
+  method         String
+  status         String    @default("recorded")
+  reference      String?
+  notes          String?
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  invoice      Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, invoiceId])
+  @@map("payments")
+}
+
+model ServiceAgreement {
+  id               String    @id @default(uuid())
+  orgId            String    @map("org_id")
+  customerId       String    @map("customer_id")
+  serviceAddressId String?   @map("service_address_id")
+  projectId        String?   @map("project_id")
+  name             String
+  status           String    @default("draft")
+  startDate        DateTime? @map("start_date")
+  endDate          DateTime? @map("end_date")
+  billingCadence   String?   @map("billing_cadence")
+  amount           Decimal?  @db.Decimal(14, 2)
+  terms            String?
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  organization   Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  customer       Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  serviceAddress ServiceAddress? @relation(fields: [serviceAddressId], references: [id], onDelete: SetNull)
+  project        Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, customerId])
+  @@index([projectId])
+  @@map("service_agreements")
+}
+
+model OrganizationInvite {
+  id              String    @id @default(uuid())
+  orgId           String    @map("org_id")
+  email           String
+  role            String
+  tokenHash       String    @unique @map("token_hash")
+  invitedByUserId String    @map("invited_by_user_id")
+  expiresAt       DateTime  @map("expires_at")
+  acceptedAt      DateTime? @map("accepted_at")
+  status          String    @default("pending")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  invitedBy    AppUser      @relation("InviteSender", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, email, status])
+  @@map("organization_invites")
+}
+
+model AuthRefreshToken {
+  id             String    @id @default(uuid())
+  orgId          String    @map("org_id")
+  userId         String    @map("user_id")
+  membershipId   String    @map("membership_id")
+  tokenHash      String    @unique @map("token_hash")
+  expiresAt      DateTime  @map("expires_at")
+  lastUsedAt     DateTime? @map("last_used_at")
+  revokedAt      DateTime? @map("revoked_at")
+  replacedById   String?   @map("replaced_by_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user         AppUser      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, orgId])
+  @@index([membershipId])
+  @@map("auth_refresh_tokens")
+}
+
+model PasswordResetToken {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at")
+  consumedAt DateTime? @map("consumed_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user AppUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("password_reset_tokens")
+}
+
+model UserTotpCredential {
+  id              String    @id @default(uuid())
+  userId          String    @unique @map("user_id")
+  secretEncrypted String    @map("secret_encrypted")
+  enabledAt       DateTime? @map("enabled_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  user AppUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_totp_credentials")
 }
 
 model InvoiceLineItem {
@@ -637,8 +1073,265 @@ model Contract {
 
   project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  events   ContractEvent[]
 
   @@index([projectId])
   @@index([proposalId])
   @@map("contracts")
+}
+
+model ProposalDelivery {
+  id             String   @id @default(uuid())
+  orgId          String   @map("org_id")
+  proposalId     String   @map("proposal_id")
+  eventType      String   @map("event_type")
+  deliveryChannel String  @default("app") @map("delivery_channel")
+  recipientEmail String?  @map("recipient_email")
+  actorUserId    String?  @map("actor_user_id")
+  metadataJson   Json?    @map("metadata_json")
+  occurredAt     DateTime @default(now()) @map("occurred_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  proposal     Proposal     @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  actorUser    AppUser?     @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, proposalId, occurredAt])
+  @@index([orgId, eventType, occurredAt])
+  @@map("proposal_deliveries")
+}
+
+model InvoiceDelivery {
+  id              String   @id @default(uuid())
+  orgId           String   @map("org_id")
+  invoiceId       String   @map("invoice_id")
+  eventType       String   @map("event_type")
+  deliveryChannel String   @default("app") @map("delivery_channel")
+  recipientEmail  String?  @map("recipient_email")
+  actorUserId     String?  @map("actor_user_id")
+  metadataJson    Json?    @map("metadata_json")
+  occurredAt      DateTime @default(now()) @map("occurred_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  invoice      Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  actorUser    AppUser?     @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, invoiceId, occurredAt])
+  @@index([orgId, eventType, occurredAt])
+  @@map("invoice_deliveries")
+}
+
+model ContractEvent {
+  id              String   @id @default(uuid())
+  orgId           String   @map("org_id")
+  contractId      String   @map("contract_id")
+  eventType       String   @map("event_type")
+  actorUserId     String?  @map("actor_user_id")
+  recipientEmail  String?  @map("recipient_email")
+  metadataJson    Json?    @map("metadata_json")
+  occurredAt      DateTime @default(now()) @map("occurred_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  contract     Contract     @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  actorUser    AppUser?     @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, contractId, occurredAt])
+  @@index([orgId, eventType, occurredAt])
+  @@map("contract_events")
+}
+
+model ActivityEvent {
+  id           String   @id @default(uuid())
+  orgId        String   @map("org_id")
+  entityType   String   @map("entity_type")
+  entityId     String   @map("entity_id")
+  eventType    String   @map("event_type")
+  title        String
+  description  String?
+  actorUserId  String?  @map("actor_user_id")
+  metadataJson Json?    @map("metadata_json")
+  occurredAt   DateTime @default(now()) @map("occurred_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  actorUser    AppUser?     @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  notifications Notification[]
+
+  @@index([orgId, entityType, entityId, occurredAt])
+  @@index([orgId, eventType, occurredAt])
+  @@map("activity_events")
+}
+
+model Notification {
+  id              String    @id @default(uuid())
+  orgId           String    @map("org_id")
+  entityType      String    @map("entity_type")
+  entityId        String    @map("entity_id")
+  category        String
+  title           String
+  body            String
+  priority        String    @default("medium")
+  actionUrl       String?   @map("action_url")
+  activityEventId String?   @map("activity_event_id")
+  createdByUserId String?   @map("created_by_user_id")
+  readAt          DateTime? @map("read_at")
+  archivedAt      DateTime? @map("archived_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  activityEvent ActivityEvent? @relation(fields: [activityEventId], references: [id], onDelete: SetNull)
+  createdByUser AppUser? @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, createdAt])
+  @@index([orgId, readAt, archivedAt])
+  @@index([orgId, entityType, entityId])
+  @@map("notifications")
+}
+
+model Attachment {
+  id               String   @id @default(uuid())
+  orgId            String   @map("org_id")
+  entityType       String   @map("entity_type")
+  entityId         String   @map("entity_id")
+  kind             String
+  fileName         String   @map("file_name")
+  mimeType         String?  @map("mime_type")
+  fileUrl          String   @map("file_url")
+  previewUrl       String?  @map("preview_url")
+  storagePath      String?  @map("storage_path")
+  sizeBytes        Int?     @map("size_bytes")
+  durationSeconds  Int?     @map("duration_seconds")
+  metadataJson     Json?    @map("metadata_json")
+  uploadedByUserId String?  @map("uploaded_by_user_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  uploadedByUser AppUser? @relation(fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, entityType, entityId, createdAt])
+  @@index([orgId, kind, createdAt])
+  @@map("attachments")
+}
+
+model Comment {
+  id              String    @id @default(uuid())
+  orgId           String    @map("org_id")
+  entityType      String    @map("entity_type")
+  entityId        String    @map("entity_id")
+  parentCommentId String?   @map("parent_comment_id")
+  body            String
+  authorUserId    String?   @map("author_user_id")
+  mentionsJson    Json?     @map("mentions_json")
+  reactionsJson   Json?     @map("reactions_json")
+  resolvedAt      DateTime? @map("resolved_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  parentComment Comment? @relation("CommentThread", fields: [parentCommentId], references: [id], onDelete: SetNull)
+  replies       Comment[] @relation("CommentThread")
+  authorUser    AppUser? @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, entityType, entityId, createdAt])
+  @@index([orgId, parentCommentId])
+  @@map("comments")
+}
+
+model Tag {
+  id          String   @id @default(uuid())
+  orgId       String   @map("org_id")
+  name        String
+  slug        String
+  color       String?
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  assignments  TagAssignment[]
+
+  @@unique([orgId, slug])
+  @@index([orgId, name])
+  @@map("tags")
+}
+
+model TagAssignment {
+  id               String   @id @default(uuid())
+  orgId            String   @map("org_id")
+  tagId            String   @map("tag_id")
+  entityType       String   @map("entity_type")
+  entityId         String   @map("entity_id")
+  assignedByUserId String?  @map("assigned_by_user_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  tag          Tag          @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  assignedByUser AppUser?   @relation(fields: [assignedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([orgId, tagId, entityType, entityId])
+  @@index([orgId, entityType, entityId])
+  @@map("tag_assignments")
+}
+
+model SavedView {
+  id              String   @id @default(uuid())
+  orgId           String   @map("org_id")
+  entityType      String   @map("entity_type")
+  name            String
+  description     String?
+  filterJson      Json     @map("filter_json")
+  sortJson        Json?    @map("sort_json")
+  isShared        Boolean  @default(false) @map("is_shared")
+  createdByUserId String?  @map("created_by_user_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  createdByUser AppUser? @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, entityType, updatedAt])
+  @@map("saved_views")
+}
+
+model RecentItem {
+  id          String   @id @default(uuid())
+  orgId       String   @map("org_id")
+  userId      String   @map("user_id")
+  entityType  String   @map("entity_type")
+  entityId    String   @map("entity_id")
+  title       String
+  subtitle    String?
+  href        String
+  keywordsJson Json?   @map("keywords_json")
+  metadataJson Json?   @map("metadata_json")
+  updatedAtIso String? @map("updated_at_iso")
+  lastViewedAt DateTime @default(now()) @map("last_viewed_at")
+  viewCount   Int      @default(1) @map("view_count")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user         AppUser      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, userId, entityType, entityId])
+  @@index([orgId, userId, lastViewedAt])
+  @@map("recent_items")
+}
+
+model FeatureFlag {
+  id          String   @id @default(uuid())
+  orgId       String   @map("org_id")
+  key         String
+  description String?
+  enabled     Boolean  @default(false)
+  scopeType   String   @default("org") @map("scope_type")
+  scopeKey    String?  @map("scope_key")
+  metadataJson Json?   @map("metadata_json")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, key, scopeType, scopeKey])
+  @@index([orgId, key])
+  @@map("feature_flags")
 }
