@@ -15,64 +15,49 @@ related_code:
 
 ## Session Metadata
 
-- date: 2026-07-15
+- date: 2026-07-16
 - agent/tool: Codex
-- worktree path: `/Users/showb/TradeOS-ai-estimator`
-- branch: `feature/ai-estimator-engine`
-- base branch: `main`
-- upstream: none configured for this branch
+- worktree path: `/Users/showb/TradeOS-bible-review`
+- branch: detached from `origin/docs/tradeos-bible-foundation`
+- base branch: `origin/main`
 - remote: `https://github.com/404TradeOS-LLC/TradeOScostbook.git`
 
 ## Mission
 
-Review and harden the backend-only structured AI estimator implementation for human review.
-
-Explicitly out of scope:
-
-- frontend/UI, contractor experience, onboarding UX, demo screens, dispatcher UX, components, layouts, styling, navigation, and design-system presentation work
-- new AI architecture or autonomous database writes
-- pushes, PR creation, merges, rebases, dependency upgrades, and unrelated cleanup
+Review, validate, and harden draft PR #31, `docs: establish TradeOS Bible and 50-sprint execution system`, without creating a competing implementation or touching runtime code.
 
 ## Completed
 
-- kept work isolated in `/Users/showb/TradeOS-ai-estimator` on `feature/ai-estimator-engine`
-- used focused read-only sub-agents for authorization/tenancy, apply safety, draft correctness, test coverage, and architecture/docs review
-- preserved the existing `ai-estimate-assist`, Knowledge Runtime, Cost Database, Assemblies Database, and Estimate Engine architecture
-- added server-signed review tokens to resolved structured draft lines
-- required accepted apply lines to present a matching, unexpired review token bound to estimate, organization, draft line, target kind, target ID, engine version, and issue time
-- failed closed in production if no AI estimator review-token secret or `AUTH_JWT_SECRET` is configured
-- kept generated text untrusted for identity, pricing, authorization, and persistence decisions
-- kept apply writes routed through `EstimateEngineService.addLineItem(...)`
-- wrapped structured apply in the existing service-level transaction helper and updated that helper so non-HTTP transactions bind the active Prisma transaction through async-local routing
-- bounded parsed draft quantities to the same maximum as reviewed apply quantities
-- made pricing retrieval failures review-safe: the draft returns zero-priced unresolved-pricing warnings instead of inventing or trusting fallback prices
-- rejected inactive cost items and assemblies as valid structured estimator targets
-- expanded focused tests for review-token provenance, stale/missing/mismatched tokens, production secret failure, inactive targets, pricing-failure warnings, excessive draft quantities, controller bounds, partial apply failures, and source-key first insert/replay behavior
-- updated documentation ownership so AI estimator controller and rate-limit middleware changes require AI-assist/API/current-state docs
-- marked legacy document-generator scripts as not current RC1 implementation truth
+- reviewed PR #31 against the current Command Center, Current State, Roadmap, lifecycle, architecture, governance, ownership, and handoff docs
+- verified PR #27, PR #28, and PR #29 are merged; PR #30 remains open and owns Settings brand-asset upload persistence
+- wired `docs/TRADEOS_BIBLE.md`, `docs/SPRINT_BACKLOG.md`, and `docs/agent-prompts/NEXT_SPRINT_PROTOCOL.md` into the Command Center
+- kept the Roadmap strategic and linked it to the sprint backlog without duplicating the 50 sprint records
+- corrected stale sprint status and dependency records so the backlog is mechanically selectable
+- updated ownership rules and docs tests for Bible/backlog/protocol invariants
 
 ## Validation Performed
 
-- `npm test -- structured-ai-estimator.service.test.ts ai-estimate-assist.controller.test.ts estimate-engine.service.test.ts --runInBand`: passed, 3 suites / 43 tests
-- `npm run docs:check`: passed
-- `npm run docs:test`: passed, 30 tests
-- `cd app && npm test`: passed, 53 suites / 358 tests
-- `cd app && npm run lint`: passed
-- `cd app && npm run build`: passed
-- `cd app && npm run test:integration`: passed, 1 suite / 20 live RLS tests
-- `git diff --check`: passed before handoff refresh
-
-## Blocked Validation
-
-- none
+- `npm run docs:test`: passed, 38 tests
+- `npm run docs:check -- --base origin/main`: passed
+- `git diff --check`: passed
 
 ## Known Issues or Blockers
 
-- branch `feature/ai-estimator-engine` has no upstream configured
-- changes are not pushed
-- structured apply now has signed per-line draft provenance but still does not persist a full draft-run record or store the full contractor prompt
-- broader manual estimate line-item sort-order races remain outside this sprint
+- PR #30 remains open and must not be duplicated
+- S003 is the first eligible READY sprint after PR #31 merges
+- production environment access remains blocked for environment-verification sprints
 
-## Next Exact Task
+Next eligible sprint:
+S003 — Solo-maintainer governance calibration
 
-Inspect local commits and open a human review PR when ready. If pushing from this worktree, use `git push -u origin feature/ai-estimator-engine`.
+Why it is eligible:
+It is the lowest-numbered READY sprint, has no unmerged sprint dependency, does not overlap PR #27 or PR #30, and requires no founder product decision.
+
+Dependencies:
+None.
+
+Overlapping PRs checked:
+PR #31 owns Bible/backlog/protocol docs. PR #30 owns settings asset upload persistence. PR #27 is already merged and recorded as DONE in S002.
+
+Exact startup command/prompt:
+Read AGENTS.md, docs/TRADEOS_BIBLE.md, docs/ENGINEERING_COMMAND_CENTER.md, docs/CURRENT_STATE.md, docs/SPRINT_BACKLOG.md, docs/SESSION_HANDOFF.md, and docs/agent-prompts/NEXT_SPRINT_PROTOCOL.md. Fetch origin and inspect live GitHub PR, branch, and worktree state. Select the lowest-numbered eligible READY sprint using the documented protocol. Create one isolated worktree and branch, execute exactly one sprint, run all required validation, update sprint evidence and SESSION_HANDOFF, push, and open a draft PR. Stop on scope conflict, stale remote state, failed required checks, unavailable infrastructure, unresolved founder decision, or product ambiguity.

@@ -204,20 +204,35 @@ rules:
       - scripts/docs-check*.mjs
       - scripts/__tests__/docs-check.test.mjs
     requires:
-      - docs/README.md
       - docs/DOC_OWNERSHIP.yml
       - docs/ENGINEERING_COMMAND_CENTER.md
-    explanation: Docs-checker changes must stay aligned with the ownership rules, the docs entrypoint, and the current source-of-truth operating model.
+    explanation: Docs-checker changes must stay aligned with the ownership rules and current source-of-truth operating model.
 
   - paths:
       - AGENTS.md
       - README.md
-      - docs/agent-prompts/**
+      - docs/agent-prompts/AGENT_STARTUP_CHECKLIST.md
+      - docs/agent-prompts/AGENT_COMPLETION_CHECKLIST.md
+      - docs/agent-prompts/BACKEND_WORKTREE_CONTRACT.md
+      - docs/agent-prompts/DOCS_WORKTREE_CONTRACT.md
+      - docs/agent-prompts/FRONTEND_WORKTREE_CONTRACT.md
+      - docs/agent-prompts/RECOVERY_WORKTREE_CONTRACT.md
       - docs/decisions/ADR-004-worktree-policy.md
     requires:
       - docs/REPOSITORY_GOVERNANCE.md
       - docs/ENGINEERING_COMMAND_CENTER.md
     explanation: Worktree contracts, repository workflow guidance, and top-level contributor instructions must stay aligned with repository governance and the current engineering startup protocol.
+
+  - paths:
+      - docs/TRADEOS_BIBLE.md
+      - docs/SPRINT_BACKLOG.md
+      - docs/agent-prompts/NEXT_SPRINT_PROTOCOL.md
+    requires:
+      - docs/TRADEOS_BIBLE.md
+      - docs/SPRINT_BACKLOG.md
+      - docs/ENGINEERING_COMMAND_CENTER.md
+      - docs/SESSION_HANDOFF.md
+    explanation: The TradeOS Bible, canonical sprint queue, and autonomous startup protocol must stay aligned with the Command Center and current handoff.
 
   - paths:
       - docs/ROADMAP.md
@@ -229,9 +244,8 @@ rules:
       - docs/README.md
       - docs/DOC_OWNERSHIP.yml
     requires:
-      - docs/README.md
+      - docs/DOC_OWNERSHIP.yml
       - docs/ENGINEERING_COMMAND_CENTER.md
-      - docs/REPOSITORY_GOVERNANCE.md
     explanation: Source-of-truth hierarchy and operating-system documentation changes must keep the docs entrypoint, command center, and governance policy aligned.
 
 exemptions:

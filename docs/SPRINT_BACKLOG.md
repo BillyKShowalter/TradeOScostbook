@@ -27,23 +27,23 @@ Objective: Establish the canonical Bible index, numbered sprint queue, and auton
 Allowed paths: `docs/**`, `AGENTS.md` if required.
 Forbidden paths: runtime code, schema, dependencies, CI behavior.
 Acceptance: draft PR exists; docs checks pass; next sprint is mechanically selectable.
-Evidence: branch `docs/tradeos-bible-foundation`.
+Evidence: PR #31 in review from `docs/tradeos-bible-foundation`; local docs checks passed with S003 mechanically selected as next READY sprint.
 
 ### S002 — Contractor UX research and Founder Preview specification
-Status: IN_REVIEW
+Status: DONE
 Dependencies: none
 Objective: Land the verified contractor research and Founder Preview experience specification.
 Allowed paths: PR #27 documentation scope only.
 Forbidden paths: runtime code.
 Acceptance: PR #27 merged with green checks and no source-of-truth conflicts.
-Evidence: PR #27.
+Evidence: PR #27 merged on 2026-07-16 as `279bdae26e2fc1856c7cc28e6756529c0ec508e7`.
 
 ### S003 — Solo-maintainer governance calibration
 Status: READY
 Dependencies: none
-Objective: Document and verify a solo-maintainer ruleset that requires PRs and CI but zero approving reviews.
-Allowed paths: governance docs and live GitHub ruleset configuration.
-Forbidden paths: disabling PRs, required checks, force-push protection, or deletion protection.
+Objective: Document and verify the current solo-maintainer ruleset posture without changing GitHub settings.
+Allowed paths: governance docs and sprint evidence only.
+Forbidden paths: GitHub ruleset changes, disabling PRs, required checks, force-push protection, or deletion protection.
 Acceptance: `main` requires PRs, required checks, up-to-date branches, conversation resolution, and zero approvals.
 Founder decision required: NO.
 
@@ -64,7 +64,7 @@ Acceptance: one canonical startup flow and one canonical completion flow.
 ## Phase 2 — RC1 Correctness and Lifecycle Normalization
 
 ### S006 — Lifecycle compatibility inventory
-Status: READY
+Status: PLANNED
 Dependencies: S001
 Objective: Inventory every stored, API, shared-contract, UI, and portal lifecycle value for projects, estimates, proposals, contracts, invoices, and jobs.
 Allowed paths: docs, shared contracts, narrow tests.
@@ -254,7 +254,7 @@ Acceptance: owners can identify and diagnose dispatch issues.
 
 ### S035 — Query performance inventory
 Status: PLANNED
-Dependencies: lifecycle sprints complete
+Dependencies: S007, S008, S009, S010, S011, S012
 Objective: Capture slow/high-frequency query paths and representative plans.
 Acceptance: prioritized evidence-based optimization list.
 
@@ -277,16 +277,17 @@ Objective: Standardize retries, idempotency, and failure recording for asynchron
 Acceptance: no duplicate side effects under retry.
 
 ### S039 — Backup and recovery verification
-Status: PLANNED
-Dependencies: production environment access
+Status: BLOCKED
+Dependencies: none
 Objective: Verify backups, restore procedure, RPO/RTO expectations, and migration recovery.
+Blocked by: production environment access.
 Acceptance: documented restore rehearsal evidence.
 
 ## Phase 8 — Security, Tenancy, RLS, and Auditability
 
 ### S040 — Tenant boundary regression suite
 Status: PLANNED
-Dependencies: lifecycle normalization complete
+Dependencies: S007, S008, S009, S010, S011, S012
 Objective: Expand cross-org denial tests across major modules.
 Acceptance: every critical read/write path has tenant-boundary proof.
 
@@ -309,17 +310,19 @@ Objective: Record meaningful auth, tenant, privilege, and sensitive workflow eve
 Acceptance: security-relevant actions are attributable and queryable.
 
 ### S044 — Secrets and environment posture
-Status: PLANNED
-Dependencies: production environment access
+Status: BLOCKED
+Dependencies: none
 Objective: Verify secret ownership, rotation, least privilege, and environment separation.
+Blocked by: production environment access.
 Acceptance: no tracked secrets and documented production rotation process.
 
 ## Phase 9 — Production Deployment and Operational Readiness
 
 ### S045 — Production environment inventory
-Status: PLANNED
-Dependencies: live deployment access
+Status: BLOCKED
+Dependencies: none
 Objective: Inventory production services, domains, environment variables, approvals, and owners.
+Blocked by: live deployment access.
 Acceptance: authoritative production topology and access map.
 
 ### S046 — Migration deployment gate
@@ -345,8 +348,9 @@ Acceptance: onboarding checklist, support path, feedback capture, and rollback p
 
 ### S049 — Stale branch, PR, and worktree retirement
 Status: PLANNED
-Dependencies: active RC PRs merged
+Dependencies: S048
 Objective: Remove stale branches/worktrees only after verifying merge and ownership state.
+Blocked by: active RC PRs still open.
 Acceptance: no misleading active branch or obsolete draft PR remains.
 
 ### S050 — Launch stabilization and next roadmap
@@ -357,4 +361,4 @@ Acceptance: launch decision, known-risk register, and successor backlog approved
 
 ## Next Eligible Sprint
 
-Selection is determined by `docs/agent-prompts/NEXT_SPRINT_PROTOCOL.md` after checking live PRs and dependencies. As of this file's creation, candidates are S003 and S006; S003 is lower-numbered and therefore selected first if the live ruleset still needs calibration.
+Selection is determined by `docs/agent-prompts/NEXT_SPRINT_PROTOCOL.md` after checking live PRs and dependencies. As of this review, S003 is the first eligible READY sprint because S001 remains in review, S002 is DONE, and PR #30 blocks only settings/brand-asset work.
