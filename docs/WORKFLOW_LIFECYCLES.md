@@ -77,6 +77,7 @@ Implementation notes:
 
 - `EstimateEngineService`'s cost/price rounding now imports the shared `round2()` helper from `estimate-engine/formulas.ts` instead of defining its own private copy (a duplication cleanup with no change to rounding behavior or transition rules).
 - Structured AI estimator replay protection adds optional line-item `sourceKey` handling but does not change estimate lifecycle states or the draft-only mutation rule.
+- `removeLineItem` now returns the affected line item's estimate id (for accurate activity-log attribution — see `docs/modules/estimating.md`) but its draft-only enforcement and org-scoping checks are unchanged.
 
 ## Proposals
 

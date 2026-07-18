@@ -1,7 +1,7 @@
 ---
 status: current
 owner: platform
-last_verified: 2026-07-14
+last_verified: 2026-07-18
 source_of_truth: true
 related_code:
   - app/domain/contracts.ts
@@ -51,6 +51,7 @@ Shared permission keys from `app/domain/contracts.ts`:
 | CRM and projects | Read/write | Read/write | Read/write | Read-only |
 | Jobs and scheduling | Full including overrides | Full including overrides | Manages dispatch and assignments without owner-only overrides | Field-scoped access only |
 | Proposals, contracts, invoices | Full | Full | Operational document and billing support | Read-only |
+| AI suggestion generate/apply (`POST .../ai-suggestions`, `.../ai-suggestions/apply`) | Full through `crm.read`/`crm.write` | Full through `crm.read`/`crm.write` | Full through `crm.read`/`crm.write` | Read-only (`crm.read`); cannot apply suggestions |
 | Structured AI estimator draft/apply | Full through `billing.write` | Full through `billing.write` | Operational estimating support through `billing.write` | No write access |
 | Notes and activity | Full | Full | Full | Can write notes and read activity |
 | Brand Studio and settings | Full | Full | Supported through `settings.manage` and `company.manage` | No |

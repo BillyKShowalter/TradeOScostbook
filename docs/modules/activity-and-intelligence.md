@@ -1,11 +1,13 @@
 ---
 status: current
 owner: platform
-last_verified: 2026-07-15
+last_verified: 2026-07-18
 source_of_truth: false
 related_code:
   - app/modules/intelligence
   - app/backend/routes/intelligence.routes.ts
+  - app/backend/controllers/crm.controller.ts
+  - app/backend/controllers/estimateEngine.controller.ts
   - web/src/components/shared/global-command-palette.tsx
   - web/src/components/shared/notification-center.tsx
   - web/src/lib/intelligence.ts
@@ -45,6 +47,8 @@ See [RBAC_MATRIX.md](../RBAC_MATRIX.md).
 - job workflow changes
 - proposal, contract, and invoice history changes
 - intelligence-specific activity records
+- customer lifecycle changes (`customer.created`, `customer.updated`, `customer.deleted`), from `app/backend/controllers/crm.controller.ts`
+- estimate lifecycle changes (`estimate.created`, `estimate.line_item_added`, `estimate.line_item_removed`, `estimate.pricing_mode_updated`, `estimate.finalized`, `estimate.duplicated`), from `app/backend/controllers/estimateEngine.controller.ts`
 
 ## Frontend surfaces
 
@@ -71,4 +75,4 @@ See [RBAC_MATRIX.md](../RBAC_MATRIX.md).
 
 ## Last verified date
 
-2026-07-15
+2026-07-18

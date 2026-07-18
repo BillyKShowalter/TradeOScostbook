@@ -11,7 +11,11 @@ jest.mock("../db/client", () => ({ prisma: mockPrisma }));
 import { projectsController } from "../backend/controllers/projects.controller";
 
 function mockReqRes(orgId: string, id: string) {
-  const req = { orgId, params: { id } } as unknown as Request;
+  const req = {
+    orgId,
+    params: { id },
+    auth: { userId: "user-1", orgId, role: "dispatcher", canonicalRole: "dispatcher" },
+  } as unknown as Request;
   const res = { json: jest.fn() } as unknown as Response;
   return { req, res };
 }

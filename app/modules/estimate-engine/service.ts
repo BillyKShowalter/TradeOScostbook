@@ -160,13 +160,14 @@ export class EstimateEngineService {
     return toLineItemDTO(row);
   }
 
-  async removeLineItem(lineItemId: string, orgId?: string): Promise<void> {
+  async removeLineItem(lineItemId: string, orgId?: string): Promise<{ estimateId: string }> {
     const lineItem = await prisma.estimateLineItem.findUnique({ where: { id: lineItemId }, include: { estimate: true } });
     if (!lineItem) throw new ApiError(404, `EstimateLineItem ${lineItemId} not found`);
     if (orgId && lineItem.estimate.orgId !== orgId) throw new ApiError(404, `EstimateLineItem ${lineItemId} not found`);
     await this.assertDraft(lineItem.estimateId, orgId);
     await prisma.estimateLineItem.delete({ where: { id: lineItemId } });
     await this.recalculate(lineItem.estimateId, orgId);
+    return { estimateId: lineItem.estimateId };
   }
 
   async setPricingMode(input: SetPricingModeInput): Promise<EstimateDTO> {

@@ -58,6 +58,7 @@ Current enforced rule:
 
 - `EstimateEngineService` now imports the shared `round2()` helper from `estimate-engine/formulas.ts` instead of defining a duplicate private copy (cleanup only; no change to pricing behavior)
 - `EstimateLineItem.sourceKey` is optional and is used for backend-generated idempotency/replay protection on reviewed structured-AI apply calls. Manual line-item creation remains unrestricted by source key.
+- `EstimateEngineService.removeLineItem(lineItemId, orgId)` resolves the target line item's estimate by `lineItemId` alone (plus org scope and the existing draft-only check); it does not separately validate against the `:id` route param. It now returns `{ estimateId }` (was `void`) so the controller's activity-log entry is recorded against the line item's actual estimate rather than trusting the URL, which could otherwise misattribute the audit entry if a caller passed a `lineItemId` belonging to a different draft estimate. No lifecycle or authorization behavior changed — draft-only enforcement and org scoping are unchanged.
 
 ## Known limitations
 
