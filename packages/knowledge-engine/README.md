@@ -122,7 +122,7 @@ repository's CI (no CI workflow references them, but that does not prove they ar
 
 ## 6. Known-nested duplicate tree — `packages/knowledge-engine/knowledge-engine/`
 
-`packages/knowledge-engine/knowledge-engine/**` is a **confirmed, byte-for-byte, 4,993-file
+`packages/knowledge-engine/knowledge-engine/**` is a **confirmed, byte-for-byte, 4,746-tracked-file
 duplicate of this entire package**, self-nested one level inside it (verified via `sha256sum`
 across all 11 top-level subdirectories — zero differing files). It landed in the same single
 squash-merge commit as the rest of this package, with a later filesystem mtime, and has **zero
@@ -162,7 +162,7 @@ canonical summary:
 
 ## 8. Known risks (read before touching anything under this package)
 
-- **Exact nested duplicate tree**: `knowledge-engine/knowledge-engine/**`, 4,993 files, zero
+- **Exact nested duplicate tree**: `knowledge-engine/knowledge-engine/**`, 4,746 tracked files, zero
   references anywhere. See §6. Do not delete yet.
 - **Divergent `costbook.json` / `sync_final.sql` copies**: `exports/json/costbook.json` (canonical,
   1,795 items / 289 assemblies) differs from `pipelines/exports/json/costbook.json` (1,795 items /
