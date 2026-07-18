@@ -1,7 +1,8 @@
-import Link from "next/link";
 import { createEstimateAction, updateProjectStatusAction } from "@/app/actions/projects";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ListRowLink } from "@/components/shared/list-row-link";
 import { getProject, PROJECT_STATUSES } from "@/lib/api";
 import { getSessionToken } from "@/lib/session";
 import { EditProjectForm } from "./edit-form";
@@ -82,18 +83,16 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             {project.estimates.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No estimates yet.</p>
+              <EmptyState title="No estimates yet." description="Build an estimate to price this project's line items." />
             ) : (
               <ul className="space-y-2">
                 {project.estimates.map((estimate) => (
                   <li key={estimate.id}>
-                    <Link
+                    <ListRowLink
                       href={`/projects/${project.id}/estimates/${estimate.id}`}
-                      className="flex items-center justify-between rounded-lg border border-border/60 p-3 text-sm hover:bg-muted/40"
-                    >
-                      <span>v{estimate.version}</span>
-                      <span>${estimate.totalPrice.toFixed(2)}</span>
-                    </Link>
+                      title={`v${estimate.version}`}
+                      trailing={<span className="font-medium">${estimate.totalPrice.toFixed(2)}</span>}
+                    />
                   </li>
                 ))}
               </ul>

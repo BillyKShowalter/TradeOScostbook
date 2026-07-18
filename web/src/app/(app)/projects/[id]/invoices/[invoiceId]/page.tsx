@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { markInvoicePaidAction, sendInvoiceAction, voidInvoiceAction } from "@/app/actions/invoices";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { LineItemRow } from "@/components/shared/line-item-row";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getInvoice } from "@/lib/api";
@@ -27,14 +28,11 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
           {invoice.lineItems.map((li) => (
-            <div key={li.id} className="flex items-center justify-between text-sm">
-              <span>{li.description}</span>
-              <span>${li.lineCost.toFixed(2)}</span>
-            </div>
+            <LineItemRow key={li.id} description={li.description} amount={`$${li.lineCost.toFixed(2)}`} className="border-none p-0" />
           ))}
-          <div className="flex items-center justify-between border-t pt-2 text-base font-semibold">
-            <span>Total</span>
-            <span>${invoice.amount.toFixed(2)}</span>
+          <div className="flex items-center justify-between gap-3 border-t pt-2 text-base font-semibold">
+            <span className="min-w-0 truncate">Total</span>
+            <span className="shrink-0">${invoice.amount.toFixed(2)}</span>
           </div>
         </CardContent>
       </Card>

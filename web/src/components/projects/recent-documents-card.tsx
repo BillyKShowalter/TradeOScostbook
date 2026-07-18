@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ListRowLink } from "@/components/shared/list-row-link";
 import { StatusBadge } from "@/components/shared/status-badge";
 
 interface RecentDocumentsCardProps {
@@ -18,14 +18,15 @@ export function RecentDocumentsCard({ documents }: RecentDocumentsCardProps) {
           <EmptyState title="No documents yet." description="Proposal and contract documents will appear here once created." />
         ) : (
           documents.map((document) => (
-            <Link key={document.id} href={document.href} className="flex items-center justify-between rounded-lg border border-border/60 p-3 text-sm hover:bg-muted/40">
-              <span>{document.label}</span>
-              {document.status ? <StatusBadge status={document.status} /> : null}
-            </Link>
+            <ListRowLink
+              key={document.id}
+              href={document.href}
+              title={document.label}
+              trailing={document.status ? <StatusBadge status={document.status} /> : undefined}
+            />
           ))
         )}
       </CardContent>
     </Card>
   );
 }
-

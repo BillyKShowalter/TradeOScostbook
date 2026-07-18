@@ -2,6 +2,8 @@ import Link from "next/link";
 import { listCustomers } from "@/lib/api";
 import { getSessionToken } from "@/lib/session";
 import { buttonVariants } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ListRowLink } from "@/components/shared/list-row-link";
 
 export default async function CustomersPage() {
   const token = await getSessionToken();
@@ -9,7 +11,7 @@ export default async function CustomersPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Customers</h1>
         <Link href="/customers/new" className={buttonVariants()}>
           New customer
@@ -17,15 +19,20 @@ export default async function CustomersPage() {
       </div>
 
       {customers.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No customers yet.</p>
+        <EmptyState
+          title="No customers yet."
+          description="Add your first customer to start tracking projects and estimates for them."
+          action={
+            <Link href="/customers/new" className={buttonVariants({ variant: "outline" })}>
+              New customer
+            </Link>
+          }
+        />
       ) : (
         <ul className="flex flex-col gap-2">
           {customers.map((customer) => (
             <li key={customer.id}>
-              <Link href={`/customers/${customer.id}`} className="flex flex-col rounded-md border p-3 text-sm hover:bg-muted">
-                <span className="font-medium">{customer.name}</span>
-                {customer.email && <span className="text-muted-foreground">{customer.email}</span>}
-              </Link>
+              <ListRowLink href={`/customers/${customer.id}`} title={customer.name} subtitle={customer.email ?? undefined} />
             </li>
           ))}
         </ul>

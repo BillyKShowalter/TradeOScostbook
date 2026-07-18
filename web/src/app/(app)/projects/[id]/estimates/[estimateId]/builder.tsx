@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { clientFetch } from "@/lib/clientApi";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { LineItemRow } from "@/components/shared/line-item-row";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -77,21 +78,19 @@ export function EstimateBuilder({ projectId, estimateId }: { projectId: string; 
           ) : (
             <ul className="flex flex-col gap-2">
               {estimate.lineItems.map((li) => (
-                <li key={li.id} className="flex items-center justify-between rounded-md border p-3 text-sm">
-                  <div>
-                    <div className="font-medium">{li.description}</div>
-                    <div className="text-muted-foreground">
-                      {li.quantity} {li.unitOfMeasure} × ${li.unitCost.toFixed(2)}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-medium">${li.lineCost.toFixed(2)}</span>
-                    {isDraft && (
-                      <Button variant="ghost" size="sm" onClick={() => removeLineItem.mutate(li.id)} disabled={removeLineItem.isPending}>
-                        Remove
-                      </Button>
-                    )}
-                  </div>
+                <li key={li.id}>
+                  <LineItemRow
+                    description={li.description}
+                    meta={`${li.quantity} ${li.unitOfMeasure} × $${li.unitCost.toFixed(2)}`}
+                    amount={`$${li.lineCost.toFixed(2)}`}
+                    action={
+                      isDraft && (
+                        <Button variant="ghost" size="sm" onClick={() => removeLineItem.mutate(li.id)} disabled={removeLineItem.isPending}>
+                          Remove
+                        </Button>
+                      )
+                    }
+                  />
                 </li>
               ))}
             </ul>
