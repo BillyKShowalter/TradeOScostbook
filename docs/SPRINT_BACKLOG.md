@@ -1,7 +1,7 @@
 ---
 status: current
 owner: platform
-last_verified: 2026-07-16
+last_verified: 2026-07-18
 source_of_truth: true
 related_code:
   - docs/TRADEOS_BIBLE.md
@@ -21,13 +21,13 @@ Only merged evidence may set `DONE`. Open PR overlap forces `IN_REVIEW` or `BLOC
 ## Phase 1 — Governance and Execution System
 
 ### S001 — TradeOS Bible foundation
-Status: IN_REVIEW
+Status: DONE
 Dependencies: none
 Objective: Establish the canonical Bible index, numbered sprint queue, and autonomous next-sprint protocol.
 Allowed paths: `docs/**`, `AGENTS.md` if required.
 Forbidden paths: runtime code, schema, dependencies, CI behavior.
 Acceptance: draft PR exists; docs checks pass; next sprint is mechanically selectable.
-Evidence: PR #31, branch `docs/tradeos-bible-foundation`.
+Evidence: PR #31 merged into `main` as `ac72ff235db687d9cb8619820e536aec040afc6b` on 2026-07-16. PR #32 merged into the Bible foundation branch before PR #31 landed.
 
 ### S002 — Contractor UX research and Founder Preview specification
 Status: DONE
@@ -39,24 +39,26 @@ Acceptance: PR #27 merged with green checks and no source-of-truth conflicts.
 Evidence: PR #27 merged as `279bdae`.
 
 ### S003 — Solo-maintainer governance calibration
-Status: PLANNED
+Status: BLOCKED
 Dependencies: S001
 Objective: Document and verify a solo-maintainer ruleset that requires PRs and CI but zero approving reviews.
 Allowed paths: governance docs and live GitHub ruleset configuration.
 Forbidden paths: disabling PRs, required checks, force-push protection, or deletion protection.
 Acceptance: `main` requires PRs, required checks, up-to-date branches, conversation resolution, and zero approvals.
 Founder decision required: NO.
+Blocker: open PR #33 already touches governance and doc-ownership files (`docs/DOC_OWNERSHIP.yml`, `docs/ENGINEERING_COMMAND_CENTER.md`, `docs/README.md`, `docs/REPOSITORY_GOVERNANCE.md`). Live GitHub ruleset facts must also be verified directly before this sprint can claim completion.
 
 ### S004 — Session handoff normalization
-Status: PLANNED
+Status: IN_REVIEW
 Dependencies: S001
 Objective: Make `SESSION_HANDOFF.md` concise, current, and mechanically identify the next eligible sprint.
 Allowed paths: docs and docs tests.
 Acceptance: handoff ends with sprint ID, eligibility, dependencies, overlap check, and startup prompt.
+Evidence: branch `docs/first-party-truth-repair`.
 
 ### S005 — Agent contract consolidation
 Status: PLANNED
-Dependencies: S001
+Dependencies: S001, S004
 Objective: Remove duplicated or conflicting startup/completion rules and point all agents to the Bible and sprint protocol.
 Allowed paths: `AGENTS.md`, `docs/agent-prompts/**`, governance docs.
 Acceptance: one canonical startup flow and one canonical completion flow.
@@ -203,8 +205,9 @@ Acceptance: concurrent inserts produce deterministic order without collisions.
 ### S027 — Cost book search performance
 Status: PLANNED
 Dependencies: none
-Objective: Add evidence-backed trigram/index support for mixed name/code search where required.
+Objective: Finish the remaining evidence-backed search-performance gap for mixed name/code cost-item and assembly search.
 Acceptance: representative query plans avoid full scans and preserve RLS.
+Evidence: PR #7 already merged `pg_trgm` name indexes for cost items, assemblies, materials, and suppliers; this sprint is narrowed to the still-open code-substring/query-plan risk documented in `CURRENT_STATE.md` and `ROADMAP.md`.
 
 ### S028 — Estimate-to-proposal workflow verification
 Status: PLANNED
@@ -357,4 +360,13 @@ Acceptance: launch decision, known-risk register, and successor backlog approved
 
 ## Next Eligible Sprint
 
-No sprint is eligible while S001 remains `IN_REVIEW`. After PR #31 merges, select the lowest-numbered `READY` sprint whose dependencies are satisfied and whose paths do not overlap an open PR. S003 is expected to become the first candidate unless live governance evidence shows it is already complete.
+Current recommendation after this truth-repair PR:
+
+- Sprint: S003 — Solo-maintainer governance calibration
+- Status: BLOCKED
+- Why: S003 is the lowest-numbered post-S001 sprint, but open PR #33 overlaps governance/doc-ownership files and live GitHub ruleset facts must be verified directly before execution.
+- Prerequisites: this branch merged or closed; PR #33 merged or closed; fresh `git fetch origin`; live verification of open PRs, active worktrees, branch rulesets, required checks, conversation-resolution requirements, and review-count settings.
+- Allowed scope when unblocked: governance docs, doc-ownership rules, and live GitHub ruleset configuration only.
+- Stop conditions: PR #33 remains open or changes overlapping files; GitHub ruleset access cannot be verified; required checks or branch-protection facts contradict the sprint acceptance; changes would touch runtime code, `web/**`, `app/**`, `packages/knowledge-engine/**`, CI workflows, database schema, or unrelated docs.
+
+No product sprint is currently eligible. Do not skip to lifecycle, portal, AI, Brand Studio, or dispatch work while S003 remains blocked and S004 is in review.

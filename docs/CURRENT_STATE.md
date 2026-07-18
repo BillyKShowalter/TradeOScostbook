@@ -1,92 +1,88 @@
 ---
 status: current
 owner: platform
-last_verified: 2026-07-15
+last_verified: 2026-07-18
 source_of_truth: true
 related_code:
   - app/backend/server.ts
   - app/domain/contracts.ts
   - app/prisma/schema.prisma
-  - app/prisma/migrations/20260703090000_add_search_trgm_indexes/migration.sql
-  - app/backend/routes
-  - web/src/app
-  - web/src/components/dashboard/needs-attention-card.tsx
-  - web/src/components/estimate-assist/ai-estimate-assist.tsx
+  - app/prisma/migrations/
+  - app/backend/routes/
+  - app/modules/
+  - web/src/app/
+  - web/src/components/
   - .github/workflows/verify-repository.yml
+  - .github/workflows/docs-consistency.yml
 ---
 
 # Current State
 
-Last verified against the repository on 2026-07-15.
+Last verified against `origin/main` commit `ac72ff235db687d9cb8619820e536aec040afc6b` on 2026-07-18.
 
-## Current milestone
+TradeOS is in RC1 hardening. The merged TradeOS Bible is canonical doctrine, but this file is the factual implementation ledger. Do not present Bible goals, research findings, or sprint intent as shipped software unless there is merged repository evidence.
 
-TradeOS is in RC1 hardening.
+Status vocabulary:
 
-The repository is no longer organized around MVP planning documents. The active posture is production readiness, lifecycle consistency, verification, and contractor-facing polish.
+- `LIVE`: implemented and wired into the active app or operational workflow on `main`.
+- `IMPLEMENTED`: code or documentation exists on `main`, but live deployment, full UI wiring, or production operation is not proven here.
+- `PARTIAL`: meaningful shipped pieces exist, with known missing integration, hardening, or workflow coverage.
+- `PLANNED`: documented intent exists, but implementation is not present on `main`.
+- `BLOCKED`: work cannot safely proceed without a named external decision, access, or dependency.
+- `UNKNOWN`: repository evidence is insufficient; do not guess.
 
-## Implemented modules
+## Implementation Ledger
 
-- Auth and tenancy
-- CRM: customers, service addresses, customer equipment, service agreements, notes, company profile
-- Projects and project workspace
-- Site visit intake
-- Cost book: divisions, categories, subcategories, cost items, labor, materials, equipment, assemblies
-- Estimating: estimate creation, line items, duplication, comparison, AI estimate assist, and structured contractor-language draft generation
-- Proposals
-- Contracts
-- Invoices and payment recording
-- Change orders
-- Jobs and scheduling: job creation, assignment, scheduling, rescheduling, dispatcher coordination, and field-status workflows
-- Project tasks
-- Activity, notifications, recents, saved views, feature flags, and search-oriented intelligence primitives
-- Brand Studio
-- Settings and organization operations
-- Customer portal document views
-- Supplier review queue and scheduler plumbing
-- Knowledge runtime integration
-- Backend structured AI estimator orchestration that stages contractor-language scopes into reviewable estimate drafts using existing costbook and estimate-engine services
+| System | Status | Evidence | Current limitation or unresolved truth |
+| --- | --- | --- | --- |
+| Bible and documentation system | LIVE | PR #31 merged as `ac72ff2`; PR #32 merged into the Bible branch; `docs/TRADEOS_BIBLE.md`, `docs/bible/`, `docs/SPRINT_BACKLOG.md`, `docs/agent-prompts/NEXT_SPRINT_PROTOCOL.md`, `scripts/docs-check.mjs`; `npm run docs:test` and `npm run docs:check -- --base origin/main` are the required local docs checks. | First-party operational docs were stale immediately after the Bible merge; this branch repairs that post-merge truth. |
+| Repository verification | IMPLEMENTED | `.github/workflows/verify-repository.yml` runs app lint, unit tests, build, integration tests, and web lint/build; `.github/workflows/docs-consistency.yml` enforces doc ownership; root `package.json` defines `docs:test` and `docs:check`. | Exact required checks, branch rulesets, review settings, and environment approvals remain GitHub/external state and must be verified live before claiming they are configured. |
+| Database and migrations | IMPLEMENTED | `app/prisma/schema.prisma`; `app/prisma/migrations/`; `app/scripts/deploy-migrations.sh`; `app/scripts/test-integration-db.sh`; PR #23 repaired seed workflow; PR #7 added `pg_trgm` name-search indexes. | Production deployment state, backup/restore evidence, and environment approvals are unknown from repository files alone. Mixed name-or-code search still has a known scan-risk gap for code substring matching. |
+| Authentication and tenancy | LIVE | `app/backend/middleware/auth.ts`; `app/backend/middleware/databaseSession.ts`; `app/db/requestSession.ts`; `app/modules/auth/service.ts`; `app/modules/organization-provisioning/service.ts`; PR #26 removed header-based tenant impersonation bypass; module doc `docs/modules/auth-and-tenancy.md`. | Hosted login readiness and usable demo credentials are not proven by repository evidence. |
+| Forced RLS model | LIVE | Request-scoped database session sets `app.user_id`, `app.org_id`, `app.role`, and `app.session_source`; RLS integration harness lives at `app/tests/rls.integration.ts`; backend README documents `npm run test:integration`. | Live integration requires Docker, `psql`, and local database harness availability. Passing CI is separate from local availability. |
+| Costbook | LIVE | Modules under `app/modules/cost-database`, `labor-database`, `material-database`, `equipment-database`, `assemblies-database`; routes under `app/backend/routes/*Database.routes.ts`; docs `docs/modules/cost-book.md`; PR #7 name-search indexes. | Live supplier feed ingestion is not implemented. Code-substring search performance remains a planned hardening gap. |
+| AI Estimator Engine | PARTIAL | PR #29 merged as `10ec35e`; backend routes `app/backend/routes/aiEstimateAssist.routes.ts`; structured service `app/modules/ai-estimate-assist/structuredEstimator.ts`; docs `docs/modules/ai-estimate-assist.md`; endpoints `POST /api/v1/estimates/:id/ai-estimator/draft` and `/apply`. | Backend structured estimator is implemented and review-first, but the active web assist component still uses legacy `/ai-suggestions` endpoints. It does not autonomously write lines and does not call external model APIs. |
+| AI Estimate Assist legacy suggestions | LIVE | `app/modules/ai-estimate-assist/service.ts`; `web/src/components/estimate-assist/ai-estimate-assist.tsx`; docs `docs/modules/ai-estimate-assist.md`; PR #18 integrated AI assist and knowledge runtime. | Structured estimator draft/apply is newer backend capability and is not fully the frontend contract yet. |
+| Knowledge Runtime | IMPLEMENTED | PR #18 integrated the app runtime; `app/modules/knowledge-runtime/`; routes `app/backend/routes/knowledgeRuntime.routes.ts`; module README states read-only behavior. | `packages/knowledge-engine/**` internals were intentionally not inspected during this repair because PR #33/#34 own that scope. App-managed import/versioning remains future work. |
+| Founder Preview | PARTIAL | PR #27 merged contractor UX research and Founder Preview spec; PR #28 merged dashboard Needs Attention workflow; `docs/product/FOUNDER_PREVIEW_EXPERIENCE_SPEC.md`; `web/src/components/dashboard/needs-attention-card.tsx`. | Larger command center, onboarding/import, weather, voice, and technician-specific preview items are documented as future or out-of-scope in the spec. Hosted preview and login credentials are unknown. |
+| Contractor UX research | IMPLEMENTED | PR #27 merged; `docs/research/CONTRACTOR_UX_RESEARCH.md`; `docs/product/FOUNDER_PREVIEW_EXPERIENCE_SPEC.md`. | Research is supporting evidence, not implementation truth. Product claims still need repository or live-product evidence before being marked `LIVE`. |
+| Dispatcher workspace | PARTIAL | Jobs backend from PR #20; routes in `app/backend/routes/jobs.routes.ts`; service in `app/modules/jobs/service.ts`; docs `docs/modules/jobs-and-scheduling.md`; project workspace summary in `web/src/components/projects/project-workspace.tsx`. | Core scheduling/dispatch backend exists; richer dispatcher board UX and end-to-end dispatcher verification remain planned. |
+| Scheduling and dispatch | IMPLEMENTED | PR #20 merged job scheduling engine and document lifecycle history; `Job`, assignment, scheduling, rescheduling, field-status, and ready-to-invoice flows are represented in app modules and routes. | Lifecycle normalization and conflict-rule hardening remain planned before RC smoke confidence. |
+| Mobile and field experience | PARTIAL | Job status workflows exist in `app/modules/jobs/service.ts`; field-status route group exists in `app/backend/routes/jobs.routes.ts`; responsive app surfaces exist in `web/src/app`. | Technician daily workflow and mobile-specific hardening are planned in S032; no dedicated mobile app exists. |
+| Brand Studio | PARTIAL | Brand Studio backend module and routes exist under `app/modules/brand-studio` and `app/backend/routes/brandStudio.routes.ts`; web route exists at `web/src/app/(app)/brand-studio/page.tsx`; docs `docs/modules/brand-studio.md`. | PR #30 is open for Settings asset persistence. Document rendering integration still uses separate proposal/contract/invoice PDF paths rather than one fully unified branded renderer. |
+| Settings Console asset upload | PARTIAL | `web/src/components/settings/settings-console.tsx` handles asset selection; PR #30 open on `fix/brand-studio-asset-upload-persistence` adds durable storage handling. | Do not mark complete until PR #30 merges. Product ownership between Settings branding and Brand Studio still needs S014 founder/ADR decision. |
+| Settings and organization operations | LIVE | `app/modules/settings`; `app/modules/admin-dashboard`; `app/backend/routes/settings.routes.ts`; web settings route; docs `docs/modules/settings-and-operations.md`. | Brand source-of-truth convergence is unresolved. |
+| Customer portal | PARTIAL | Portal routes and document views exist in `web/src/app/(app)/portal`; docs `docs/modules/customer-portal.md`; proposal/contract/invoice modules generate customer-facing documents. | Portal authentication hardening and proposal/contract/invoice portal flows remain planned RC work. |
+| Projects and project workspace | LIVE | `app/modules/project-intake`, `project-tasks`, `crm`, and `jobs`; project routes; `web/src/app/(app)/projects`; docs `docs/modules/projects.md`. | Lifecycle compatibility values still need normalization across storage, APIs, UI, and portal. |
+| Proposals, contracts, invoices, and change orders | LIVE | Modules under `app/modules/proposals`, `contracts`, `invoices`, `change-orders`; PDF renderers; web document screens; docs modules. | Lifecycle compatibility cleanup and document rendering reliability remain planned. Public payment processing is not implemented. |
+| Payments or billing | PARTIAL | Invoice payment recording exists in app modules and docs `docs/modules/invoices-and-payments.md`. | Public payment processing, external billing rails, accounting sync, and subscription billing are not implemented. |
+| Integrations | PARTIAL | Supplier database and supplier integration queue/review/audit/scheduler plumbing exist in `app/modules/supplier-database` and `app/modules/supplier-integration`. | `SupplierIntegrationService` feed fetcher is a stub returning no quotes; live feed ingestion, accounting, payroll, and payment integrations are not implemented. |
+| Product deployment | UNKNOWN | `docs/DEPLOYMENT_GUIDE.md`; `.github/workflows/deploy-migrations.yml`. | Hosted deployment status, production topology, domain state, environment approvals, backup evidence, and live smoke results require external verification. |
 
-See module docs in `docs/modules/`.
+## Open Pull Requests
 
-## Partially implemented or compatibility-layer areas
+Verified on 2026-07-18:
 
-- Legacy role values `estimator` and `viewer` are still tolerated in stored data but normalize to canonical roles
-- Project lifecycle persistence still contains legacy values such as `proposal_sent` and `accepted`; UI and shared contracts normalize these into canonical display states
-- Contract persistence still stores `pending_signature`; global lifecycle docs treat that as compatibility storage under canonical contract states
-- Supplier integration feed ingestion is scaffolded around a stub fetcher; queue, review, audit, and scheduling plumbing are real
-- Customer portal exists for proposal, contract, invoice, and project views, but hardening is still tracked as RC work
-- Structured AI estimator drafts remain review-first; they do not autonomously write estimate line items and do not call external model APIs in the current implementation
-- Structured AI estimator apply now uses server-signed review tokens, server-side active target validation, per-estimate apply serialization, and optional estimate-line `sourceKey` duplicate protection for reviewed AI lines; Docker-backed live RLS integration verification passed locally on this branch
+- PR #30, `fix/brand-studio-asset-upload-persistence`: open Brand Studio/Settings web work. Do not modify, review, rebase, or merge in this branch.
+- PR #33, `docs/knowledge-engine-phase-a-guardrails`: open Claude-owned knowledge-engine guardrail work. It touches `docs/DOC_OWNERSHIP.yml`, `docs/ENGINEERING_COMMAND_CENTER.md`, `docs/README.md`, `docs/REPOSITORY_GOVERNANCE.md`, and `packages/knowledge-engine/**`.
+- PR #34, `fix/knowledge-engine-canonical-paths`: open Claude-owned knowledge-engine canonical-path work stacked on PR #33. It touches `packages/knowledge-engine/**`.
 
-## Recent internal cleanup
+## Recent Merged Evidence
 
-- The dashboard (`web/src/app/(app)/dashboard/page.tsx`) now composes a "Needs attention" section from the existing per-project data fan-out it already fetches (draft/ready estimates, proposals awaiting a response, invoices that are sent, overdue, or partially paid, and projects with no estimate yet), each linking directly into the existing estimate builder, AI Estimate Assist, proposal, and invoice pages. AI assist is only offered for draft estimates, since a `ready` estimate's line items are locked. No new backend endpoints, aggregation service, or design system were introduced; the new `web/src/components/dashboard/needs-attention-card.tsx` component reuses `Card`, `StatusBadge`, `EmptyState`, and `Button` plus the existing `createEstimateAction` server action.
-- The AI Estimate Assist review panel (`web/src/components/estimate-assist/ai-estimate-assist.tsx`) now also surfaces the resolved target's `matchMethod` (already returned by the backend but previously unused by the frontend) next to the existing match-score badge, making the "why this was matched" provenance more visible without adding any new backend field.
-- Five duplicate private `round2()` rounding helpers (in `cost-database`, `assemblies-database`, `change-orders`, `estimate-engine`, and `knowledge-runtime` services) were consolidated to import the one already exported from `app/modules/estimate-engine/formulas.ts`. No rounding behavior changed.
-- Four internal-only exports (`mapPrismaKnownRequestError`, `CreateOrganizationInput`, `SupplierPriceUpdateStatus`, `SupplierFeedQuote`, `ClientApiError`) had their `export` keyword removed after confirming no other file imports them.
-- Confirmed-dead frontend code was removed: the unused shadcn `Select` primitive (`web/src/components/ui/select.tsx`), an unwired AI-suggestions component pair, an unused project-files panel, and a dead Supabase browser-client wrapper (`web/src/lib/supabase/client.ts`) that had already been superseded by server-side `@supabase/ssr` usage.
-- Unused `web/src/lib/api.ts` helpers (`signup`, `login`, `AuthSession`, `listProposalsByProject`, `listInvoicesByProject`) were removed after confirming the real auth path calls Supabase directly from Server Actions and that no caller used the two list helpers.
-- `claude.md` was renamed to `CLAUDE.md` — both names pointed at the same file only because of this machine's case-insensitive filesystem; git tracked the lowercase name, which would not resolve as `CLAUDE.md` on a case-sensitive filesystem (Linux CI, most Docker images).
-- Explicitly *not* removed: `web/src/components/ui/checkbox.tsx` and the `lucide-react` dependency — both are live (used by Brand Studio and Settings consoles), and `@supabase/supabase-js` — it is a required peer dependency of the actively-used `@supabase/ssr` package, not a dead dependency.
+- PR #31: TradeOS Bible and 50-sprint execution system merged as `ac72ff235db687d9cb8619820e536aec040afc6b`.
+- PR #32: Bible Volume 3 engineering doctrine expansion merged into the foundation branch.
+- PR #29: AI Estimator engine hardening merged as `10ec35e`.
+- PR #28: Founder Preview Needs Attention workflow merged as `f032808`.
+- PR #27: contractor UX research and Founder Preview experience spec merged as `279bdae`.
+- PR #26: auth tenant-impersonation bypass removal merged as `bcf8cb4`.
+- PR #25: dead-code cleanup and shared helper consolidation merged as `bd9c239`.
+- PR #24: engineering command center and session continuity system merged as `5862f73`.
+- PR #23: Prisma seed workflow repair merged as `d6942ee`.
+- PR #22: documentation source-of-truth system merged as `cfe781d`.
+- PR #20: job scheduling engine and document lifecycle history merged as `49ebbd`.
+- PR #18: knowledge runtime, project workspace, AI assist, and frontend integration merged as `b4c90a`.
 
-## Known blockers and unresolved technical debt
-
-- Supplier feed connectors are not live
-- Cost-item and assembly combined name-or-code substring search can still degrade into scan-heavy plans because only `name` columns are trigram-indexed today
-- Documentation governance was missing before this branch and is being added here
-- Production deployment state and environment approvals are not inferred from code and must be verified per environment
-- Some older implementation notes and planning artifacts required archiving because they conflicted with the live repository
-
-## Recent verified infrastructure facts
-
-- migration `20260703090000_add_search_trgm_indexes` enables PostgreSQL `pg_trgm`
-- the migration adds GIN trigram indexes on `cost_items.name`, `assemblies.name`, `materials.name`, and `suppliers.name`
-- this supports the current case-insensitive substring-search behavior used by cost-item and assembly name search, and it covers representative name-search patterns for materials and future supplier search surfaces
-- RLS behavior is unchanged because the indexes only affect query planning, not tenancy enforcement
-- verification state: the migration is merged on `main`; the PR notes local migration and `EXPLAIN` verification on a throwaway Postgres 18 cluster, while the repository's own `npm run test:integration` harness was still recommended separately in that PR
-
-## Current verification surface
+## Current Verification Surface
 
 Backend commands defined in `app/package.json`:
 
@@ -100,24 +96,17 @@ Frontend commands defined in `web/package.json`:
 - `npm run lint`
 - `npm run build`
 
-Current CI workflows:
+Documentation commands defined in root `package.json`:
 
-- `.github/workflows/verify-repository.yml` runs backend lint, unit tests, build, integration tests, and frontend lint/build
-- `.github/workflows/deploy-migrations.yml` runs tracked database rollout logic for migration changes
+- `npm run docs:test`
+- `npm run docs:check -- --base origin/main`
 
-## Module documentation
+This documentation repair must also pass `git diff --check`.
 
-- [modules/auth-and-tenancy.md](modules/auth-and-tenancy.md)
-- [modules/crm.md](modules/crm.md)
-- [modules/cost-book.md](modules/cost-book.md)
-- [modules/estimating.md](modules/estimating.md)
-- [modules/proposals.md](modules/proposals.md)
-- [modules/contracts.md](modules/contracts.md)
-- [modules/invoices-and-payments.md](modules/invoices-and-payments.md)
-- [modules/projects.md](modules/projects.md)
-- [modules/jobs-and-scheduling.md](modules/jobs-and-scheduling.md)
-- [modules/activity-and-intelligence.md](modules/activity-and-intelligence.md)
-- [modules/brand-studio.md](modules/brand-studio.md)
-- [modules/customer-portal.md](modules/customer-portal.md)
-- [modules/ai-estimate-assist.md](modules/ai-estimate-assist.md)
-- [modules/settings-and-operations.md](modules/settings-and-operations.md)
+## Unknowns That Must Stay Unknown Until Verified
+
+- Hosted preview health and founder login click-through.
+- Production deployment topology, environment variables, required reviewers, and migration approvals.
+- Live GitHub ruleset details unless verified directly through GitHub at execution time.
+- Actual `packages/knowledge-engine/**` corpus state beyond open PR metadata, because that package is Claude-owned in PR #33/#34.
+- Whether the next product sprint can use production-like data without additional founder-provided credentials or environment access.
