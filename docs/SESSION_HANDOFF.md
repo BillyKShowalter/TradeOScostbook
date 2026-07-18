@@ -16,23 +16,13 @@ related_code:
 
 ## Current mission
 
-PR #31 (the TradeOS Bible foundation) has landed on `main`. Current focus is the `packages/knowledge-engine/**` cleanup called out in PR #31's handoff: Phase A (documentation/governance guardrails, PR #33) and Phase B (pipeline path-canonicalization, PR #34, stacked on Phase A) are both validated and ready for review. Do not begin Phase C (any move/delete/archive of `packages/knowledge-engine/knowledge-engine/**`, the confirmed self-nested duplicate tree) until both land on `main` and a founder explicitly authorizes it — see `packages/knowledge-engine/README.md` §6/§8.
+PR #31 (the TradeOS Bible foundation) and the `packages/knowledge-engine/**` Phase A/B cleanup it called out (PR #33, PR #34) have all landed on `main`. This session reconciled a stale Bible-review branch against current `main` and corrected sprint-backlog/Command-Center content that hadn't caught up with those merges. Next: select the lowest-numbered eligible `READY` sprint per `docs/agent-prompts/NEXT_SPRINT_PROTOCOL.md`. Do not begin Phase C (any move/delete/archive of `packages/knowledge-engine/knowledge-engine/**`, the confirmed self-nested duplicate tree) without explicit founder authorization — see `packages/knowledge-engine/README.md` §6/§8.
 
 ## Live pull-request state
 
-- PR #31 — `docs/tradeos-bible-foundation` into `main`
-  - status: **merged** (2026-07-16).
-- PR #32 — Volume 3 engineering expansion
-  - status: merged into PR #31's foundation branch as `b2529e6`; no remaining child-PR work.
-- PR #33 — `docs/knowledge-engine-phase-a-guardrails` into `main`
-  - status: open, non-draft, all required checks green, ready for review;
-  - scope: `packages/knowledge-engine/**` ownership, governance, and safety-guardrail documentation only — no runtime/loader/pipeline/schema/generated/vendored content changed.
-- PR #34 — `fix/knowledge-engine-canonical-paths`, stacked on PR #33
-  - status: open, marked ready for review, all required checks green;
-  - scope: canonicalizes the knowledge-engine export pipeline's output-path resolution; does not move, delete, or change the content of the duplicate tree.
-- PR #30 — Settings Console brand-asset persistence
-  - status: open at last verification; owns Settings/Brand Studio web and related current-state scope; out of scope for the knowledge-engine work above.
-- PRs #27, #28, and #29 are merged and must not be recreated.
+- PR #31 (Bible foundation), #32 (Volume 3 expansion, merged into #31's branch), #33 (knowledge-engine Phase A), #34 (knowledge-engine Phase B), #27, #28, and #29 are all **merged**.
+- PR #30 — Settings Console brand-asset persistence — open; owns Settings/Brand Studio web and related current-state scope; do not touch or duplicate from another branch.
+- PR #35 — first-party operational truth alignment with the Bible — open.
 
 ## Completed
 
@@ -44,24 +34,17 @@ PR #31 (the TradeOS Bible foundation) has landed on `main`. Current focus is the
 - clarified doctrine, implementation state, sprint state, handoff, ADR, research, and archive boundaries;
 - updated repository governance for the solo-maintainer zero-approval posture without weakening PR or CI requirements;
 - landed PR #31 on `main`;
-- completed the `packages/knowledge-engine/**` segmented audit called out above: Phase A guardrail docs (PR #33) and Phase B path-canonicalization (PR #34) are both independently verified (doctrine/scope review, implementation review, live test execution, git-tree-hash integrity proof, and read-only Phase C research) and ready for review.
+- completed the `packages/knowledge-engine/**` segmented audit: Phase A guardrail docs (PR #33) and Phase B path-canonicalization (PR #34) both merged, independently verified beforehand (doctrine/scope review, implementation review, live test execution, git-tree-hash integrity proof, and read-only Phase C research);
+- reconciled this branch with current `main` and corrected `docs/SPRINT_BACKLOG.md` (S001/S002 marked `DONE` with merge evidence, S003 marked `READY`) and `docs/ENGINEERING_COMMAND_CENTER.md` (removed stale "PR #31/#33/#34 not yet merged" framing, added PR #35).
 
 ## Current blocker
 
-None for PR #33/#34 — both are green and unblocked. Phase C (duplicate-tree removal) remains blocked pending founder authorization, a CI reference-guard, and a rollback tag, per `packages/knowledge-engine/README.md`.
+None. S001 is `DONE`; S003 is the next eligible `READY` sprint per `docs/SPRINT_BACKLOG.md`'s "Next Eligible Sprint" section.
 
 ## Next eligible sprint
 
-None selected yet. The backlog should reflect PR #31 having landed before selecting further general work.
+S003 — Solo-maintainer governance calibration. See `docs/SPRINT_BACKLOG.md` for scope and acceptance criteria.
 
 ## Exact next safe action
 
-Merge PR #33, then PR #34, in that order (PR #34 is stacked on PR #33's branch). After both land on `main`, re-verify:
-
-```bash
-npm run docs:test
-npm run docs:check -- --base origin/main
-git diff --check
-```
-
-Do not begin any Phase C (duplicate-tree) work until a founder explicitly authorizes it.
+Read `docs/TRADEOS_BIBLE.md` and `docs/agent-prompts/NEXT_SPRINT_PROTOCOL.md`, then execute S003 in its own worktree and branch. Do not begin any Phase C (duplicate-tree) work without explicit founder authorization.

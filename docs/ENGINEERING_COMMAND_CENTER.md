@@ -42,7 +42,7 @@ Verified implementation truth belongs in [CURRENT_STATE.md](CURRENT_STATE.md). S
 
 ## Current milestone
 
-Finish and land the Bible foundation before resuming general sprint execution.
+The Bible foundation has landed (S001, `DONE`). Sprint execution is open: select the lowest-numbered eligible `READY` sprint per `docs/agent-prompts/NEXT_SPRINT_PROTOCOL.md`. S003 (solo-maintainer governance calibration) is the current first candidate.
 
 Completed foundation work includes:
 
@@ -52,14 +52,7 @@ Completed foundation work includes:
 - merged Volume 3 engineering expansion from PR #32;
 - corrected sprint dependency logic;
 - updated handoff and governance integration;
-- preservation of the large knowledge-engine corpus pending a separate audit.
-
-Remaining foundation work:
-
-- rerun complete local docs validation on the final head;
-- inspect the final docs-only diff and links;
-- wait for GitHub checks;
-- move PR #31 from draft only after all required validation is green.
+- a separate segmented audit and phased cleanup of the knowledge-engine corpus (Phase A/B landed via PR #33 and #34; Phase C deletion of the confirmed duplicate tree remains gated on founder sign-off).
 
 ## Canonical execution rule
 
@@ -77,19 +70,17 @@ If no sprint is eligible, stop and report the blocker instead of inventing work.
 
 At the last verified handoff:
 
-- PR #30 owns Settings/Brand Studio web and related current-state scope;
-- PR #31 owns the Bible foundation and sprint-system documentation;
-- PR #32 is merged into PR #31’s branch;
-- PRs #27, #28, and #29 are merged.
+- PR #30 owns Settings/Brand Studio web and related current-state scope (open — do not duplicate or touch its files from another branch);
+- PR #35 owns first-party operational truth alignment with the Bible (open);
+- PR #31 (Bible foundation), #32 (Volume 3 expansion, merged into #31's branch), #33 (knowledge-engine Phase A), #34 (knowledge-engine Phase B), #27, #28, and #29 are all merged.
 
 Always verify GitHub before editing. This summary is not a substitute for live PR state.
 
 ## Current blockers and risks
 
-- PR #31 is not yet merged, so the Bible remains proposed canonical doctrine until it lands on `main`.
 - The final validation pass must be rerun after adding the governance owner document.
 - Entry-point READMEs and legacy generator scripts contain stale material, but useful setup, competitive, pricing, and historical evidence must be preserved before archive or removal decisions.
-- `packages/knowledge-engine/**` (9,986 files) received its separate segmented audit on 2026-07-16, and Phase A documentation/governance guardrails (root README, corrected canonical-path docs, focused `docs/DOC_OWNERSHIP.yml` rules, historical notices on conflicting runtime guidance, a package-scoped `.gitignore`) have landed. The package still contains a confirmed 4,746-tracked-file self-nested exact-duplicate tree and ~1,400 vendored third-party skill directories with incomplete license coverage; both are documented but intentionally untouched pending founder-approved Phase B/C/D migration work — do not begin archive or deletion in this package without that approval.
+- `packages/knowledge-engine/**` (9,986 files) received its separate segmented audit on 2026-07-16. Phase A documentation/governance guardrails (root README, corrected canonical-path docs, focused `docs/DOC_OWNERSHIP.yml` rules, historical notices on conflicting runtime guidance, a package-scoped `.gitignore`) and Phase B pipeline path-canonicalization (`PATHS.md`, `path-manifest.json`, a marker-validated Python resolver, and a fix for divergent generated-export copies) have both landed via PR #33 and #34. The package still contains a confirmed 4,746-tracked-file self-nested exact-duplicate tree and ~1,400 vendored third-party skill directories with incomplete license coverage; both are documented but intentionally untouched pending founder-approved Phase C migration work — do not begin archive or deletion in this package without that approval.
 - Ruleset and branch-protection facts must be verified directly in GitHub before being stated as current.
 
 ## Required verification
@@ -137,7 +128,7 @@ Every agent must:
 
 ## Next engineer starts here
 
-Read [SESSION_HANDOFF.md](SESSION_HANDOFF.md). Rerun final PR #31 validation on the latest head. Do not begin archive, deletion, README consolidation, ruleset mutation, or package knowledge-corpus cleanup until the foundation is validated and merged.
+Read [TRADEOS_BIBLE.md](TRADEOS_BIBLE.md), [SESSION_HANDOFF.md](SESSION_HANDOFF.md), and [agent-prompts/NEXT_SPRINT_PROTOCOL.md](agent-prompts/NEXT_SPRINT_PROTOCOL.md). Then select the lowest-numbered eligible `READY` sprint from [SPRINT_BACKLOG.md](SPRINT_BACKLOG.md). Do not begin archive, deletion, README consolidation, or ruleset mutation outside a sprint's stated scope, and do not begin Phase C of the knowledge-engine cleanup without explicit founder sign-off.
 
 ## Source-of-truth links
 
