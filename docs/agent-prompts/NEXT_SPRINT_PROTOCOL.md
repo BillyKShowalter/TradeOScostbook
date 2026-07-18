@@ -1,3 +1,16 @@
+---
+status: current
+owner: platform
+last_verified: 2026-07-16
+source_of_truth: true
+related_docs:
+  - docs/TRADEOS_BIBLE.md
+  - docs/SPRINT_BACKLOG.md
+  - docs/ENGINEERING_COMMAND_CENTER.md
+  - docs/SESSION_HANDOFF.md
+  - docs/REPOSITORY_GOVERNANCE.md
+---
+
 # TradeOS Next Sprint Protocol
 
 Use this protocol for Claude, Codex, or any future engineering agent.

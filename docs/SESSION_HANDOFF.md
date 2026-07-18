@@ -1,63 +1,67 @@
 ---
 status: current
 owner: platform
-last_verified: 2026-07-15
+last_verified: 2026-07-18
 source_of_truth: true
 related_code:
-  - app/modules/ai-estimate-assist/structuredEstimator.ts
-  - app/modules/estimate-engine/service.ts
-  - app/db/requestSession.ts
-  - app/prisma/schema.prisma
-  - docs/CURRENT_STATE.md
+  - docs/TRADEOS_BIBLE.md
+  - docs/SPRINT_BACKLOG.md
+  - docs/ENGINEERING_COMMAND_CENTER.md
+  - docs/REPOSITORY_GOVERNANCE.md
+  - docs/agent-prompts/NEXT_SPRINT_PROTOCOL.md
+  - packages/knowledge-engine/README.md
 ---
 
 # TradeOS Session Handoff
 
-## Session Metadata
+## Current mission
 
-- date: 2026-07-16
-- agent/tool: Codex
-- worktree path: `/Users/showb/TradeOS-bible-review`
-- branch: detached from `origin/docs/tradeos-bible-foundation`
-- base branch: `origin/main`
-- remote: `https://github.com/404TradeOS-LLC/TradeOScostbook.git`
+PR #31 (the TradeOS Bible foundation) has landed on `main`. Current focus is the `packages/knowledge-engine/**` cleanup called out in PR #31's handoff: Phase A (documentation/governance guardrails, PR #33) and Phase B (pipeline path-canonicalization, PR #34, stacked on Phase A) are both validated and ready for review. Do not begin Phase C (any move/delete/archive of `packages/knowledge-engine/knowledge-engine/**`, the confirmed self-nested duplicate tree) until both land on `main` and a founder explicitly authorizes it — see `packages/knowledge-engine/README.md` §6/§8.
 
-## Mission
+## Live pull-request state
 
-Review, validate, and harden draft PR #31, `docs: establish TradeOS Bible and 50-sprint execution system`, without creating a competing implementation or touching runtime code.
+- PR #31 — `docs/tradeos-bible-foundation` into `main`
+  - status: **merged** (2026-07-16).
+- PR #32 — Volume 3 engineering expansion
+  - status: merged into PR #31's foundation branch as `b2529e6`; no remaining child-PR work.
+- PR #33 — `docs/knowledge-engine-phase-a-guardrails` into `main`
+  - status: open, non-draft, all required checks green, ready for review;
+  - scope: `packages/knowledge-engine/**` ownership, governance, and safety-guardrail documentation only — no runtime/loader/pipeline/schema/generated/vendored content changed.
+- PR #34 — `fix/knowledge-engine-canonical-paths`, stacked on PR #33
+  - status: open, marked ready for review, all required checks green;
+  - scope: canonicalizes the knowledge-engine export pipeline's output-path resolution; does not move, delete, or change the content of the duplicate tree.
+- PR #30 — Settings Console brand-asset persistence
+  - status: open at last verification; owns Settings/Brand Studio web and related current-state scope; out of scope for the knowledge-engine work above.
+- PRs #27, #28, and #29 are merged and must not be recreated.
 
 ## Completed
 
-- reviewed PR #31 against the current Command Center, Current State, Roadmap, lifecycle, architecture, governance, ownership, and handoff docs
-- verified PR #27, PR #28, and PR #29 are merged; PR #30 remains open and owns Settings brand-asset upload persistence
-- wired `docs/TRADEOS_BIBLE.md`, `docs/SPRINT_BACKLOG.md`, and `docs/agent-prompts/NEXT_SPRINT_PROTOCOL.md` into the Command Center
-- kept the Roadmap strategic and linked it to the sprint backlog without duplicating the 50 sprint records
-- corrected stale sprint status and dependency records so the backlog is mechanically selectable
-- updated ownership rules and docs tests for Bible/backlog/protocol invariants
+- expanded Bible Volumes 1 through 6;
+- created Volume 7 Knowledge Runtime;
+- merged the expanded Volume 3 child PR into the foundation;
+- corrected backlog dependency logic so no sprint is selectable before S001 lands;
+- replaced vague sprint dependencies with explicit sprint IDs or external-access blockers;
+- clarified doctrine, implementation state, sprint state, handoff, ADR, research, and archive boundaries;
+- updated repository governance for the solo-maintainer zero-approval posture without weakening PR or CI requirements;
+- landed PR #31 on `main`;
+- completed the `packages/knowledge-engine/**` segmented audit called out above: Phase A guardrail docs (PR #33) and Phase B path-canonicalization (PR #34) are both independently verified (doctrine/scope review, implementation review, live test execution, git-tree-hash integrity proof, and read-only Phase C research) and ready for review.
 
-## Validation Performed
+## Current blocker
 
-- `npm run docs:test`: passed, 38 tests
-- `npm run docs:check -- --base origin/main`: passed
-- `git diff --check`: passed
+None for PR #33/#34 — both are green and unblocked. Phase C (duplicate-tree removal) remains blocked pending founder authorization, a CI reference-guard, and a rollback tag, per `packages/knowledge-engine/README.md`.
 
-## Known Issues or Blockers
+## Next eligible sprint
 
-- PR #30 remains open and must not be duplicated
-- S003 is the first eligible READY sprint after PR #31 merges
-- production environment access remains blocked for environment-verification sprints
+None selected yet. The backlog should reflect PR #31 having landed before selecting further general work.
 
-Next eligible sprint:
-S003 — Solo-maintainer governance calibration
+## Exact next safe action
 
-Why it is eligible:
-It is the lowest-numbered READY sprint, has no unmerged sprint dependency, does not overlap PR #27 or PR #30, and requires no founder product decision.
+Merge PR #33, then PR #34, in that order (PR #34 is stacked on PR #33's branch). After both land on `main`, re-verify:
 
-Dependencies:
-None.
+```bash
+npm run docs:test
+npm run docs:check -- --base origin/main
+git diff --check
+```
 
-Overlapping PRs checked:
-PR #31 owns Bible/backlog/protocol docs. PR #30 owns settings asset upload persistence. PR #27 is already merged and recorded as DONE in S002.
-
-Exact startup command/prompt:
-Read AGENTS.md, docs/TRADEOS_BIBLE.md, docs/ENGINEERING_COMMAND_CENTER.md, docs/CURRENT_STATE.md, docs/SPRINT_BACKLOG.md, docs/SESSION_HANDOFF.md, and docs/agent-prompts/NEXT_SPRINT_PROTOCOL.md. Fetch origin and inspect live GitHub PR, branch, and worktree state. Select the lowest-numbered eligible READY sprint using the documented protocol. Create one isolated worktree and branch, execute exactly one sprint, run all required validation, update sprint evidence and SESSION_HANDOFF, push, and open a draft PR. Stop on scope conflict, stale remote state, failed required checks, unavailable infrastructure, unresolved founder decision, or product ambiguity.
+Do not begin any Phase C (duplicate-tree) work until a founder explicitly authorizes it.

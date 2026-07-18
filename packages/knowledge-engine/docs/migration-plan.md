@@ -1,5 +1,13 @@
 # Migration Plan: Costbook Editor to Knowledge Lab
 
+> **Historical document (2026-07-16):** this describes the original migration plan and does not
+> reflect the current tree. Two path details below no longer match reality: the `knowledge/`
+> folder referenced in Phase 2/3 is actually `knowledge/knowledge/` on disk (e.g. the real path is
+> `knowledge/knowledge/cost-items/costbook.json`, not `knowledge/cost-items/costbook.json`), and
+> the `archive/` folder referenced in Phase 1 is actually `legacy-archive/archive/`. See
+> [`packages/knowledge-engine/README.md`](../README.md) for the current canonical structure. This
+> file is preserved as history and must not be used as current implementation guidance.
+
 This document outlines the transition of the legacy desktop/mobile SwiftUI Costbook Editor into a dedicated local Construction Knowledge Engine.
 
 ## Objectives

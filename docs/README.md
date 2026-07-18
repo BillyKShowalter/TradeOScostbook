@@ -1,12 +1,14 @@
 ---
 status: current
 owner: platform
-last_verified: 2026-07-14
+last_verified: 2026-07-16
 source_of_truth: true
 related_code:
   - AGENTS.md
   - README.md
   - docs/REPOSITORY_GOVERNANCE.md
+  - docs/DOC_OWNERSHIP.yml
+  - packages/knowledge-engine/README.md
   - app/backend/server.ts
   - app/domain/contracts.ts
   - app/prisma/schema.prisma
@@ -118,6 +120,7 @@ Rename handling:
 - ordinary edits to living docs do not automatically require `docs/README.md`
 - `docs/README.md` is reserved for documentation-governance, hierarchy, ownership-rule, checker, PR-template, and docs-workflow changes
 - controller and middleware files should be listed when they own module-specific validation, permission, throttling, or security behavior; for example, AI estimator controller and rate-limit changes are owned by the AI Estimate Assist documentation set
+- package-level data corpora are listed when their content feeds a documented runtime consumer; for example, `packages/knowledge-engine/**` runtime and vendored-content changes are owned by `packages/knowledge-engine/README.md`, which is the package's own canonical entry point rather than a `docs/modules/*.md` file
 
 ## Source-of-truth files
 

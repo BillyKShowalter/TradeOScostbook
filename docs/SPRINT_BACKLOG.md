@@ -21,13 +21,13 @@ Only merged evidence may set `DONE`. Open PR overlap forces `IN_REVIEW` or `BLOC
 ## Phase 1 — Governance and Execution System
 
 ### S001 — TradeOS Bible foundation
-Status: IN_REVIEW
+Status: DONE
 Dependencies: none
 Objective: Establish the canonical Bible index, numbered sprint queue, and autonomous next-sprint protocol.
 Allowed paths: `docs/**`, `AGENTS.md` if required.
 Forbidden paths: runtime code, schema, dependencies, CI behavior.
 Acceptance: draft PR exists; docs checks pass; next sprint is mechanically selectable.
-Evidence: PR #31 in review from `docs/tradeos-bible-foundation`; local docs checks passed with S003 mechanically selected as next READY sprint.
+Evidence: PR #31 merged 2026-07-16 as `ac72ff235db687d9cb8619820e536aec040afc6b`, branch `docs/tradeos-bible-foundation`.
 
 ### S002 — Contractor UX research and Founder Preview specification
 Status: DONE
@@ -348,9 +348,9 @@ Acceptance: onboarding checklist, support path, feedback capture, and rollback p
 
 ### S049 — Stale branch, PR, and worktree retirement
 Status: PLANNED
-Dependencies: S048
+Dependencies: S013
 Objective: Remove stale branches/worktrees only after verifying merge and ownership state.
-Blocked by: active RC PRs still open.
+Blocked by: active RC PRs still open (PR #30 / S013, and any other open PR at execution time).
 Acceptance: no misleading active branch or obsolete draft PR remains.
 
 ### S050 — Launch stabilization and next roadmap
@@ -361,4 +361,4 @@ Acceptance: launch decision, known-risk register, and successor backlog approved
 
 ## Next Eligible Sprint
 
-Selection is determined by `docs/agent-prompts/NEXT_SPRINT_PROTOCOL.md` after checking live PRs and dependencies. As of this review, S003 is the first eligible READY sprint because S001 remains in review, S002 is DONE, and PR #30 blocks only settings/brand-asset work.
+Selection is determined by `docs/agent-prompts/NEXT_SPRINT_PROTOCOL.md` after checking live PRs and dependencies. S001 and S002 are `DONE` (PR #31 and PR #27 both merged). S003 is the first eligible `READY` sprint: its only dependency is satisfied, and its scope (governance docs and sprint evidence only) does not overlap PR #30 (S013) or any other currently open PR.
