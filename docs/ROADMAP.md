@@ -15,7 +15,16 @@ related_code:
 
 RC1 hardening.
 
+The strategic roadmap is executed through `docs/SPRINT_BACKLOG.md`. The Roadmap remains the strategic view; the Sprint Backlog is the tactical queue for one branch and PR at a time.
+
 ## Upcoming milestones
+
+### Execution-system hardening
+
+- establish `docs/TRADEOS_BIBLE.md` as the source-of-truth operating index
+- use `docs/SPRINT_BACKLOG.md` as the canonical numbered sprint queue
+- use `docs/agent-prompts/NEXT_SPRINT_PROTOCOL.md` to select the next safe sprint without a custom founder prompt
+- keep this Roadmap high-level instead of duplicating all 50 sprint records
 
 ### Next coherent milestone: Lifecycle normalization
 

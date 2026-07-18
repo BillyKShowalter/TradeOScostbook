@@ -122,7 +122,7 @@ Rename handling:
 
 - code-path ownership checks apply to both the old and new path for renamed files
 - ordinary edits to living docs do not automatically require `docs/README.md`
-- `docs/README.md` is reserved for documentation-governance, hierarchy, ownership-rule, checker, PR-template, and docs-workflow changes
+- `docs/README.md` is reserved for documentation-governance, hierarchy, ownership-rule, checker, PR-template, and docs-workflow changes — enforced mechanically: any change to `docs/DOC_OWNERSHIP.yml` requires `docs/README.md` and `docs/REPOSITORY_GOVERNANCE.md` to also change in the same PR
 - controller and middleware files should be listed when they own module-specific validation, permission, throttling, or security behavior; for example, AI estimator controller and rate-limit changes are owned by the AI Estimate Assist documentation set
 - package-level data corpora are listed when their content feeds a documented runtime consumer; for example, `packages/knowledge-engine/**` runtime and vendored-content changes are owned by `packages/knowledge-engine/README.md`, which is the package's own canonical entry point rather than a `docs/modules/*.md` file
 
