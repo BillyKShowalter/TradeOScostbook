@@ -1,7 +1,7 @@
 ---
 status: current
 owner: platform
-last_verified: 2026-07-14
+last_verified: 2026-07-18
 source_of_truth: true
 related_code:
   - docs/CURRENT_STATE.md
@@ -14,6 +14,8 @@ related_code:
 ## Current milestone
 
 RC1 hardening.
+
+The Bible foundation is merged. Immediate tactical execution is governed by `docs/SPRINT_BACKLOG.md`; roadmap milestones do not override the numbered sprint queue.
 
 ## Upcoming milestones
 
@@ -46,6 +48,10 @@ Explicit exclusions:
 
 These exclusions do not remove the existing jobs, scheduling, technician-assignment, or dispatcher workflow surface already in scope.
 
+Execution note:
+
+- lifecycle normalization remains the next coherent product milestone, but it should not start until the current documentation-control repair lands and the S003 governance-calibration blocker is resolved or explicitly deferred by the founder.
+
 ### Release hardening
 
 - keep repository verification stable
@@ -66,7 +72,7 @@ These exclusions do not remove the existing jobs, scheduling, technician-assignm
 
 - legacy roles remain in compatibility mode
 - several lifecycle states still normalize older stored values
-- cost-item and assembly substring code search still lacks trigram indexing, so mixed name-or-code search can remain scan-heavy
+- cost-item and assembly name search has merged trigram index support, but substring `code` search still lacks equivalent query-plan evidence, so mixed name-or-code search can remain scan-heavy
 - older setup notes and deep-dive documents required archival and should stay archived
 
 ## Explicit non-goals
