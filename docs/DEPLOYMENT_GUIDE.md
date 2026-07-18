@@ -1,6 +1,17 @@
-# TradeOS Deployment Guide
+---
+status: current
+owner: platform
+last_verified: 2026-07-14
+source_of_truth: false
+related_code:
+  - app/backend/start.ts
+  - app/index.ts
+  - app/backend/server.ts
+  - web/src/lib/api.ts
+  - .github/workflows/deploy-migrations.yml
+---
 
-Last updated: 2026-07-03
+# TradeOS Deployment Guide
 
 ## Overview
 

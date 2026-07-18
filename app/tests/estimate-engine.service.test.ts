@@ -18,6 +18,8 @@ const mockPrisma = {
   estimateLineItem: {
     aggregate: jest.fn(),
     create: jest.fn(),
+    createMany: jest.fn(),
+    findFirst: jest.fn(),
     findUnique: jest.fn(),
     delete: jest.fn(),
   },
@@ -123,6 +125,132 @@ describe("EstimateEngineService", () => {
         data: expect.objectContaining({ subtotalCost: 25, totalPrice: 33 }),
       })
     );
+  });
+
+  it("uses sourceKey to make idempotent line insertion replay-safe", async () => {
+    mockPrisma.costItem.findFirst.mockResolvedValue({
+      id: "cost-item-1",
+      orgId: "org-1",
+      unitOfMeasure: "EA",
+      name: "Panel replacement",
+    });
+    mockCostDatabase.getUnitCost.mockResolvedValue({ totalUnitCost: 250 });
+    mockPrisma.estimateLineItem.aggregate.mockResolvedValue({ _max: { sortOrder: 3 } });
+    mockPrisma.estimateLineItem.createMany.mockResolvedValue({ count: 0 });
+    mockPrisma.estimateLineItem.findFirst.mockResolvedValue({
+      id: "line-existing",
+      estimateId: "estimate-1",
+      costItemId: "cost-item-1",
+      assemblyId: null,
+      description: "Panel replacement",
+      quantity: 1,
+      unitOfMeasure: "EA",
+      unitCost: 250,
+      lineCost: 250,
+      sortOrder: 4,
+      sourceKey: "ai-estimator:v1:abc",
+    });
+    mockPrisma.estimate.findFirst.mockResolvedValue({
+      id: "estimate-1",
+      orgId: "org-1",
+      projectId: "project-1",
+      version: 1,
+      status: "draft",
+      overheadPct: 0,
+      profitPct: 0,
+      targetMarginPct: null,
+      subtotalCost: 250,
+      totalPrice: 250,
+      lineItems: [{ lineCost: 250 }],
+    });
+
+    const lineItem = await new EstimateEngineService().addLineItem({
+      estimateId: "estimate-1",
+      orgId: "org-1",
+      costItemId: "cost-item-1",
+      quantity: 1,
+      description: "Panel replacement",
+      sourceKey: "ai-estimator:v1:abc",
+    });
+
+    expect(mockPrisma.estimateLineItem.createMany).toHaveBeenCalledWith({
+      data: expect.objectContaining({ sourceKey: "ai-estimator:v1:abc" }),
+      skipDuplicates: true,
+    });
+    expect(mockPrisma.estimate.update).not.toHaveBeenCalled();
+    expect(lineItem.id).toBe("line-existing");
+    expect(lineItem.sourceKey).toBe("ai-estimator:v1:abc");
+  });
+
+  it("recalculates totals after the first sourceKey-backed line insertion", async () => {
+    mockPrisma.costItem.findFirst.mockResolvedValue({
+      id: "cost-item-1",
+      orgId: "org-1",
+      unitOfMeasure: "EA",
+      name: "Panel replacement",
+    });
+    mockCostDatabase.getUnitCost.mockResolvedValue({ totalUnitCost: 250 });
+    mockPrisma.estimateLineItem.aggregate.mockResolvedValue({ _max: { sortOrder: 3 } });
+    mockPrisma.estimateLineItem.createMany.mockResolvedValue({ count: 1 });
+    mockPrisma.estimateLineItem.findFirst.mockResolvedValue({
+      id: "line-new",
+      estimateId: "estimate-1",
+      costItemId: "cost-item-1",
+      assemblyId: null,
+      description: "Panel replacement",
+      quantity: 1,
+      unitOfMeasure: "EA",
+      unitCost: 250,
+      lineCost: 250,
+      sortOrder: 4,
+      sourceKey: "ai-estimator:v1:first",
+    });
+    mockPrisma.estimate.findFirst.mockResolvedValue({
+      id: "estimate-1",
+      orgId: "org-1",
+      projectId: "project-1",
+      version: 1,
+      status: "draft",
+      overheadPct: 0,
+      profitPct: 0,
+      targetMarginPct: null,
+      subtotalCost: 250,
+      totalPrice: 250,
+      lineItems: [{ lineCost: 250 }],
+    });
+    mockPrisma.estimate.update.mockResolvedValue({
+      id: "estimate-1",
+      orgId: "org-1",
+      projectId: "project-1",
+      version: 1,
+      status: "draft",
+      overheadPct: 0,
+      profitPct: 0,
+      targetMarginPct: null,
+      subtotalCost: 250,
+      totalPrice: 250,
+    });
+
+    const lineItem = await new EstimateEngineService().addLineItem({
+      estimateId: "estimate-1",
+      orgId: "org-1",
+      costItemId: "cost-item-1",
+      quantity: 1,
+      description: "Panel replacement",
+      sourceKey: "ai-estimator:v1:first",
+    });
+
+    expect(mockPrisma.estimateLineItem.createMany).toHaveBeenCalledWith({
+      data: expect.objectContaining({ sourceKey: "ai-estimator:v1:first", sortOrder: 4 }),
+      skipDuplicates: true,
+    });
+    expect(mockPrisma.estimate.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "estimate-1" },
+        data: expect.objectContaining({ subtotalCost: 250, totalPrice: 250 }),
+      })
+    );
+    expect(lineItem.id).toBe("line-new");
   });
 
   it("finalizes an estimate after recalculating totals", async () => {

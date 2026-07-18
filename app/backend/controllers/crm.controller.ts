@@ -1,9 +1,11 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import { CrmService } from "../../modules/crm/service";
+import { ActivityTimelineService } from "../../modules/intelligence/service";
 import { requireAuthContext, requireOrgAdmin, requireOrgId, requireRoles } from "../requestContext";
 
 const service = new CrmService();
+const activityService = new ActivityTimelineService();
 const hexColor = /^#(?:[0-9a-fA-F]{6})$/;
 
 const customerSchema = z
@@ -112,20 +114,48 @@ export const crmCustomersController = {
     res.json(await service.listCustomers(requireOrgId(req)));
   },
   async create(req: Request, res: Response) {
-    requireRoles(req, ["owner", "dispatcher"]);
-    res.status(201).json(await service.createCustomer(requireOrgId(req), customerSchema.parse(req.body)));
+    const auth = requireRoles(req, ["owner", "dispatcher"]);
+    const customer = await service.createCustomer(requireOrgId(req), customerSchema.parse(req.body));
+    await activityService.record({
+      orgId: requireOrgId(req),
+      entityType: "customer",
+      entityId: customer.id,
+      eventType: "customer.created",
+      title: `Customer created: ${customer.name}`,
+      actorUserId: auth.userId,
+    });
+    res.status(201).json(customer);
   },
   async getById(req: Request, res: Response) {
     requireRoles(req, ["owner", "dispatcher", "technician"]);
     res.json(await service.getCustomer(requireOrgId(req), req.params.id));
   },
   async update(req: Request, res: Response) {
-    requireRoles(req, ["owner", "dispatcher"]);
-    res.json(await service.updateCustomer(requireOrgId(req), req.params.id, customerUpdateSchema.parse(req.body)));
+    const auth = requireRoles(req, ["owner", "dispatcher"]);
+    const input = customerUpdateSchema.parse(req.body);
+    const customer = await service.updateCustomer(requireOrgId(req), req.params.id, input);
+    await activityService.record({
+      orgId: requireOrgId(req),
+      entityType: "customer",
+      entityId: customer.id,
+      eventType: "customer.updated",
+      title: `Customer updated: ${customer.name}`,
+      actorUserId: auth.userId,
+      metadata: { fields: Object.keys(input).sort() },
+    });
+    res.json(customer);
   },
   async remove(req: Request, res: Response) {
-    requireRoles(req, ["owner", "dispatcher"]);
+    const auth = requireRoles(req, ["owner", "dispatcher"]);
     await service.removeCustomer(requireOrgId(req), req.params.id);
+    await activityService.record({
+      orgId: requireOrgId(req),
+      entityType: "customer",
+      entityId: req.params.id,
+      eventType: "customer.deleted",
+      title: "Customer archived",
+      actorUserId: auth.userId,
+    });
     res.status(204).send();
   },
   async addServiceAddress(req: Request, res: Response) {

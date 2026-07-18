@@ -1,257 +1,381 @@
 import "dotenv/config";
-import { prisma } from "../client";
+import { Prisma, type PrismaClient } from "@prisma/client";
 import { signAuthToken } from "../../backend/auth/jwt";
+import { basePrisma } from "../client";
 
-// Seeds a minimal but functional sample dataset: one organization, one
-// division/category/subcategory, a labor rate, a material, and a cost item
-// that references both — enough to exercise the full estimate -> proposal
-// flow described in the README.
-async function main() {
-  const organizations = await Promise.all([
-    prisma.organization.upsert({
-      where: { id: "00000000-0000-0000-0000-000000000001" },
-      update: { name: "Sample Contracting Co.", regionCode: "US-TX-AUSTIN" },
-      create: {
-        id: "00000000-0000-0000-0000-000000000001",
-        name: "Sample Contracting Co.",
-        regionCode: "US-TX-AUSTIN",
-      },
-    }),
-    prisma.organization.upsert({
-      where: { id: "00000000-0000-0000-0000-000000000002" },
-      update: { name: "Second Sample Services", regionCode: "US-IN-INDIANAPOLIS" },
-      create: {
-        id: "00000000-0000-0000-0000-000000000002",
-        name: "Second Sample Services",
-        regionCode: "US-IN-INDIANAPOLIS",
-      },
-    }),
-  ]);
-  const [org, secondOrg] = organizations;
+const IDS = {
+  orgPrimary: "00000000-0000-0000-0000-000000000001",
+  orgSecondary: "00000000-0000-0000-0000-000000000002",
+  userOwner: "10000000-0000-0000-0000-000000000001",
+  userSecondOwner: "10000000-0000-0000-0000-000000000002",
+  userAdmin: "10000000-0000-0000-0000-000000000003",
+  userDispatcher: "10000000-0000-0000-0000-000000000004",
+  userTechnician: "10000000-0000-0000-0000-000000000005",
+  userHelper: "10000000-0000-0000-0000-000000000006",
+  userSecondDispatcher: "10000000-0000-0000-0000-000000000007",
+  userSecondTechnician: "10000000-0000-0000-0000-000000000008",
+  division: "20000000-0000-0000-0000-000000000001",
+  category: "20000000-0000-0000-0000-000000000002",
+  subcategory: "20000000-0000-0000-0000-000000000003",
+  laborRate: "20000000-0000-0000-0000-000000000004",
+  material: "20000000-0000-0000-0000-000000000005",
+  equipment: "20000000-0000-0000-0000-000000000006",
+  costItemExcavation: "20000000-0000-0000-0000-000000000007",
+  costItemGravel: "20000000-0000-0000-0000-000000000008",
+  assemblyTemplate: "20000000-0000-0000-0000-000000000009",
+  customerJane: "30000000-0000-0000-0000-000000000001",
+  addressJanePrimary: "30000000-0000-0000-0000-000000000002",
+  projectDrainage: "30000000-0000-0000-0000-000000000003",
+  customerCorey: "30000000-0000-0000-0000-000000000004",
+  addressCoreyRemodel: "30000000-0000-0000-0000-000000000005",
+  projectRemodel: "30000000-0000-0000-0000-000000000006",
+  equipmentCondenser: "30000000-0000-0000-0000-000000000007",
+  equipmentFurnace: "30000000-0000-0000-0000-000000000008",
+  jobUnscheduled: "40000000-0000-0000-0000-000000000001",
+  jobScheduled: "40000000-0000-0000-0000-000000000002",
+  jobDispatched: "40000000-0000-0000-0000-000000000003",
+  jobOnSite: "40000000-0000-0000-0000-000000000004",
+  jobCompleted: "40000000-0000-0000-0000-000000000005",
+  jobConflict: "40000000-0000-0000-0000-000000000006",
+  customerBob: "50000000-0000-0000-0000-000000000001",
+  addressBobPrimary: "50000000-0000-0000-0000-000000000002",
+  projectPanelUpgrade: "50000000-0000-0000-0000-000000000003",
+  jobPanelUpgrade: "50000000-0000-0000-0000-000000000004",
+} as const;
 
-  const [user, secondUser, adminUser, dispatcherUser, technicianUser, helperUser, secondDispatcherUser, secondTechnicianUser] = await Promise.all([
-    prisma.appUser.upsert({
-      where: { authSubject: "seed-user-1" },
-      update: { email: "seed@example.com", fullName: "Seed User" },
-      create: {
-        authSubject: "seed-user-1",
-        email: "seed@example.com",
-        fullName: "Seed User",
-      },
+type SeedTransaction = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
+
+interface SeedSessionInput {
+  orgId: string;
+  userId: string;
+  role?: string;
+  authSubject?: string;
+  provisioning?: boolean;
+  sessionSource: string;
+}
+
+async function withSeedSession<T>(
+  input: SeedSessionInput,
+  operation: (tx: SeedTransaction) => Promise<T>
+): Promise<T> {
+  return basePrisma.$transaction(
+    async (tx) => {
+      await tx.$queryRaw(Prisma.sql`
+        select
+          set_config('app.user_id', ${input.userId}, true),
+          set_config('app.org_id', ${input.orgId}, true),
+          set_config('app.role', ${input.role ?? ""}, true),
+          set_config('app.auth_subject', ${input.authSubject ?? ""}, true),
+          set_config('app.provisioning', ${input.provisioning ? "true" : "false"}, true),
+          set_config('app.session_source', ${input.sessionSource}, true)
+      `);
+      return operation(tx);
+    },
+    { timeout: 120_000 }
+  );
+}
+
+async function provisionPrimaryOrganization() {
+  await provisionOrganization({
+    orgId: IDS.orgPrimary,
+    ownerUserId: IDS.userOwner,
+    ownerAuthSubject: "seed-user-1",
+    name: "Sample Contracting Co.",
+    regionCode: "US-TX-AUSTIN",
+    sessionSource: "seed:provision:primary",
+  });
+
+  const [owner, admin, dispatcher, technician, helper] = await Promise.all([
+    provisionUser({
+      orgId: IDS.orgPrimary,
+      userId: IDS.userOwner,
+      authSubject: "seed-user-1",
+      email: "seed@example.com",
+      fullName: "Seed User",
+      sessionSource: "seed:user:owner",
     }),
-    prisma.appUser.upsert({
-      where: { authSubject: "seed-user-2" },
-      update: { email: "seed2@example.com", fullName: "Second Seed User" },
-      create: {
-        authSubject: "seed-user-2",
-        email: "seed2@example.com",
-        fullName: "Second Seed User",
-      },
+    provisionUser({
+      orgId: IDS.orgPrimary,
+      userId: IDS.userAdmin,
+      authSubject: "seed-admin-1",
+      email: "admin@example.com",
+      fullName: "Operations Admin",
+      sessionSource: "seed:user:admin",
     }),
-    prisma.appUser.upsert({
-      where: { authSubject: "seed-admin-1" },
-      update: { email: "admin@example.com", fullName: "Operations Admin" },
-      create: {
-        authSubject: "seed-admin-1",
-        email: "admin@example.com",
-        fullName: "Operations Admin",
-      },
+    provisionUser({
+      orgId: IDS.orgPrimary,
+      userId: IDS.userDispatcher,
+      authSubject: "seed-dispatcher-1",
+      email: "dispatch@example.com",
+      fullName: "Dispatch Lead",
+      sessionSource: "seed:user:dispatcher",
     }),
-    prisma.appUser.upsert({
-      where: { authSubject: "seed-dispatcher-1" },
-      update: { email: "dispatch@example.com", fullName: "Dispatch Lead" },
-      create: {
-        authSubject: "seed-dispatcher-1",
-        email: "dispatch@example.com",
-        fullName: "Dispatch Lead",
-      },
+    provisionUser({
+      orgId: IDS.orgPrimary,
+      userId: IDS.userTechnician,
+      authSubject: "seed-technician-1",
+      email: "tech1@example.com",
+      fullName: "Maya HVAC",
+      sessionSource: "seed:user:technician",
     }),
-    prisma.appUser.upsert({
-      where: { authSubject: "seed-technician-1" },
-      update: { email: "tech1@example.com", fullName: "Maya HVAC" },
-      create: {
-        authSubject: "seed-technician-1",
-        email: "tech1@example.com",
-        fullName: "Maya HVAC",
-      },
-    }),
-    prisma.appUser.upsert({
-      where: { authSubject: "seed-technician-2" },
-      update: { email: "tech2@example.com", fullName: "Luis Helper" },
-      create: {
-        authSubject: "seed-technician-2",
-        email: "tech2@example.com",
-        fullName: "Luis Helper",
-      },
-    }),
-    prisma.appUser.upsert({
-      where: { authSubject: "seed-dispatcher-2" },
-      update: { email: "dispatch2@example.com", fullName: "Second Dispatch" },
-      create: {
-        authSubject: "seed-dispatcher-2",
-        email: "dispatch2@example.com",
-        fullName: "Second Dispatch",
-      },
-    }),
-    prisma.appUser.upsert({
-      where: { authSubject: "seed-technician-3" },
-      update: { email: "tech3@example.com", fullName: "Nina Spark" },
-      create: {
-        authSubject: "seed-technician-3",
-        email: "tech3@example.com",
-        fullName: "Nina Spark",
-      },
+    provisionUser({
+      orgId: IDS.orgPrimary,
+      userId: IDS.userHelper,
+      authSubject: "seed-technician-2",
+      email: "tech2@example.com",
+      fullName: "Luis Helper",
+      sessionSource: "seed:user:helper",
     }),
   ]);
 
   await Promise.all([
-    prisma.organizationMembership.upsert({
-      where: {
-        orgId_userId: {
-          orgId: org.id,
-          userId: user.id,
-        },
-      },
-      update: { status: "active", role: "owner" },
-      create: {
-        orgId: org.id,
-        userId: user.id,
-        role: "owner",
-        status: "active",
-      },
+    provisionMembership({ orgId: IDS.orgPrimary, userId: owner.id, role: "owner", sessionSource: "seed:membership:owner" }),
+    provisionMembership({ orgId: IDS.orgPrimary, userId: admin.id, role: "admin", sessionSource: "seed:membership:admin" }),
+    provisionMembership({ orgId: IDS.orgPrimary, userId: dispatcher.id, role: "dispatcher", sessionSource: "seed:membership:dispatcher" }),
+    provisionMembership({ orgId: IDS.orgPrimary, userId: technician.id, role: "technician", sessionSource: "seed:membership:technician" }),
+    provisionMembership({ orgId: IDS.orgPrimary, userId: helper.id, role: "technician", sessionSource: "seed:membership:helper" }),
+  ]);
+
+  return {
+    organization: { id: IDS.orgPrimary, name: "Sample Contracting Co.", regionCode: "US-TX-AUSTIN" },
+    owner,
+    admin,
+    dispatcher,
+    technician,
+    helper,
+  };
+}
+
+async function provisionSecondaryOrganization() {
+  await provisionOrganization({
+    orgId: IDS.orgSecondary,
+    ownerUserId: IDS.userSecondOwner,
+    ownerAuthSubject: "seed-user-2",
+    name: "Second Sample Services",
+    regionCode: "US-IN-INDIANAPOLIS",
+    sessionSource: "seed:provision:secondary",
+  });
+
+  const [owner, dispatcher, technician] = await Promise.all([
+    provisionUser({
+      orgId: IDS.orgSecondary,
+      userId: IDS.userSecondOwner,
+      authSubject: "seed-user-2",
+      email: "seed2@example.com",
+      fullName: "Second Seed User",
+      sessionSource: "seed:user:second-owner",
     }),
-    prisma.organizationMembership.upsert({
-      where: {
-        orgId_userId: {
-          orgId: org.id,
-          userId: adminUser.id,
-        },
-      },
-      update: { status: "active", role: "admin" },
-      create: {
-        orgId: org.id,
-        userId: adminUser.id,
-        role: "admin",
-        status: "active",
-      },
+    provisionUser({
+      orgId: IDS.orgSecondary,
+      userId: IDS.userSecondDispatcher,
+      authSubject: "seed-dispatcher-2",
+      email: "dispatch2@example.com",
+      fullName: "Second Dispatch",
+      sessionSource: "seed:user:second-dispatcher",
     }),
-    prisma.organizationMembership.upsert({
-      where: {
-        orgId_userId: {
-          orgId: org.id,
-          userId: dispatcherUser.id,
-        },
-      },
-      update: { status: "active", role: "dispatcher" },
-      create: {
-        orgId: org.id,
-        userId: dispatcherUser.id,
-        role: "dispatcher",
-        status: "active",
-      },
-    }),
-    prisma.organizationMembership.upsert({
-      where: {
-        orgId_userId: {
-          orgId: org.id,
-          userId: technicianUser.id,
-        },
-      },
-      update: { status: "active", role: "technician" },
-      create: {
-        orgId: org.id,
-        userId: technicianUser.id,
-        role: "technician",
-        status: "active",
-      },
-    }),
-    prisma.organizationMembership.upsert({
-      where: {
-        orgId_userId: {
-          orgId: org.id,
-          userId: helperUser.id,
-        },
-      },
-      update: { status: "active", role: "technician" },
-      create: {
-        orgId: org.id,
-        userId: helperUser.id,
-        role: "technician",
-        status: "active",
-      },
-    }),
-    prisma.organizationMembership.upsert({
-      where: {
-        orgId_userId: {
-          orgId: secondOrg.id,
-          userId: secondUser.id,
-        },
-      },
-      update: { status: "active", role: "owner" },
-      create: {
-        orgId: secondOrg.id,
-        userId: secondUser.id,
-        role: "owner",
-        status: "active",
-      },
-    }),
-    prisma.organizationMembership.upsert({
-      where: {
-        orgId_userId: {
-          orgId: secondOrg.id,
-          userId: secondDispatcherUser.id,
-        },
-      },
-      update: { status: "active", role: "dispatcher" },
-      create: {
-        orgId: secondOrg.id,
-        userId: secondDispatcherUser.id,
-        role: "dispatcher",
-        status: "active",
-      },
-    }),
-    prisma.organizationMembership.upsert({
-      where: {
-        orgId_userId: {
-          orgId: secondOrg.id,
-          userId: secondTechnicianUser.id,
-        },
-      },
-      update: { status: "active", role: "technician" },
-      create: {
-        orgId: secondOrg.id,
-        userId: secondTechnicianUser.id,
-        role: "technician",
-        status: "active",
-      },
+    provisionUser({
+      orgId: IDS.orgSecondary,
+      userId: IDS.userSecondTechnician,
+      authSubject: "seed-technician-3",
+      email: "tech3@example.com",
+      fullName: "Nina Spark",
+      sessionSource: "seed:user:second-technician",
     }),
   ]);
 
-  const division = await prisma.division.create({
-    data: { orgId: org.id, code: "02", name: "Sitework", sortOrder: 1 },
+  await Promise.all([
+    provisionMembership({ orgId: IDS.orgSecondary, userId: owner.id, role: "owner", sessionSource: "seed:membership:second-owner" }),
+    provisionMembership({ orgId: IDS.orgSecondary, userId: dispatcher.id, role: "dispatcher", sessionSource: "seed:membership:second-dispatcher" }),
+    provisionMembership({ orgId: IDS.orgSecondary, userId: technician.id, role: "technician", sessionSource: "seed:membership:second-technician" }),
+  ]);
+
+  return {
+    organization: { id: IDS.orgSecondary, name: "Second Sample Services", regionCode: "US-IN-INDIANAPOLIS" },
+    owner,
+    dispatcher,
+    technician,
+  };
+}
+
+interface ProvisionUserInput {
+  orgId: string;
+  userId: string;
+  authSubject: string;
+  email: string;
+  fullName: string;
+  sessionSource: string;
+}
+
+async function provisionOrganization(input: {
+  orgId: string;
+  ownerUserId: string;
+  ownerAuthSubject: string;
+  name: string;
+  regionCode: string;
+  sessionSource: string;
+}) {
+  return withSeedSession(
+    {
+      orgId: input.orgId,
+      userId: input.ownerUserId,
+      authSubject: input.ownerAuthSubject,
+      provisioning: true,
+      sessionSource: input.sessionSource,
+    },
+    async (tx) => {
+      const existing = await tx.organization.findUnique({ where: { id: input.orgId } });
+      if (existing) return existing;
+      return tx.organization.create({
+        data: {
+          id: input.orgId,
+          name: input.name,
+          regionCode: input.regionCode,
+        },
+      });
+    }
+  );
+}
+
+async function provisionUser(input: ProvisionUserInput) {
+  return withSeedSession(
+    {
+      orgId: input.orgId,
+      userId: input.userId,
+      authSubject: input.authSubject,
+      provisioning: true,
+      sessionSource: input.sessionSource,
+    },
+    async (tx) => {
+      const existing = await tx.appUser.findFirst({ where: { authSubject: input.authSubject } });
+      if (existing) {
+        await tx.$queryRaw(Prisma.sql`
+          select set_config('app.user_id', ${existing.id}, true)
+        `);
+        return tx.appUser.update({
+          where: { id: existing.id },
+          data: {
+            email: input.email,
+            fullName: input.fullName,
+            isActive: true,
+          },
+        });
+      }
+
+      return tx.appUser.create({
+        data: {
+          id: input.userId,
+          authSubject: input.authSubject,
+          email: input.email,
+          fullName: input.fullName,
+          isActive: true,
+        },
+      });
+    }
+  );
+}
+
+async function provisionMembership(input: {
+  orgId: string;
+  userId: string;
+  role: string;
+  sessionSource: string;
+}) {
+  return withSeedSession(
+    {
+      orgId: input.orgId,
+      userId: input.userId,
+      provisioning: true,
+      sessionSource: input.sessionSource,
+    },
+    async (tx) =>
+      tx.organizationMembership.upsert({
+        where: { orgId_userId: { orgId: input.orgId, userId: input.userId } },
+        update: { role: input.role, status: "active" },
+        create: { orgId: input.orgId, userId: input.userId, role: input.role, status: "active" },
+      })
+  );
+}
+
+async function resetPrimaryOrganizationData(tx: SeedTransaction) {
+  await tx.siteVisit.deleteMany({ where: { project: { orgId: IDS.orgPrimary } } });
+  await tx.projectTask.deleteMany({ where: { project: { orgId: IDS.orgPrimary } } });
+  await tx.jobEquipment.deleteMany({
+    where: { job: { orgId: IDS.orgPrimary } },
   });
-  const category = await prisma.category.create({
-    data: { divisionId: division.id, code: "02-200", name: "Excavation", sortOrder: 1 },
+  await tx.jobAssignment.deleteMany({
+    where: { orgId: IDS.orgPrimary },
   });
-  const subcategory = await prisma.subcategory.create({
-    data: { categoryId: category.id, code: "02-200-10", name: "Residential Excavation", sortOrder: 1 },
+  await tx.job.deleteMany({ where: { orgId: IDS.orgPrimary } });
+  await tx.customerEquipment.deleteMany({ where: { orgId: IDS.orgPrimary } });
+  await tx.project.deleteMany({ where: { orgId: IDS.orgPrimary } });
+  await tx.serviceAddress.deleteMany({ where: { orgId: IDS.orgPrimary } });
+  await tx.customer.deleteMany({ where: { orgId: IDS.orgPrimary } });
+  await tx.assemblyItem.deleteMany({ where: { assembly: { orgId: IDS.orgPrimary } } });
+  await tx.assembly.deleteMany({ where: { orgId: IDS.orgPrimary } });
+  await tx.costItem.deleteMany({ where: { orgId: IDS.orgPrimary } });
+  await tx.equipment.deleteMany({ where: { orgId: IDS.orgPrimary } });
+  await tx.material.deleteMany({ where: { orgId: IDS.orgPrimary } });
+  await tx.laborRate.deleteMany({ where: { orgId: IDS.orgPrimary } });
+  await tx.subcategory.deleteMany({ where: { category: { division: { orgId: IDS.orgPrimary } } } });
+  await tx.category.deleteMany({ where: { division: { orgId: IDS.orgPrimary } } });
+  await tx.division.deleteMany({ where: { orgId: IDS.orgPrimary } });
+}
+
+async function seedPrimaryOrganizationData(
+  tx: SeedTransaction,
+  users: {
+    owner: { id: string; authSubject: string; email: string };
+    dispatcher: { id: string };
+    technician: { id: string };
+    helper: { id: string };
+  }
+) {
+  await tx.organization.update({
+    where: { id: IDS.orgPrimary },
+    data: { name: "Sample Contracting Co.", regionCode: "US-TX-AUSTIN" },
+  });
+  await resetPrimaryOrganizationData(tx);
+
+  const division = await tx.division.create({
+    data: { id: IDS.division, orgId: IDS.orgPrimary, code: "02", name: "Sitework", sortOrder: 1 },
+  });
+  const category = await tx.category.create({
+    data: { id: IDS.category, divisionId: division.id, code: "02-200", name: "Excavation", sortOrder: 1 },
+  });
+  const subcategory = await tx.subcategory.create({
+    data: { id: IDS.subcategory, categoryId: category.id, code: "02-200-10", name: "Residential Excavation", sortOrder: 1 },
   });
 
-  const laborRate = await prisma.laborRate.create({
-    data: { orgId: org.id, trade: "Equipment Operator", baseHourlyRate: 32, burdenPct: 28 },
+  const laborRate = await tx.laborRate.create({
+    data: { id: IDS.laborRate, orgId: IDS.orgPrimary, trade: "Equipment Operator", baseHourlyRate: 32, burdenPct: 28 },
   });
 
-  const material = await prisma.material.create({
-    data: { orgId: org.id, name: "Gravel Base, 3/4in", unitOfMeasure: "CY", unitCost: 38, wasteFactorPct: 5, lastPriceUpdate: new Date() },
-  });
-
-  const equipment = await prisma.equipment.create({
-    data: { orgId: org.id, name: "Mini Excavator, 5T", ownershipCostPerHour: 18, operatingCostPerHour: 12 },
-  });
-
-  const excavationCostItem = await prisma.costItem.create({
+  const material = await tx.material.create({
     data: {
-      orgId: org.id,
+      id: IDS.material,
+      orgId: IDS.orgPrimary,
+      name: "Gravel Base, 3/4in",
+      unitOfMeasure: "CY",
+      unitCost: 38,
+      wasteFactorPct: 5,
+      lastPriceUpdate: new Date(),
+    },
+  });
+
+  const equipment = await tx.equipment.create({
+    data: {
+      id: IDS.equipment,
+      orgId: IDS.orgPrimary,
+      name: "Mini Excavator, 5T",
+      ownershipCostPerHour: 18,
+      operatingCostPerHour: 12,
+    },
+  });
+
+  const excavationCostItem = await tx.costItem.create({
+    data: {
+      id: IDS.costItemExcavation,
+      orgId: IDS.orgPrimary,
       subcategoryId: subcategory.id,
       code: "02-200-10-001",
       name: "Excavation Per Cubic Yard",
@@ -262,9 +386,10 @@ async function main() {
     },
   });
 
-  const gravelBaseCostItem = await prisma.costItem.create({
+  const gravelBaseCostItem = await tx.costItem.create({
     data: {
-      orgId: org.id,
+      id: IDS.costItemGravel,
+      orgId: IDS.orgPrimary,
       subcategoryId: subcategory.id,
       code: "02-200-10-002",
       name: "Gravel Base, Install",
@@ -275,12 +400,10 @@ async function main() {
     },
   });
 
-  // A common starting-point assembly so estimators don't have to assemble a
-  // driveway base package from scratch every time — see modules/
-  // assemblies-database's isTemplate flag.
-  const drivewayBaseTemplate = await prisma.assembly.create({
+  const drivewayBaseTemplate = await tx.assembly.create({
     data: {
-      orgId: org.id,
+      id: IDS.assemblyTemplate,
+      orgId: IDS.orgPrimary,
       code: "TPL-DRIVEWAY-BASE",
       name: "Residential Driveway Base Package",
       unitOfMeasure: "CY",
@@ -288,20 +411,21 @@ async function main() {
       isTemplate: true,
     },
   });
-  await prisma.assemblyItem.createMany({
+  await tx.assemblyItem.createMany({
     data: [
       { assemblyId: drivewayBaseTemplate.id, costItemId: excavationCostItem.id, quantityPerUnit: 1, sortOrder: 1 },
       { assemblyId: drivewayBaseTemplate.id, costItemId: gravelBaseCostItem.id, quantityPerUnit: 1, sortOrder: 2 },
     ],
   });
 
-  const customer = await prisma.customer.create({
-    data: { orgId: org.id, name: "Jane Homeowner", email: "jane@example.com" },
+  const customer = await tx.customer.create({
+    data: { id: IDS.customerJane, orgId: IDS.orgPrimary, name: "Jane Homeowner", email: "jane@example.com" },
   });
 
-  const primaryAddress = await prisma.serviceAddress.create({
+  const primaryAddress = await tx.serviceAddress.create({
     data: {
-      orgId: org.id,
+      id: IDS.addressJanePrimary,
+      orgId: IDS.orgPrimary,
       customerId: customer.id,
       label: "Primary",
       addressLine1: "101 Main Street",
@@ -312,16 +436,30 @@ async function main() {
     },
   });
 
-  const project = await prisma.project.create({
-    data: { orgId: org.id, customerId: customer.id, name: "Backyard Drainage Fix", jobType: "Drainage Repair", status: "active" },
+  const project = await tx.project.create({
+    data: {
+      id: IDS.projectDrainage,
+      orgId: IDS.orgPrimary,
+      customerId: customer.id,
+      name: "Backyard Drainage Fix",
+      jobType: "Drainage Repair",
+      status: "active",
+    },
   });
 
-  const remodelCustomer = await prisma.customer.create({
-    data: { orgId: org.id, name: "Corey Remodel", email: "corey@example.com", phone: "512-555-0149" },
-  });
-  const remodelAddress = await prisma.serviceAddress.create({
+  const remodelCustomer = await tx.customer.create({
     data: {
-      orgId: org.id,
+      id: IDS.customerCorey,
+      orgId: IDS.orgPrimary,
+      name: "Corey Remodel",
+      email: "corey@example.com",
+      phone: "512-555-0149",
+    },
+  });
+  const remodelAddress = await tx.serviceAddress.create({
+    data: {
+      id: IDS.addressCoreyRemodel,
+      orgId: IDS.orgPrimary,
       customerId: remodelCustomer.id,
       label: "Remodel Site",
       addressLine1: "505 Cedar Avenue",
@@ -331,13 +469,21 @@ async function main() {
       isPrimary: true,
     },
   });
-  const remodelProject = await prisma.project.create({
-    data: { orgId: org.id, customerId: remodelCustomer.id, name: "Kitchen Remodel", jobType: "Remodel", status: "active" },
+  const remodelProject = await tx.project.create({
+    data: {
+      id: IDS.projectRemodel,
+      orgId: IDS.orgPrimary,
+      customerId: remodelCustomer.id,
+      name: "Kitchen Remodel",
+      jobType: "Remodel",
+      status: "active",
+    },
   });
 
-  const condenser = await prisma.customerEquipment.create({
+  const condenser = await tx.customerEquipment.create({
     data: {
-      orgId: org.id,
+      id: IDS.equipmentCondenser,
+      orgId: IDS.orgPrimary,
       customerId: customer.id,
       serviceAddressId: primaryAddress.id,
       name: "Condensing Unit",
@@ -347,9 +493,10 @@ async function main() {
       status: "active",
     },
   });
-  const furnace = await prisma.customerEquipment.create({
+  const furnace = await tx.customerEquipment.create({
     data: {
-      orgId: org.id,
+      id: IDS.equipmentFurnace,
+      orgId: IDS.orgPrimary,
       customerId: customer.id,
       serviceAddressId: primaryAddress.id,
       name: "Gas Furnace",
@@ -360,9 +507,10 @@ async function main() {
     },
   });
 
-  const unscheduledJob = await prisma.job.create({
+  const unscheduledJob = await tx.job.create({
     data: {
-      orgId: org.id,
+      id: IDS.jobUnscheduled,
+      orgId: IDS.orgPrimary,
       projectId: project.id,
       customerId: customer.id,
       serviceAddressId: primaryAddress.id,
@@ -372,12 +520,13 @@ async function main() {
       jobType: "Drainage Repair",
       status: "unscheduled",
       priority: "medium",
-      createdById: dispatcherUser.id,
+      createdById: users.dispatcher.id,
     },
   });
-  const scheduledJob = await prisma.job.create({
+  const scheduledJob = await tx.job.create({
     data: {
-      orgId: org.id,
+      id: IDS.jobScheduled,
+      orgId: IDS.orgPrimary,
       projectId: project.id,
       customerId: customer.id,
       serviceAddressId: primaryAddress.id,
@@ -390,12 +539,13 @@ async function main() {
       scheduledStart: new Date("2026-07-16T13:00:00.000Z"),
       scheduledEnd: new Date("2026-07-16T15:00:00.000Z"),
       estimatedDurationMinutes: 120,
-      createdById: dispatcherUser.id,
+      createdById: users.dispatcher.id,
     },
   });
-  const dispatchedJob = await prisma.job.create({
+  const dispatchedJob = await tx.job.create({
     data: {
-      orgId: org.id,
+      id: IDS.jobDispatched,
+      orgId: IDS.orgPrimary,
       projectId: project.id,
       customerId: customer.id,
       serviceAddressId: primaryAddress.id,
@@ -408,12 +558,13 @@ async function main() {
       scheduledStart: new Date("2026-07-16T15:30:00.000Z"),
       scheduledEnd: new Date("2026-07-16T17:00:00.000Z"),
       estimatedDurationMinutes: 90,
-      createdById: dispatcherUser.id,
+      createdById: users.dispatcher.id,
     },
   });
-  const onSiteJob = await prisma.job.create({
+  const onSiteJob = await tx.job.create({
     data: {
-      orgId: org.id,
+      id: IDS.jobOnSite,
+      orgId: IDS.orgPrimary,
       projectId: remodelProject.id,
       customerId: remodelCustomer.id,
       serviceAddressId: remodelAddress.id,
@@ -427,12 +578,13 @@ async function main() {
       scheduledEnd: new Date("2026-07-16T18:00:00.000Z"),
       actualStart: new Date("2026-07-16T14:05:00.000Z"),
       estimatedDurationMinutes: 240,
-      createdById: dispatcherUser.id,
+      createdById: users.dispatcher.id,
     },
   });
-  const completedJob = await prisma.job.create({
+  const completedJob = await tx.job.create({
     data: {
-      orgId: org.id,
+      id: IDS.jobCompleted,
+      orgId: IDS.orgPrimary,
       projectId: project.id,
       customerId: customer.id,
       serviceAddressId: primaryAddress.id,
@@ -447,15 +599,16 @@ async function main() {
       actualStart: new Date("2026-07-15T14:05:00.000Z"),
       actualEnd: new Date("2026-07-15T14:50:00.000Z"),
       completedAt: new Date("2026-07-15T14:50:00.000Z"),
-      completedById: technicianUser.id,
+      completedById: users.technician.id,
       readyForInvoiceAt: new Date("2026-07-15T15:00:00.000Z"),
       estimatedDurationMinutes: 60,
-      createdById: dispatcherUser.id,
+      createdById: users.dispatcher.id,
     },
   });
-  const conflictJob = await prisma.job.create({
+  const conflictJob = await tx.job.create({
     data: {
-      orgId: org.id,
+      id: IDS.jobConflict,
+      orgId: IDS.orgPrimary,
       projectId: project.id,
       customerId: customer.id,
       serviceAddressId: primaryAddress.id,
@@ -468,34 +621,34 @@ async function main() {
       scheduledStart: new Date("2026-07-16T14:30:00.000Z"),
       scheduledEnd: new Date("2026-07-16T16:00:00.000Z"),
       estimatedDurationMinutes: 90,
-      createdById: dispatcherUser.id,
+      createdById: users.dispatcher.id,
     },
   });
 
-  await prisma.jobAssignment.createMany({
+  await tx.jobAssignment.createMany({
     data: [
-      { orgId: org.id, jobId: scheduledJob.id, userId: technicianUser.id, assignmentRole: "lead", isLead: true, assignedById: dispatcherUser.id },
-      { orgId: org.id, jobId: scheduledJob.id, userId: helperUser.id, assignmentRole: "helper", isLead: false, assignedById: dispatcherUser.id },
-      { orgId: org.id, jobId: dispatchedJob.id, userId: technicianUser.id, assignmentRole: "lead", isLead: true, assignedById: dispatcherUser.id },
-      { orgId: org.id, jobId: onSiteJob.id, userId: helperUser.id, assignmentRole: "lead", isLead: true, assignedById: dispatcherUser.id, acceptedAt: new Date("2026-07-16T13:55:00.000Z") },
-      { orgId: org.id, jobId: completedJob.id, userId: technicianUser.id, assignmentRole: "lead", isLead: true, assignedById: dispatcherUser.id, acceptedAt: new Date("2026-07-15T13:45:00.000Z") },
-      { orgId: org.id, jobId: conflictJob.id, userId: technicianUser.id, assignmentRole: "lead", isLead: true, assignedById: dispatcherUser.id },
+      { orgId: IDS.orgPrimary, jobId: scheduledJob.id, userId: users.technician.id, assignmentRole: "lead", isLead: true, assignedById: users.dispatcher.id },
+      { orgId: IDS.orgPrimary, jobId: scheduledJob.id, userId: users.helper.id, assignmentRole: "helper", isLead: false, assignedById: users.dispatcher.id },
+      { orgId: IDS.orgPrimary, jobId: dispatchedJob.id, userId: users.technician.id, assignmentRole: "lead", isLead: true, assignedById: users.dispatcher.id },
+      { orgId: IDS.orgPrimary, jobId: onSiteJob.id, userId: users.helper.id, assignmentRole: "lead", isLead: true, assignedById: users.dispatcher.id, acceptedAt: new Date("2026-07-16T13:55:00.000Z") },
+      { orgId: IDS.orgPrimary, jobId: completedJob.id, userId: users.technician.id, assignmentRole: "lead", isLead: true, assignedById: users.dispatcher.id, acceptedAt: new Date("2026-07-15T13:45:00.000Z") },
+      { orgId: IDS.orgPrimary, jobId: conflictJob.id, userId: users.technician.id, assignmentRole: "lead", isLead: true, assignedById: users.dispatcher.id },
     ],
   });
-  await prisma.jobEquipment.createMany({
+  await tx.jobEquipment.createMany({
     data: [
       { jobId: scheduledJob.id, equipmentId: condenser.id },
       { jobId: scheduledJob.id, equipmentId: furnace.id },
       { jobId: completedJob.id, equipmentId: furnace.id },
     ],
   });
-  await prisma.projectTask.createMany({
+  await tx.projectTask.createMany({
     data: [
       { projectId: project.id, jobId: scheduledJob.id, title: "Change return filter", status: "todo", priority: "medium" },
       { projectId: project.id, jobId: scheduledJob.id, title: "Document refrigerant pressures", status: "in_progress", priority: "high" },
     ],
   });
-  await prisma.siteVisit.create({
+  await tx.siteVisit.create({
     data: {
       projectId: project.id,
       jobId: scheduledJob.id,
@@ -503,13 +656,51 @@ async function main() {
     },
   });
 
-  const secondCustomer = await prisma.customer.create({
-    data: { orgId: secondOrg.id, name: "Bob Facility Manager", email: "bob@example.com", phone: "317-555-0100" },
+  return {
+    organizationId: IDS.orgPrimary,
+    ownerId: users.owner.id,
+    ownerAuthSubject: users.owner.authSubject,
+    ownerEmail: users.owner.email,
+    templateAssemblyId: drivewayBaseTemplate.id,
+    jobs: [unscheduledJob.id, scheduledJob.id, dispatchedJob.id, onSiteJob.id, completedJob.id, conflictJob.id],
+  };
+}
+
+async function resetSecondaryOrganizationData(tx: SeedTransaction) {
+  await tx.jobAssignment.deleteMany({ where: { orgId: IDS.orgSecondary } });
+  await tx.job.deleteMany({ where: { orgId: IDS.orgSecondary } });
+  await tx.project.deleteMany({ where: { orgId: IDS.orgSecondary } });
+  await tx.serviceAddress.deleteMany({ where: { orgId: IDS.orgSecondary } });
+  await tx.customer.deleteMany({ where: { orgId: IDS.orgSecondary } });
+}
+
+async function seedSecondaryOrganizationData(
+  tx: SeedTransaction,
+  users: {
+    dispatcher: { id: string };
+    technician: { id: string };
+  }
+) {
+  await tx.organization.update({
+    where: { id: IDS.orgSecondary },
+    data: { name: "Second Sample Services", regionCode: "US-IN-INDIANAPOLIS" },
   });
-  const secondAddress = await prisma.serviceAddress.create({
+  await resetSecondaryOrganizationData(tx);
+
+  const customer = await tx.customer.create({
     data: {
-      orgId: secondOrg.id,
-      customerId: secondCustomer.id,
+      id: IDS.customerBob,
+      orgId: IDS.orgSecondary,
+      name: "Bob Facility Manager",
+      email: "bob@example.com",
+      phone: "317-555-0100",
+    },
+  });
+  const address = await tx.serviceAddress.create({
+    data: {
+      id: IDS.addressBobPrimary,
+      orgId: IDS.orgSecondary,
+      customerId: customer.id,
       label: "Main Facility",
       addressLine1: "880 Meridian Park",
       city: "Indianapolis",
@@ -518,15 +709,23 @@ async function main() {
       isPrimary: true,
     },
   });
-  const secondProject = await prisma.project.create({
-    data: { orgId: secondOrg.id, customerId: secondCustomer.id, name: "Panel Upgrade", jobType: "Electrical Service", status: "active" },
-  });
-  const secondJob = await prisma.job.create({
+  const project = await tx.project.create({
     data: {
-      orgId: secondOrg.id,
-      projectId: secondProject.id,
-      customerId: secondCustomer.id,
-      serviceAddressId: secondAddress.id,
+      id: IDS.projectPanelUpgrade,
+      orgId: IDS.orgSecondary,
+      customerId: customer.id,
+      name: "Panel Upgrade",
+      jobType: "Electrical Service",
+      status: "active",
+    },
+  });
+  const job = await tx.job.create({
+    data: {
+      id: IDS.jobPanelUpgrade,
+      orgId: IDS.orgSecondary,
+      projectId: project.id,
+      customerId: customer.id,
+      serviceAddressId: address.id,
       jobNumber: "JOB-2026-000001",
       title: "Service panel upgrade",
       description: "Separate organization seed proving tenant isolation.",
@@ -536,39 +735,97 @@ async function main() {
       scheduledStart: new Date("2026-07-17T13:00:00.000Z"),
       scheduledEnd: new Date("2026-07-17T17:00:00.000Z"),
       estimatedDurationMinutes: 240,
-      createdById: secondDispatcherUser.id,
+      createdById: users.dispatcher.id,
     },
   });
-  await prisma.jobAssignment.create({
+  await tx.jobAssignment.create({
     data: {
-      orgId: secondOrg.id,
-      jobId: secondJob.id,
-      userId: secondTechnicianUser.id,
+      orgId: IDS.orgSecondary,
+      jobId: job.id,
+      userId: users.technician.id,
       assignmentRole: "lead",
       isLead: true,
-      assignedById: secondDispatcherUser.id,
+      assignedById: users.dispatcher.id,
     },
   });
 
+  return {
+    organizationId: IDS.orgSecondary,
+    ownerId: IDS.userSecondOwner,
+    jobs: [job.id],
+  };
+}
+
+async function main() {
+  const [primaryProvisioned, secondaryProvisioned] = await Promise.all([
+    provisionPrimaryOrganization(),
+    provisionSecondaryOrganization(),
+  ]);
+  const primaryOrg = primaryProvisioned.organization;
+  const secondaryOrg = secondaryProvisioned.organization;
+
+  const primarySeed = await withSeedSession(
+    {
+      orgId: IDS.orgPrimary,
+      userId: primaryProvisioned.owner.id,
+      role: "owner",
+      authSubject: primaryProvisioned.owner.authSubject,
+      sessionSource: "seed:owner:primary",
+    },
+    (tx) =>
+      seedPrimaryOrganizationData(tx, {
+        owner: primaryProvisioned.owner,
+        dispatcher: primaryProvisioned.dispatcher,
+        technician: primaryProvisioned.technician,
+        helper: primaryProvisioned.helper,
+      })
+  );
+
+  const secondarySeed = await withSeedSession(
+    {
+      orgId: IDS.orgSecondary,
+      userId: secondaryProvisioned.owner.id,
+      role: "owner",
+      authSubject: secondaryProvisioned.owner.authSubject,
+      sessionSource: "seed:owner:secondary",
+    },
+    (tx) =>
+      seedSecondaryOrganizationData(tx, {
+        dispatcher: secondaryProvisioned.dispatcher,
+        technician: secondaryProvisioned.technician,
+      })
+  );
+
   // eslint-disable-next-line no-console
   console.log("Seed complete:", {
-    organizations: [org.id, secondOrg.id],
-    users: [user.id, secondUser.id, adminUser.id, dispatcherUser.id, technicianUser.id, helperUser.id, secondDispatcherUser.id, secondTechnicianUser.id],
-    templateAssemblyId: drivewayBaseTemplate.id,
-    jobs: [unscheduledJob.id, scheduledJob.id, dispatchedJob.id, onSiteJob.id, completedJob.id, conflictJob.id, secondJob.id],
+    organizations: [primaryOrg.id, secondaryOrg.id],
+    seedUserIds: [
+      primaryProvisioned.owner.id,
+      secondaryProvisioned.owner.id,
+      primaryProvisioned.admin.id,
+      primaryProvisioned.dispatcher.id,
+      primaryProvisioned.technician.id,
+      primaryProvisioned.helper.id,
+      secondaryProvisioned.dispatcher.id,
+      secondaryProvisioned.technician.id,
+    ],
+    templateAssemblyId: primarySeed.templateAssemblyId,
+    jobs: [...primarySeed.jobs, ...secondarySeed.jobs],
   });
-  if (process.env.AUTH_JWT_SECRET) {
+
+  if (process.env.PRINT_SEED_TOKEN === "true" && process.env.AUTH_JWT_SECRET) {
     const token = signAuthToken(
       {
-        sub: user.authSubject,
-        email: user.email,
-        orgId: org.id,
+        sub: primarySeed.ownerAuthSubject,
+        email: primarySeed.ownerEmail,
+        orgId: primarySeed.organizationId,
         role: "owner",
         iss: process.env.AUTH_ISSUER ?? "tradeos-costbook",
         aud: process.env.AUTH_AUDIENCE ?? "tradeos-costbook-api",
       },
       process.env.AUTH_JWT_SECRET
     );
+    // eslint-disable-next-line no-console
     console.log("Dev bearer token:", token);
   }
 }
@@ -580,5 +837,5 @@ main()
     process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    await basePrisma.$disconnect();
   });

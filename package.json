@@ -1,0 +1,14 @@
+{
+  "name": "tradeos-doc-governance",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "db:seed": "npm --prefix app run db:seed",
+    "docs:check": "node scripts/docs-check.mjs",
+    "docs:test": "node --test scripts/__tests__/docs-check.test.mjs"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0",
+    "minimatch": "^10.0.1"
+  }
+}

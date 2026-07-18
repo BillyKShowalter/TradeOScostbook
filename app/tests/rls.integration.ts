@@ -4,6 +4,7 @@ import {
   runWithBackgroundDatabaseSession,
   runWithDatabaseSession,
 } from "../db/requestSession";
+import { resolveAuthContext } from "../backend/auth/session";
 import type { SupportedRole } from "../domain";
 import { OrganizationProvisioningService } from "../modules/organization-provisioning/service";
 import { MaterialDatabaseService } from "../modules/material-database/service";
@@ -759,6 +760,22 @@ describe("live organization row-level security", () => {
 
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ orgId: orgA, action: "created", actorRole: "admin" });
+  });
+
+  it("derives tenant context only from verified active memberships", async () => {
+    const auth = await resolveAuthContext({ sub: "rls-admin", orgId: orgA });
+
+    expect(auth).toMatchObject({
+      userId: adminUser,
+      orgId: orgA,
+      role: "admin",
+      canonicalRole: "admin",
+      email: "rls-admin@example.com",
+    });
+
+    await expect(resolveAuthContext({ sub: "rls-admin", orgId: orgB })).rejects.toThrow(
+      "Authenticated user does not belong to the requested organization"
+    );
   });
 
   it("provisions a new organization and initial owner atomically", async () => {

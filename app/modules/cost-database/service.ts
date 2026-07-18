@@ -1,6 +1,6 @@
 import { prisma } from "../../db/client";
 import { ApiError } from "../../backend/middleware/errorHandler";
-import { laborCost, adjustedMaterialCost, equipmentCost } from "../estimate-engine/formulas";
+import { laborCost, adjustedMaterialCost, equipmentCost, round2 } from "../estimate-engine/formulas";
 import {
   BulkImportCostItemRow,
   BulkImportResult,
@@ -202,10 +202,6 @@ export class CostDatabaseService {
     const exists = await prisma.costItem.findFirst({ where: { id, orgId } });
     if (!exists) throw new ApiError(404, `CostItem ${id} not found`);
   }
-}
-
-function round2(value: number): number {
-  return Math.round(value * 100) / 100;
 }
 
 function toDTO(row: {

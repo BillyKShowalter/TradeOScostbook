@@ -666,12 +666,14 @@ model EstimateLineItem {
   unitCost      Decimal  @map("unit_cost") @db.Decimal(12, 4)
   lineCost      Decimal  @map("line_cost") @db.Decimal(14, 2)
   sortOrder     Int      @default(0) @map("sort_order")
+  sourceKey     String?  @map("source_key")
   createdAt     DateTime @default(now()) @map("created_at")
 
   estimate Estimate  @relation(fields: [estimateId], references: [id], onDelete: Cascade)
   costItem CostItem? @relation(fields: [costItemId], references: [id], onDelete: SetNull)
   assembly Assembly? @relation(fields: [assemblyId], references: [id], onDelete: SetNull)
 
+  @@unique([estimateId, sourceKey])
   @@index([estimateId])
   @@map("estimate_line_items")
 }

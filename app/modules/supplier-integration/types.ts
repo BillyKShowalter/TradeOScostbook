@@ -1,4 +1,4 @@
-export type SupplierPriceUpdateStatus = "pending" | "approved" | "rejected";
+type SupplierPriceUpdateStatus = "pending" | "approved" | "rejected";
 
 export interface EnqueuePriceUpdateInput {
   orgId: string;
@@ -34,7 +34,7 @@ export interface SupplierPriceUpdateDTO {
 // transport (REST pull, webhook, file drop) is not implemented in the MVP —
 // see SupplierFeedFetcher below, which lets a real integration be plugged in
 // later without changing the queue/review/worker plumbing.
-export interface SupplierFeedQuote {
+interface SupplierFeedQuote {
   materialId: string;
   proposedUnitCost: number;
 }

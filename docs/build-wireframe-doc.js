@@ -1,3 +1,5 @@
+// Legacy one-off wireframe document generator. It predates the RC1
+// source-of-truth docs under docs/*.md and is not current implementation truth.
 const fs = require("fs");
 const {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,

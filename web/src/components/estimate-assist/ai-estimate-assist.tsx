@@ -54,6 +54,12 @@ const EXAMPLE_PROMPTS = [
   "Remove a 60 foot oak tree, grind the stump, and haul away debris.",
 ];
 
+function matchMethodLabel(matchMethod: "id" | "exact-name" | "contains-name") {
+  if (matchMethod === "id") return "Matched by exact ID";
+  if (matchMethod === "exact-name") return "Matched by exact name";
+  return "Matched by partial name";
+}
+
 function confidenceTone(confidence: number) {
   if (confidence >= 90) return "default";
   if (confidence >= 80) return "secondary";
@@ -344,6 +350,14 @@ export function AIEstimateAssist({
               {applyAcceptedSuggestions.isPending ? "Applying accepted suggestions…" : `Add ${reviewStats.acceptedReadyCount} accepted suggestion${reviewStats.acceptedReadyCount === 1 ? "" : "s"} to estimate`}
             </Button>
 
+            {applyAcceptedSuggestions.isError ? (
+              <p className="text-sm text-destructive" role="alert">
+                {applyAcceptedSuggestions.error instanceof Error
+                  ? applyAcceptedSuggestions.error.message
+                  : "Applying suggestions failed. Try again."}
+              </p>
+            ) : null}
+
             <p className="text-sm text-muted-foreground">
               Resolved suggestions are added as estimate line items through the existing engine. Unresolved suggestions stay review-only until you map them manually.
             </p>
@@ -578,6 +592,7 @@ function SuggestionCard({
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="secondary">{suggestion.selectedTarget.kind === "assembly" ? "Assembly" : "Cost item"}</Badge>
                 {suggestion.selectedTarget.matchScore != null ? <Badge variant="outline">{suggestion.selectedTarget.matchScore}% match</Badge> : null}
+                {suggestion.selectedTarget.matchMethod ? <Badge variant="outline">{matchMethodLabel(suggestion.selectedTarget.matchMethod)}</Badge> : null}
               </div>
               <div className="mt-2 text-sm font-medium text-foreground">{suggestion.selectedTarget.name}</div>
               <div className="mt-1 text-sm text-muted-foreground">

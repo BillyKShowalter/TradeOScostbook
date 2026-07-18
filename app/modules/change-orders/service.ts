@@ -2,6 +2,7 @@ import { prisma } from "../../db/client";
 import { ApiError } from "../../backend/middleware/errorHandler";
 import { CostDatabaseService } from "../cost-database/service";
 import { canTransitionChangeOrderStatus } from "../../domain";
+import { round2 } from "../estimate-engine/formulas";
 import {
   AddChangeOrderLineItemInput,
   ChangeOrderDTO,
@@ -171,10 +172,6 @@ export class ChangeOrdersService {
     if (row.status !== "draft") throw new ApiError(409, `ChangeOrder ${id} is not in draft status`);
     return { id: row.id, description: row.description };
   }
-}
-
-function round2(value: number): number {
-  return Math.round(value * 100) / 100;
 }
 
 function toDTO(row: {

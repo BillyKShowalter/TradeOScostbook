@@ -14,7 +14,7 @@ export function runInDatabaseTransaction<T>(
   operation: (transaction: Prisma.TransactionClient) => Promise<T>
 ): Promise<T> {
   const activeTransaction = getRequestDatabaseClient();
-  return activeTransaction ? operation(activeTransaction) : client.$transaction(operation);
+  return activeTransaction ? operation(activeTransaction) : client.$transaction((transaction) => requestDatabase.run(transaction, () => operation(transaction)));
 }
 
 export async function runWithDatabaseSession<T>(

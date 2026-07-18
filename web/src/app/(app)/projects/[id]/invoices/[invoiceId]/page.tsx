@@ -2,6 +2,7 @@ import Link from "next/link";
 import { markInvoicePaidAction, sendInvoiceAction, voidInvoiceAction } from "@/app/actions/invoices";
 import { ActivityTimeline } from "@/components/shared/activity-timeline";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { LineItemRow } from "@/components/shared/line-item-row";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getInvoice, getProject } from "@/lib/api";
@@ -66,14 +67,11 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
           {invoice.lineItems.map((li) => (
-            <div key={li.id} className="flex items-center justify-between text-sm">
-              <span>{li.description}</span>
-              <span>{formatCurrency(li.lineCost)}</span>
-            </div>
+            <LineItemRow key={li.id} description={li.description} amount={formatCurrency(li.lineCost)} className="border-none p-0" />
           ))}
-          <div className="flex items-center justify-between border-t pt-2 text-base font-semibold">
-            <span>Total</span>
-            <span>{formatCurrency(invoice.amount)}</span>
+          <div className="flex items-center justify-between gap-3 border-t pt-2 text-base font-semibold">
+            <span className="min-w-0 truncate">Total</span>
+            <span className="shrink-0">{formatCurrency(invoice.amount)}</span>
           </div>
         </CardContent>
       </Card>

@@ -2,7 +2,7 @@ import { prisma } from "../../db/client";
 import { ApiError } from "../../backend/middleware/errorHandler";
 import { CostDatabaseService } from "../cost-database/service";
 import { AssembliesDatabaseService } from "../assemblies-database/service";
-import { applyOverhead, sellPrice } from "./formulas";
+import { applyOverhead, sellPrice, round2 } from "./formulas";
 import { canTransitionEstimateStatus, normalizeEstimateStatus } from "../../domain";
 import {
   AddLineItemInput,
@@ -120,17 +120,39 @@ export class EstimateEngineService {
       _max: { sortOrder: true },
     });
 
+    const data = {
+      estimateId: input.estimateId,
+      costItemId: input.costItemId,
+      assemblyId: input.assemblyId,
+      description,
+      quantity: input.quantity,
+      unitOfMeasure,
+      unitCost,
+      lineCost,
+      sortOrder: (maxSortOrder._max.sortOrder ?? 0) + 1,
+      sourceKey: input.sourceKey,
+    };
+
+    if (input.sourceKey) {
+      const created = await prisma.estimateLineItem.createMany({
+        data,
+        skipDuplicates: true,
+      });
+      const row = await prisma.estimateLineItem.findFirst({
+        where: { estimateId: input.estimateId, sourceKey: input.sourceKey },
+      });
+      if (!row) throw new ApiError(409, "Estimate line item could not be reconciled after idempotent insert");
+
+      if (created.count > 0) {
+        await this.recalculate(input.estimateId, input.orgId);
+      }
+      return toLineItemDTO(row);
+    }
+
     const row = await prisma.estimateLineItem.create({
       data: {
-        estimateId: input.estimateId,
-        costItemId: input.costItemId,
-        assemblyId: input.assemblyId,
-        description,
-        quantity: input.quantity,
-        unitOfMeasure,
-        unitCost,
-        lineCost,
-        sortOrder: (maxSortOrder._max.sortOrder ?? 0) + 1,
+        ...data,
+        sourceKey: undefined,
       },
     });
 
@@ -138,13 +160,14 @@ export class EstimateEngineService {
     return toLineItemDTO(row);
   }
 
-  async removeLineItem(lineItemId: string, orgId?: string): Promise<void> {
+  async removeLineItem(lineItemId: string, orgId?: string): Promise<{ estimateId: string }> {
     const lineItem = await prisma.estimateLineItem.findUnique({ where: { id: lineItemId }, include: { estimate: true } });
     if (!lineItem) throw new ApiError(404, `EstimateLineItem ${lineItemId} not found`);
     if (orgId && lineItem.estimate.orgId !== orgId) throw new ApiError(404, `EstimateLineItem ${lineItemId} not found`);
     await this.assertDraft(lineItem.estimateId, orgId);
     await prisma.estimateLineItem.delete({ where: { id: lineItemId } });
     await this.recalculate(lineItem.estimateId, orgId);
+    return { estimateId: lineItem.estimateId };
   }
 
   async setPricingMode(input: SetPricingModeInput): Promise<EstimateDTO> {
@@ -201,10 +224,6 @@ export class EstimateEngineService {
   }
 }
 
-function round2(value: number): number {
-  return Math.round(value * 100) / 100;
-}
-
 export function toEstimateDTO(row: {
   id: string;
   orgId: string | null;
@@ -242,6 +261,7 @@ function toLineItemDTO(row: {
   unitCost: unknown;
   lineCost: unknown;
   sortOrder: number;
+  sourceKey?: string | null;
 }): EstimateLineItemDTO {
   return {
     id: row.id,
@@ -254,5 +274,6 @@ function toLineItemDTO(row: {
     unitCost: Number(row.unitCost),
     lineCost: Number(row.lineCost),
     sortOrder: row.sortOrder,
+    sourceKey: row.sourceKey ?? null,
   };
 }

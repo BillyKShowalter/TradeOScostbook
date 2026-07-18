@@ -1,6 +1,12 @@
 # TradeOS Construction Knowledge Engine - Architecture Specification
 
-This document details the architectural layout, pipeline processing steps, and integration models for the Construction Knowledge Engine.
+> **Path notice (2026-07-16):** the Directory Map below shows `knowledge/` one level shallower
+> than it actually exists on disk. The real, loader-consumed path is `knowledge/knowledge/`
+> (e.g. `knowledge/knowledge/trade-taxonomy/`, `knowledge/knowledge/validation-rules/`), not
+> `knowledge/trade-taxonomy/`. This map also lists an `imports/` directory that does not exist in
+> the current tree. See [`packages/knowledge-engine/README.md`](../README.md) for the current
+> canonical structure and runtime-critical asset list. This file has not been rewritten — only
+> this notice and the inline corrections below were added.
 
 ---
 
@@ -16,8 +22,8 @@ The Knowledge Engine serves as the core system of record for construction costin
 ├── exports/                 # Migration-ready payloads for Supabase consumption
 │   ├── json/                # Consolidated costbook JSON
 │   └── sql/                 # SQL relational migration scripts
-├── imports/                 # Staged input files for catalog ingestions
-├── knowledge/               # Rule files, indexes, and trade taxonomies
+├── imports/                 # NOT PRESENT in the current tree — historical/aspirational only
+├── knowledge/knowledge/     # Actual on-disk path (doubled) — rule files, indexes, taxonomies
 │   ├── assemblies/          # Assembly templates and components
 │   ├── cost-items/          # Master cost item JSON database
 │   ├── validation-rules/    # Core validation guidelines

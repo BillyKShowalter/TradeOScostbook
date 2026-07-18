@@ -1,17 +1,27 @@
 import os
 import json
+import sys
 import uuid
 from datetime import datetime
+
+# Phase B: bootstrap access to package_root.py, which lives one directory up (pipelines/).
+# This works whether sync_manager.py is imported by master_pipeline.py (which already adds
+# pipelines/ to sys.path) or run/invoked standalone (e.g. approve-batch.py's subprocess
+# call) -- see packages/knowledge-engine/PATHS.md.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from package_root import resolve_export_root
 
 class RelationalSynchronizer:
     """
     TradeOS Database Synchronizer (Data Engineer + SQL Pro)
     Handles the multi-stage relational sync of Cost Items and Assemblies.
     """
-    
+
     def __init__(self, payload):
         self.payload = payload
-        self.sql_output_path = "exports/sql/sync_final.sql"
+        # Phase B: anchored to the canonical export root, not a bare cwd-relative string.
+        # See packages/knowledge-engine/PATHS.md.
+        self.sql_output_path = str(resolve_export_root() / "sql" / "sync_final.sql")
 
     def generate_sql(self):
         """
@@ -103,7 +113,7 @@ class RelationalSynchronizer:
         sql_content = self.generate_sql()
         
         # Save the final migration
-        os.makedirs("exports/sql", exist_ok=True)
+        os.makedirs(os.path.dirname(self.sql_output_path), exist_ok=True)
         with open(self.sql_output_path, "w") as f:
             f.write(sql_content)
             

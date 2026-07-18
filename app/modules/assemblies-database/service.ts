@@ -1,6 +1,7 @@
 import { prisma } from "../../db/client";
 import { ApiError } from "../../backend/middleware/errorHandler";
 import { CostDatabaseService } from "../cost-database/service";
+import { round2 } from "../estimate-engine/formulas";
 import {
   AddAssemblyItemInput,
   AssemblyDTO,
@@ -177,10 +178,6 @@ export class AssembliesDatabaseService {
     const exists = await prisma.assembly.findFirst({ where: { id, orgId } });
     if (!exists) throw new ApiError(404, `Assembly ${id} not found`);
   }
-}
-
-function round2(value: number): number {
-  return Math.round(value * 100) / 100;
 }
 
 function toDTO(row: {

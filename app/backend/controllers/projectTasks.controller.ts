@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { z } from "zod";
-import { requireOrgId } from "../requestContext";
+import { requireOrgId, requirePermissions } from "../requestContext";
 import { ProjectTasksService } from "../../modules/project-tasks/service";
 import { projectTaskPriorities, projectTaskStatuses } from "../../modules/project-tasks/types";
 
@@ -27,10 +27,12 @@ const updateSchema = z.object({
 
 export const projectTasksController = {
   async listByProject(req: Request, res: Response) {
+    requirePermissions(req, ["crm.read"]);
     res.json(await service.listByProject(req.params.id, requireOrgId(req)));
   },
 
   async create(req: Request, res: Response) {
+    requirePermissions(req, ["crm.write"]);
     const body = createSchema.parse(req.body);
     res.status(201).json(
       await service.create({
@@ -47,6 +49,7 @@ export const projectTasksController = {
   },
 
   async update(req: Request, res: Response) {
+    requirePermissions(req, ["crm.write"]);
     const body = updateSchema.parse(req.body);
     res.json(
       await service.update(req.params.taskId, {
@@ -63,6 +66,7 @@ export const projectTasksController = {
   },
 
   async remove(req: Request, res: Response) {
+    requirePermissions(req, ["crm.write"]);
     await service.remove(req.params.taskId, requireOrgId(req));
     res.status(204).send();
   },

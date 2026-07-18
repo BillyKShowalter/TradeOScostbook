@@ -1,5 +1,19 @@
 # TradeOS Estimating App - Runtime Modules Catalog
 
+> **HISTORICAL / SUPERSEDED (marked 2026-07-16).** None of the "engines" cataloged below exist as
+> subdirectories or services under this package. The equivalent, currently-shipped concepts are
+> implemented in `app/modules/knowledge-runtime/{loader,repository,matcher}.ts`, which is
+> file-based, read-only, and does not write to Prisma/Supabase or call external AI APIs — see
+> [`app/modules/knowledge-runtime/README.md`](../../../app/modules/knowledge-runtime/README.md).
+> Current TradeOS AI behavior is **review-first, contractor-controlled, and service-bound**: no
+> autonomous AI database writes, and no generated text is treated as authority. See
+> [`docs/bible/VOLUME_3_ENGINEERING.md`](../../../docs/bible/VOLUME_3_ENGINEERING.md) and
+> [`docs/bible/VOLUME_7_KNOWLEDGE_RUNTIME.md`](../../../docs/bible/VOLUME_7_KNOWLEDGE_RUNTIME.md).
+> **This document must not be used as current implementation guidance.** It is preserved as
+> historical design material. It also uses a shallow `knowledge/` path in its dependency lists;
+> the real, on-disk path is `knowledge/knowledge/` — see
+> [`packages/knowledge-engine/README.md`](../README.md).
+
 This document defines the purpose, inputs, outputs, dependencies, failure conditions, and Definitions of Done (DoD) for the 10 real-time execution engines in the runtime integration layer.
 
 ---

@@ -65,3 +65,107 @@ export interface SkippedAIEstimateSuggestion {
   status: AIEstimateSuggestionStatus;
   reason: string;
 }
+
+export type AIEstimatorToolName =
+  | "scope.parse"
+  | "knowledge.match"
+  | "costbook.resolve-targets"
+  | "costbook.retrieve-pricing"
+  | "estimate.validate";
+
+export interface AIEstimatorToolRun {
+  name: AIEstimatorToolName;
+  status: "passed" | "warning" | "failed";
+  summary: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ParsedScopeQuantity {
+  type: "area" | "length" | "volume" | "count" | "squares" | "hours" | "dimension";
+  value: number;
+  unit: "SF" | "LF" | "CY" | "EA" | "SQ" | "HR";
+  sourceText: string;
+}
+
+export interface ParsedContractorScope {
+  normalizedText: string;
+  detectedTrade: string | null;
+  quantities: ParsedScopeQuantity[];
+  materials: string[];
+  siteConstraints: string[];
+  missingInformation: string[];
+}
+
+export interface AIEstimatorCostBreakdown {
+  laborCostPerUnit: number;
+  materialCostPerUnit: number;
+  equipmentCostPerUnit: number;
+  totalUnitCost: number;
+  componentCount?: number;
+}
+
+export interface StructuredEstimateDraftLineItem {
+  draftLineItemId: string;
+  source: "knowledge-runtime";
+  reviewToken: string | null;
+  targetKind: AIEstimateSuggestionKind;
+  targetId: string | null;
+  targetCode: string | null;
+  targetName: string | null;
+  targetResolution: AIEstimateSuggestionResolution;
+  description: string;
+  quantity: number;
+  unitOfMeasure: string;
+  unitCost: number;
+  lineCost: number;
+  confidence: number;
+  rationale: string;
+  reviewWarnings: string[];
+  costBreakdown: AIEstimatorCostBreakdown | null;
+}
+
+export interface StructuredEstimateDraftValidation {
+  status: "ready_for_review" | "needs_review" | "blocked";
+  reviewRequired: true;
+  missingInformation: string[];
+  warnings: string[];
+}
+
+export interface StructuredEstimateDraft {
+  estimateId: string;
+  orgId: string;
+  projectId: string;
+  scopeOfWork: string;
+  parsedScope: ParsedContractorScope;
+  detectedTrade: string | null;
+  confidenceScore: number;
+  lineItems: StructuredEstimateDraftLineItem[];
+  subtotalCost: number;
+  validation: StructuredEstimateDraftValidation;
+  toolRuns: AIEstimatorToolRun[];
+}
+
+export interface GenerateStructuredEstimateInput {
+  estimateId: string;
+  orgId: string;
+  actorUserId?: string;
+  scopeOfWork: string;
+  limit?: number;
+}
+
+export interface ReviewedStructuredEstimateLineItemInput {
+  draftLineItemId: string;
+  status: AIEstimateSuggestionStatus;
+  reviewToken?: string;
+  targetId?: string;
+  targetKind?: AIEstimateSuggestionKind;
+  description?: string;
+  quantity: number;
+}
+
+export interface ApplyStructuredEstimateInput {
+  estimateId: string;
+  orgId: string;
+  actorUserId?: string;
+  lineItems: ReviewedStructuredEstimateLineItemInput[];
+}
