@@ -194,11 +194,14 @@ rules:
 
   - paths:
       - .github/pull_request_template.md
+      - .github/PULL_REQUEST_TEMPLATE/**
+      - .github/ISSUE_TEMPLATE/**
+      - .github/labels.yml
     requires:
       - docs/README.md
       - docs/REPOSITORY_GOVERNANCE.md
       - docs/ENGINEERING_COMMAND_CENTER.md
-    explanation: PR template changes affect contributor startup and completion workflow and should stay aligned with the docs entrypoint, governance policy, and command-center operating rules.
+    explanation: PR templates, issue templates, and label taxonomy affect contributor workflow and should stay aligned with the docs entrypoint, governance policy, and command-center operating rules.
 
   - paths:
       - scripts/docs-check*.mjs

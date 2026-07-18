@@ -7,6 +7,10 @@ related_code:
   - AGENTS.md
   - README.md
   - docs/REPOSITORY_GOVERNANCE.md
+  - .github/pull_request_template.md
+  - .github/PULL_REQUEST_TEMPLATE/
+  - .github/ISSUE_TEMPLATE/
+  - .github/labels.yml
   - docs/DOC_OWNERSHIP.yml
   - packages/knowledge-engine/README.md
   - app/backend/server.ts
@@ -33,7 +37,7 @@ Use these files first:
 - `docs/RBAC_MATRIX.md` for canonical roles and permission expectations
 - `docs/WORKFLOW_LIFECYCLES.md` for status vocabulary and transition rules
 - `docs/ROADMAP.md` for future work only
-- `docs/REPOSITORY_GOVERNANCE.md` for protected-branch policy, required checks, and worktree lifecycle
+- `docs/REPOSITORY_GOVERNANCE.md` for protected-branch policy, required checks, worktree lifecycle, PR templates, issue templates, and label taxonomy
 - `docs/DOC_OWNERSHIP.yml` for required documentation updates by code path
 
 ## Current versus archived
@@ -67,7 +71,7 @@ Global source-of-truth files define shared rules.
 - `RBAC_MATRIX.md` answers who can do what
 - `WORKFLOW_LIFECYCLES.md` answers how statuses move
 - `ROADMAP.md` answers what is next
-- `REPOSITORY_GOVERNANCE.md` answers how repository work must be isolated, verified, reviewed, and merged
+- `REPOSITORY_GOVERNANCE.md` answers how repository work must be isolated, verified, triaged, labeled, reviewed, and merged
 
 Module docs under `docs/modules/` inherit those shared rules and should not redefine them. Module docs should link back to the global file instead of copying role or lifecycle rules.
 

@@ -8,7 +8,7 @@
 - Base branch:
 - Worktree path:
 - Linked issue:
-- Scope type: <!-- backend / frontend / docs / governance / security / migration / mixed -->
+- Scope type: security
 
 ## Required Startup Verification
 
@@ -25,23 +25,30 @@
 - [ ] `docs/REPOSITORY_GOVERNANCE.md` read for governance or workflow changes.
 - [ ] Allowed paths, forbidden paths, exclusions, and stop conditions were stated before edits.
 
+## Required Security Review
+
+- [ ] Threat model or abuse case described.
+- [ ] Auth, membership, authorization, and RLS impact reviewed.
+- [ ] Secrets and environment variables are not exposed.
+- [ ] Input validation and output encoding reviewed.
+- [ ] Database writes remain service-layer mediated.
+- [ ] Logging avoids secrets and sensitive customer data.
+- [ ] Migration, destructive-action, and data-loss risks reviewed.
+- [ ] Tests or reproduction steps demonstrate the fix or hardening.
+
 ## Change Checklist
 
 - [ ] Changes stayed inside the stated scope.
 - [ ] No unrelated cleanup, refactor, dependency upgrade, merge, or rebase was included.
 - [ ] No secrets, local-only files, generated caches, or `.codex/` artifacts were committed.
-- [ ] Runtime behavior changes include relevant tests.
-- [ ] Tenant isolation, authorization, validation, and service-layer write paths were reviewed when backend behavior changed.
-- [ ] RLS, migration, Prisma, or database changes include live integration coverage or a documented blocker.
-- [ ] UI changes preserve existing design-system patterns and do not duplicate shared components.
-- [ ] AI-assisted features remain review-first and do not write directly to the database outside validated service-layer tools.
+- [ ] Tenant isolation, authorization, validation, and service-layer write paths were reviewed.
 
 ## Documentation Impact
 
 - [ ] `docs/DOC_OWNERSHIP.yml` requirements were checked.
-- [ ] Required source-of-truth docs changed in this branch.
+- [ ] `docs/RBAC_MATRIX.md` updated when permissions changed.
+- [ ] `docs/CURRENT_STATE.md` updated when implementation status changed.
 - [ ] `docs/SESSION_HANDOFF.md` was refreshed for this substantive or PR-ready session.
-- [ ] `docs/ENGINEERING_COMMAND_CENTER.md` changed only because mission, priorities, blockers, CI requirements, or operating protocol changed.
 - [ ] No documentation update required.
 
 If no documentation update was required, explain why:
@@ -54,8 +61,6 @@ If no documentation update was required, explain why:
 - [ ] `cd app && npm run lint`
 - [ ] `cd app && npm run build`
 - [ ] `cd app && npm run test:integration`
-- [ ] `cd web && npm run lint`
-- [ ] `cd web && npm run build`
 - [ ] Other:
 
 Exact final `git status --short --branch`:

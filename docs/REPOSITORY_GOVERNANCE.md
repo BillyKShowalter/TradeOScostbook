@@ -8,6 +8,9 @@ related_code:
   - .github/workflows/docs-consistency.yml
   - .github/workflows/verify-repository.yml
   - .github/pull_request_template.md
+  - .github/PULL_REQUEST_TEMPLATE/
+  - .github/ISSUE_TEMPLATE/
+  - .github/labels.yml
   - docs/TRADEOS_BIBLE.md
   - docs/ENGINEERING_COMMAND_CENTER.md
   - docs/SPRINT_BACKLOG.md
@@ -151,3 +154,55 @@ A PR is ready for human review only when:
 - the PR description accurately states current scope, validation, limitations, and remaining risks.
 
 For PR #31, the ownership-triggered governance update is intentional. The final changed-file scope is therefore 13 docs files, not the earlier 12-file expectation. Final local and GitHub validation must use the latest branch head.
+
+## Pull request templates
+
+The default PR template is the required baseline for every pull request.
+
+It must capture:
+
+- summary, scope, branch, worktree, and linked issue
+- startup verification against the Command Center and source-of-truth docs
+- allowed-path and forbidden-path compliance
+- documentation impact and `DOC_OWNERSHIP.yml` review
+- exact verification commands and blocked checks
+- final `git status --short --branch`
+- known limitations and follow-up work
+
+Specialized templates under `.github/PULL_REQUEST_TEMPLATE/` provide focused review prompts for:
+
+- backend changes
+- frontend changes
+- docs and governance changes
+- security hardening
+
+Specialized templates do not replace the default readiness standard. They exist to make the relevant risks harder to miss.
+
+## Issue templates
+
+Issue templates under `.github/ISSUE_TEMPLATE/` are required for normal public issue intake.
+
+Templates cover:
+
+- bug reports
+- engineering tasks
+- feature requests
+- governance and docs tasks
+- security review requests
+
+Blank issues are disabled so every issue starts with enough scope, risk, and verification context for triage. Security-sensitive reports that include exploitable details, secrets, or customer data must use private security advisories instead of public issues.
+
+## Label taxonomy
+
+The canonical repository label taxonomy lives in `.github/labels.yml`.
+
+Label groups:
+
+- `type:*` describes the kind of work
+- `area:*` describes the product or platform surface
+- `priority:*` describes severity and scheduling pressure
+- `risk:*` highlights release, data, security, migration, or external-service risk
+- `status:*` describes review, triage, blocked, stale, or merge readiness state
+- `owner:*` identifies the expected owner lane when work is split across agents or humans
+
+Labels should be applied consistently during triage. Do not create one-off labels until the taxonomy is updated in the same branch.

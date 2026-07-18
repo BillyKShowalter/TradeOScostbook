@@ -102,6 +102,8 @@ git diff --check
 
 The exact required-check configuration remains live GitHub state.
 
+PR templates must capture startup verification, scope, documentation impact, risk review, and exact final status. Issue templates must capture area, priority, owner path, verification expectations, and stop conditions before work starts. Labels must follow the taxonomy in `.github/labels.yml`. See [REPOSITORY_GOVERNANCE.md](REPOSITORY_GOVERNANCE.md) for the full policy.
+
 ## Session startup
 
 Every agent must:

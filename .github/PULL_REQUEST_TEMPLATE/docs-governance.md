@@ -8,7 +8,7 @@
 - Base branch:
 - Worktree path:
 - Linked issue:
-- Scope type: <!-- backend / frontend / docs / governance / security / migration / mixed -->
+- Scope type: docs / governance
 
 ## Required Startup Verification
 
@@ -25,16 +25,22 @@
 - [ ] `docs/REPOSITORY_GOVERNANCE.md` read for governance or workflow changes.
 - [ ] Allowed paths, forbidden paths, exclusions, and stop conditions were stated before edits.
 
+## Required Governance Review
+
+- [ ] Source-of-truth hierarchy stayed aligned with `docs/README.md`.
+- [ ] Branch/worktree policy stayed aligned with `docs/REPOSITORY_GOVERNANCE.md`.
+- [ ] Startup and completion protocol stayed aligned with agent prompt docs.
+- [ ] Required status checks stayed aligned with `.github/workflows/`.
+- [ ] PR and issue templates reinforce current RC1 operating rules.
+- [ ] Label taxonomy changes are reflected in governance documentation.
+- [ ] No runtime `app/` or `web/` implementation behavior changed.
+- [ ] No governance rule weakens tenant isolation, required verification, or review expectations.
+
 ## Change Checklist
 
 - [ ] Changes stayed inside the stated scope.
 - [ ] No unrelated cleanup, refactor, dependency upgrade, merge, or rebase was included.
 - [ ] No secrets, local-only files, generated caches, or `.codex/` artifacts were committed.
-- [ ] Runtime behavior changes include relevant tests.
-- [ ] Tenant isolation, authorization, validation, and service-layer write paths were reviewed when backend behavior changed.
-- [ ] RLS, migration, Prisma, or database changes include live integration coverage or a documented blocker.
-- [ ] UI changes preserve existing design-system patterns and do not duplicate shared components.
-- [ ] AI-assisted features remain review-first and do not write directly to the database outside validated service-layer tools.
 
 ## Documentation Impact
 
@@ -50,12 +56,7 @@ If no documentation update was required, explain why:
 
 - [ ] `npm run docs:check`
 - [ ] `npm run docs:test`
-- [ ] `cd app && npm test`
-- [ ] `cd app && npm run lint`
-- [ ] `cd app && npm run build`
-- [ ] `cd app && npm run test:integration`
-- [ ] `cd web && npm run lint`
-- [ ] `cd web && npm run build`
+- [ ] `git diff --check`
 - [ ] Other:
 
 Exact final `git status --short --branch`:
